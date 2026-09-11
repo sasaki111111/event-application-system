@@ -1,0 +1,32 @@
+# Node / Angular
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# Java / Spring Boot / Maven / Gradle
+target/
+build/
+*.class
+!**/gradle-wrapper.jar
+!**/maven-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 環境設定・秘匿情報
+.env
+application-local.yml
+application-local.properties
+
+# Excel ロックファイル
+~$*.xlsx
