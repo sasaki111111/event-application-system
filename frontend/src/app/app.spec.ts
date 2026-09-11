@@ -1,3 +1,4 @@
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でブラウザ相当の環境を再現）。app.tsの単体テスト（Angular CLI生成）。
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 

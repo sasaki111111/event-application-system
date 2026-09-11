@@ -1,2 +1,3 @@
+# 改行コードの扱いをファイル種別ごとに固定する設定（Windows/Mac/Linux間での差異を防ぐ）
 /mvnw text eol=lf
 *.cmd text eol=crlf

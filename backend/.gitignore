@@ -1,3 +1,4 @@
+# backend（Spring Boot）配下でGit管理から除外するファイル・ディレクトリの一覧
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar

@@ -1,3 +1,4 @@
+/* 実行環境: ビルド時。frontend全体で共通のTypeScriptコンパイル設定（tsconfig.app.json/spec.jsonが継承する） */
 /* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
 /* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {

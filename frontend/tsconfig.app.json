@@ -1,3 +1,4 @@
+/* 実行環境: ビルド時（ブラウザで動くコードを生成する工程）。アプリ本体（テストを除く）のTypeScriptコンパイル設定。 */
 /* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
 /* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {

@@ -3,7 +3,7 @@ package com.example.eventapp.common.exception;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-// API設計書§0の共通エラーレスポンス形式
+// 実行環境: サーバー側（JVM）。API設計書§0の共通エラーレスポンス形式。
 public record ErrorResponse(
         OffsetDateTime timestamp,
         int status,

@@ -1,3 +1,4 @@
+# リポジトリ全体でGit管理から除外するファイル・ディレクトリの一覧
 # Node / Angular
 node_modules/
 dist/

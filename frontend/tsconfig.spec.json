@@ -1,3 +1,4 @@
+/* 実行環境: テスト実行時（Node.js上、Vitest）。*.spec.tsファイル（テストコード）用のTypeScriptコンパイル設定。 */
 /* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
 /* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {
