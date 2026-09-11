@@ -36,12 +36,31 @@ npm start
 
 ### バックエンド（Spring Boot）
 
-```
-cd backend
-./mvnw spring-boot:run
+事前にMySQLに `eventapp` データベースと接続用ユーザーを作成しておく（B-4）。
+
+```sql
+CREATE DATABASE eventapp CHARACTER SET utf8mb4 COLLATE utf8mb4_ja_0900_as_cs;
+CREATE USER 'eventapp_app'@'localhost' IDENTIFIED BY '<任意のパスワード>';
+GRANT ALL PRIVILEGES ON eventapp.* TO 'eventapp_app'@'localhost';
 ```
 
-起動後、`http://localhost:8080/api/ping` にアクセスして `pong` が返ることを確認できる（B-3の起動確認用エンドポイント）。MySQL接続はB-4で追加予定。
+`backend/src/main/resources/application-local.yml`（gitignore対象・各自作成）に接続情報を書く。
+
+```yaml
+spring:
+  datasource:
+    username: eventapp_app
+    password: <上で設定したパスワード>
+```
+
+起動:
+
+```
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+起動後、`http://localhost:8080/api/ping` にアクセスして `pong` が返ることを確認できる（B-3の起動確認用エンドポイント）。起動ログにHikariCPの接続完了ログが出ればMySQL接続も確認できている（B-4）。
 
 ## ブランチ運用
 

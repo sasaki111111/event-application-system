@@ -4,6 +4,10 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### ローカルDB接続情報（秘匿情報のためコミットしない） ###
+application-local.yml
+application-local.properties
+
 ### STS ###
 .apt_generated
 .classpath
