@@ -53,6 +53,13 @@ spring:
     password: <上で設定したパスワード>
 ```
 
+DDL・初期データを投入する（C-1・C-2、`--default-character-set=utf8mb4`を付けないと日本語の既定値でエラーになる）。
+
+```
+mysql --default-character-set=utf8mb4 -u eventapp_app -p eventapp < backend/src/main/resources/db/schema.sql
+mysql --default-character-set=utf8mb4 -u eventapp_app -p eventapp < backend/src/main/resources/db/seed.sql
+```
+
 起動:
 
 ```
