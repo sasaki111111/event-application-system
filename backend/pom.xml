@@ -63,6 +63,12 @@
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- D-1: テスト実行時はMySQLの代わりにこのインメモリDBを使う（実MySQLが無くてもmvn testが通るように） -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

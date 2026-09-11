@@ -1,6 +1,8 @@
 package com.example.eventapp.common;
 
 import com.example.eventapp.common.exception.UnauthorizedException;
+import com.example.eventapp.entity.User;
+import com.example.eventapp.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -9,15 +11,16 @@ import org.springframework.web.servlet.HandlerInterceptor;
 // API設計書§0: X-User-Idヘッダからログインユーザーを解決するダミー認証。
 // ヘッダ無し／存在しないuserIdは401（GlobalExceptionHandlerが変換）。
 // どのURLに適用するか（/api/**、ただしlogin/pingは除外）はWebConfigで設定している。
+// D-1: C-2で投入したusersテーブルをUserRepository経由で見るようにした（B-5時点のDummyUserStoreを置き換え）。
 public class AuthInterceptor implements HandlerInterceptor {
 
     private static final String HEADER_NAME = "X-User-Id";
 
-    private final DummyUserStore userStore;
+    private final UserRepository userRepository;
     private final AuthContext authContext;
 
-    public AuthInterceptor(DummyUserStore userStore, AuthContext authContext) {
-        this.userStore = userStore;
+    public AuthInterceptor(UserRepository userRepository, AuthContext authContext) {
+        this.userRepository = userRepository;
         this.authContext = authContext;
     }
 
@@ -40,12 +43,12 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw new UnauthorizedException("認証が必要です");
         }
 
-        CurrentUser user = userStore.findById(userId);
+        User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             throw new UnauthorizedException("認証が必要です");
         }
 
-        authContext.setCurrentUser(user);
+        authContext.setCurrentUser(new CurrentUser(user.getId(), user.getName(), user.getRole()));
         return true;
     }
 }

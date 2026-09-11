@@ -4,9 +4,8 @@
 -- 実行例:
 --   mysql -u eventapp_app -p eventapp < backend/src/main/resources/db/seed.sql
 --
--- userId・role（1=general, 2=admin）は
--- backend/.../common/DummyUserStore.java のダミー認証データと一致させている。
--- D以降でDummyUserStoreをRepository参照に置き換える際、ここでの id と一致している必要がある。
+-- userId・role（1=general, 2=admin）は AuthInterceptor が X-User-Id ヘッダから
+-- ダミー認証するときにそのまま参照するID。ログイン画面（SC-01）もこのidを使う想定（API-10）。
 
 -- ロール2種のダミーユーザー
 INSERT INTO users (id, name, email, role) VALUES

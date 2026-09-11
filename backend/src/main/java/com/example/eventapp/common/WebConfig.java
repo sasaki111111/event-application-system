@@ -1,5 +1,6 @@
 package com.example.eventapp.common;
 
+import com.example.eventapp.repository.UserRepository;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -10,18 +11,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    private final DummyUserStore userStore;
+    private final UserRepository userRepository;
     private final AuthContext authContext;
 
-    public WebConfig(DummyUserStore userStore, AuthContext authContext) {
-        this.userStore = userStore;
+    public WebConfig(UserRepository userRepository, AuthContext authContext) {
+        this.userRepository = userRepository;
         this.authContext = authContext;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // API-10（ログイン）とping（起動確認用）は認証不要（API設計書§0・§2）
-        registry.addInterceptor(new AuthInterceptor(userStore, authContext))
+        registry.addInterceptor(new AuthInterceptor(userRepository, authContext))
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/login", "/api/ping");
     }

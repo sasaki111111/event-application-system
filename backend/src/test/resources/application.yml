@@ -1,0 +1,14 @@
+# テスト実行時だけ読み込まれる設定。src/main/resources/application.ymlを丸ごと置き換える
+# （同名ファイルはマージされず、こちらが優先される）ため、本番側の設定も含めて明示的に書く。
+# 実MySQLの代わりにインメモリDB（H2）を使うことで、MySQLが起動していなくても `mvn test` が通るようにする。
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      # H2は毎回まっさらな状態のため、エンティティ定義から自動でテーブルを作らせる
+      ddl-auto: create-drop
+    open-in-view: false
