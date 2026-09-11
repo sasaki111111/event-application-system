@@ -1,13 +1,19 @@
+# 実行環境: サーバー側（JVM）を起動する時に読み込まれる設定ファイル。秘密情報（パスワード）は書かない。
+# 実際の値はapplication-local.yml（gitignore対象、各自作成）で上書きする。
 spring:
   application:
     name: backend
   datasource:
+    # 接続先: ローカルPCで動いているMySQL（別プロセス、3306番ポート）のeventapp DB
     url: jdbc:mysql://localhost:3306/eventapp?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Tokyo
+    # ${DB_USERNAME:既定値} = 環境変数DB_USERNAMEがあればそれを使い、無ければ既定値を使う
     username: ${DB_USERNAME:eventapp_app}
+    # 既定値なし＝application-local.yml等で必ず指定する必要がある
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
+      # ddl-auto: none = Hibernateにテーブルを自動作成/変更させない（DDLはC-1で手動適用する方針）
       ddl-auto: none
     open-in-view: false
     show-sql: false

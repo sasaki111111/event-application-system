@@ -8,6 +8,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+// 実行環境: サーバー側（JVM）。@RestControllerAdvice＝全Controllerで共通の例外ハンドラー。
+// Service/Controllerが投げた例外（Unauthorized/Forbidden/Business/バリデーション）を捕まえて、
+// API設計書§0で決めたJSON形式（timestamp/status/error/message[/errors]）に変換して返す。
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

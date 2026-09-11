@@ -5,7 +5,8 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.WebApplicationContext;
 
-// リクエストごとに1つ生成され、AuthInterceptorが設定したログインユーザー情報をController/Serviceで参照できるようにする。
+// 実行環境: サーバー側（JVM）。HTTPリクエスト1回ごとに1つ生成され（@Scope=request）、
+// AuthInterceptorが設定したログインユーザー情報をController/Serviceから参照できるようにする「バトンリレー」役。
 @Component
 @Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class AuthContext {

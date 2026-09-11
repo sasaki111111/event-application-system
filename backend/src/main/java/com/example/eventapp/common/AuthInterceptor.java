@@ -5,8 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+// 実行環境: サーバー側（JVM）。Controllerの処理が始まる直前に必ず通る「関所」（HandlerInterceptor）。
 // API設計書§0: X-User-Idヘッダからログインユーザーを解決するダミー認証。
 // ヘッダ無し／存在しないuserIdは401（GlobalExceptionHandlerが変換）。
+// どのURLに適用するか（/api/**、ただしlogin/pingは除外）はWebConfigで設定している。
 public class AuthInterceptor implements HandlerInterceptor {
 
     private static final String HEADER_NAME = "X-User-Id";

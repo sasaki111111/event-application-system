@@ -6,7 +6,8 @@ import com.example.eventapp.service.PingService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// B-3: 起動確認用の疎通エンドポイント。業務APIはD以降で実装する。
+// 実行環境: サーバー側（JVM、localhost:8080）。ブラウザ（Angular）やcurlからのHTTPリクエストを
+// 最初に受け取るController層。B-3: 起動確認用の疎通エンドポイント。業務APIはD以降で実装する。
 @RestController
 public class PingController {
 

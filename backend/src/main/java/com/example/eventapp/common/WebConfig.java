@@ -5,6 +5,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+// 実行環境: サーバー側（JVM）。Spring MVCの共通設定をまとめる場所。
+// ここで「AuthInterceptorをどのURLに適用するか」と「CORS（ブラウザの別オリジンからのアクセス許可）」を設定する。
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
