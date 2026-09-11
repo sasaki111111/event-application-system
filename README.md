@@ -26,7 +26,22 @@
 
 ## セットアップ
 
-（B-2・B-3でAngular／Spring Bootの雛形を整備次第、追記予定）
+### フロントエンド（Angular）
+
+```
+cd frontend
+npm install
+npm start
+```
+
+### バックエンド（Spring Boot）
+
+```
+cd backend
+./mvnw spring-boot:run
+```
+
+起動後、`http://localhost:8080/api/ping` にアクセスして `pong` が返ることを確認できる（B-3の起動確認用エンドポイント）。MySQL接続はB-4で追加予定。
 
 ## ブランチ運用
 
