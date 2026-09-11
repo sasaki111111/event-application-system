@@ -1,11 +1,15 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でブラウザ相当の環境を再現）。app.tsの単体テスト（Angular CLI生成）。
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { App } from './app';
+import { routes } from './app.routes';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      // app.html内のrouterLinkがActivatedRouteを要求するため、テスト用にRouterを提供する
+      providers: [provideRouter(routes)],
     })
       .compileComponents();
   });
