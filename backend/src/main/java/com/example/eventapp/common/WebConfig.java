@@ -1,0 +1,35 @@
+package com.example.eventapp.common;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    private final DummyUserStore userStore;
+    private final AuthContext authContext;
+
+    public WebConfig(DummyUserStore userStore, AuthContext authContext) {
+        this.userStore = userStore;
+        this.authContext = authContext;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // API-10（ログイン）とping（起動確認用）は認証不要（API設計書§0・§2）
+        registry.addInterceptor(new AuthInterceptor(userStore, authContext))
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/login", "/api/ping");
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        // ローカル開発時のAngular devサーバー（ng serve、既定4200番）からのアクセスを許可
+        registry.addMapping("/api/**")
+                .allowedOrigins("http://localhost:4200")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*");
+    }
+}
