@@ -1,0 +1,37 @@
+<!-- 実行環境: ブラウザ側。event-list.tsのテンプレート。 -->
+<h1>イベント一覧</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>開催日時</th>
+        <th>場所</th>
+        <th>申込状況</th>
+        <th>状態</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (event of events(); track event.id) {
+        <tr>
+          <td><a [routerLink]="['/events', event.id]">{{ event.name }}</a></td>
+          <td>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>{{ event.place }}</td>
+          <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
+          <td>
+            @if (event.open) {
+              <span class="badge open">受付中</span>
+            } @else {
+              <span class="badge closed">受付終了</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

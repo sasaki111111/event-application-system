@@ -1,11 +1,13 @@
 // 実行環境: ブラウザ側。URLのパスとコンポーネント（画面）の対応表。
 // ここに書かれた設定にしたがって、Angular Routerがページ全体を再読み込みせずに画面を切り替える(SPA)。
 import { Routes } from '@angular/router';
-import { Home } from './pages/home/home';
-import { About } from './pages/about/about';
+import { EventList } from './events/event-list/event-list';
+import { EventDetail } from './events/event-detail/event-detail';
 
-// B-2: ルーティング疎通確認用の仮ルート。8画面分の本設計はE-1で行う。
+// SC-02（画面遷移図）に対応。ログイン画面(SC-01)が無いため、"/"は暫定でイベント一覧へ流す。
+// authGuard/adminGuardによるアクセス制御はE-7で追加する。
 export const routes: Routes = [
-  { path: '', component: Home },       // "/" にアクセスしたときHomeを表示
-  { path: 'about', component: About }, // "/about" にアクセスしたときAboutを表示
+  { path: '', redirectTo: '/events', pathMatch: 'full' },
+  { path: 'events', component: EventList },
+  { path: 'events/:id', component: EventDetail },
 ];

@@ -1,0 +1,15 @@
+/* 実行環境: ブラウザ側。event-detail.ts専用のスタイル（最低限の見た目のみ）。 */
+dl {
+  display: grid;
+  grid-template-columns: 8em 1fr;
+  gap: 0.3em 1em;
+}
+
+.error {
+  color: #c00;
+}
+
+.note {
+  color: #888;
+  font-style: italic;
+}
