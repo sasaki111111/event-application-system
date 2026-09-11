@@ -3,14 +3,16 @@ package com.example.eventapp.common.exception;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 // 実行環境: サーバー側（JVM）。@RestControllerAdvice＝全Controllerで共通の例外ハンドラー。
-// Service/Controllerが投げた例外（Unauthorized/Forbidden/Business/バリデーション）を捕まえて、
-// API設計書§0で決めたJSON形式（timestamp/status/error/message[/errors]）に変換して返す。
+// Service/Controllerが投げた例外を捕まえて、API設計書§0で決めたJSON形式
+// （timestamp/status/error/message[/errors]）に変換して返す。
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -22,6 +24,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex) {
         return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(BusinessException.class)
@@ -37,6 +44,18 @@ public class GlobalExceptionHandler {
         ErrorResponse body = ErrorResponse.ofValidation(
                 HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), "入力エラー", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // API設計書§0「リクエスト形式エラー」: 不正なJSON・型不一致・必須ボディ欠落
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleMalformedRequest(HttpMessageNotReadableException ex) {
+        return build(HttpStatus.BAD_REQUEST, "リクエストの形式が不正です");
+    }
+
+    // API設計書§0「リクエスト形式エラー」: パスパラメータが数値でない場合等
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return build(HttpStatus.BAD_REQUEST, "パラメータの形式が不正です");
     }
 
     private ErrorResponse.FieldError toFieldError(FieldError fieldError) {
