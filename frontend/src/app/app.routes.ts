@@ -3,6 +3,7 @@
 import { Routes } from '@angular/router';
 import { EventList } from './events/event-list/event-list';
 import { EventDetail } from './events/event-detail/event-detail';
+import { ApplyDone } from './events/apply-done/apply-done';
 import { AdminEventList } from './admin/admin-event-list/admin-event-list';
 import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
 import { adminGuard } from './core/admin-guard';
@@ -13,6 +14,7 @@ export const routes: Routes = [
   { path: '', redirectTo: '/events', pathMatch: 'full' },
   { path: 'events', component: EventList },
   { path: 'events/:id', component: EventDetail },
+  { path: 'events/:id/done', component: ApplyDone },
   { path: 'admin/events', component: AdminEventList, canActivate: [adminGuard] },
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [adminGuard] },

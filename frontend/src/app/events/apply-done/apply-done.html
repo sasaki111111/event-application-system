@@ -1,0 +1,16 @@
+<!-- 実行環境: ブラウザ側。apply-done.tsのテンプレート。 -->
+@if (application) {
+  <h1>申込が完了しました</h1>
+  <dl>
+    <dt>ステータス</dt>
+    <dd>{{ application.status }}</dd>
+
+    <dt>申込日時</dt>
+    <dd>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+  </dl>
+} @else {
+  <!-- ページの再読み込み等で申込結果が無い状態でここに来た場合 -->
+  <p>申込結果を表示できません。イベント一覧からやり直してください。</p>
+}
+
+<a routerLink="/events">イベント一覧へ</a>

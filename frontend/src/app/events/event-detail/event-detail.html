@@ -30,6 +30,15 @@
     <dd>{{ e.description }}</dd>
   </dl>
 
-  <!-- D-3実装後、ここに「申し込む」ボタンを追加する -->
-  <p class="note">（申込機能は未実装です）</p>
+  @if (e.open) {
+    <button type="button" (click)="apply()" [disabled]="applying()">
+      {{ applying() ? '申込処理中...' : '申し込む' }}
+    </button>
+  } @else {
+    <p class="note">このイベントは受付を終了しています。</p>
+  }
+
+  @if (applyErrorMessage()) {
+    <p class="error">{{ applyErrorMessage() }}</p>
+  }
 }
