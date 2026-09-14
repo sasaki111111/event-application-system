@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。バックエンド（D-1: GET /api/events, GET /api/events/{id}）を呼び出すサービス。
-// レスポンスの型（API設計書 API-01・API-02）をTypeScriptの型として定義している。
+// 実行環境: ブラウザ側。バックエンド（D-1: 一覧・詳細、D-2: 登録・編集・削除）を呼び出すサービス。
+// レスポンス・リクエストの型（API設計書 API-01・02・06・07・08）をTypeScriptの型として定義している。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -20,6 +20,16 @@ export interface EventDetail extends EventSummary {
   remaining: number;
 }
 
+// API-06・API-07のリクエストボディ（backendのEventUpsertRequestと対応）
+export interface EventUpsertRequest {
+  name: string;
+  startAt: string;
+  place: string;
+  capacity: number;
+  applicationDeadline: string;
+  description?: string;
+}
+
 const API_BASE_URL = 'http://localhost:8080/api';
 
 @Injectable({ providedIn: 'root' })
@@ -35,5 +45,20 @@ export class EventApiService {
 
   detail(id: number): Observable<EventDetail> {
     return this.http.get<EventDetail>(`${API_BASE_URL}/events/${id}`);
+  }
+
+  // API-06（管理者のみ）
+  create(request: EventUpsertRequest): Observable<EventDetail> {
+    return this.http.post<EventDetail>(`${API_BASE_URL}/events`, request);
+  }
+
+  // API-07（管理者のみ）
+  update(id: number, request: EventUpsertRequest): Observable<EventDetail> {
+    return this.http.put<EventDetail>(`${API_BASE_URL}/events/${id}`, request);
+  }
+
+  // API-08（管理者のみ）
+  remove(id: number): Observable<void> {
+    return this.http.delete<void>(`${API_BASE_URL}/events/${id}`);
   }
 }

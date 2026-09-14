@@ -3,11 +3,17 @@
 import { Routes } from '@angular/router';
 import { EventList } from './events/event-list/event-list';
 import { EventDetail } from './events/event-detail/event-detail';
+import { AdminEventList } from './admin/admin-event-list/admin-event-list';
+import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
+import { adminGuard } from './core/admin-guard';
 
-// SC-02（画面遷移図）に対応。ログイン画面(SC-01)が無いため、"/"は暫定でイベント一覧へ流す。
-// authGuard/adminGuardによるアクセス制御はE-7で追加する。
+// SC-02・SC-04（画面遷移図）に対応。ログイン画面(SC-01)が無いため、"/"は暫定でイベント一覧へ流す。
+// adminGuardは管理者以外の/admin/**アクセスを弾く（E-7の先行実装）。authGuard（未ログイン制御）はE-2以降で追加する。
 export const routes: Routes = [
   { path: '', redirectTo: '/events', pathMatch: 'full' },
   { path: 'events', component: EventList },
   { path: 'events/:id', component: EventDetail },
+  { path: 'admin/events', component: AdminEventList, canActivate: [adminGuard] },
+  { path: 'admin/events/new', component: AdminEventForm, canActivate: [adminGuard] },
+  { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [adminGuard] },
 ];

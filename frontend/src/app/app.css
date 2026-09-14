@@ -1,1 +1,19 @@
-/* 実行環境: ブラウザ側。app.ts（ルートコンポーネント）専用のスタイル。現時点では未使用（空）。 */
+/* 実行環境: ブラウザ側。app.ts（ルートコンポーネント）専用のスタイル。 */
+nav {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 0.5em 1em;
+  border-bottom: 1px solid #ccc;
+}
+
+.dummy-user-switch {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: #666;
+}
+
+.dummy-user-switch button[disabled] {
+  font-weight: bold;
+  color: #000;
+}

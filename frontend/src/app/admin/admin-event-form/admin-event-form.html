@@ -1,0 +1,64 @@
+<!-- 実行環境: ブラウザ側。admin-event-form.tsのテンプレート。 -->
+<a routerLink="/admin/events">← イベント管理に戻る</a>
+
+<h1>{{ isEditMode ? 'イベント編集' : 'イベント新規登録' }}</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else {
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="field">
+      <label for="name">イベント名</label>
+      <input id="name" type="text" formControlName="name" maxlength="100" />
+      @if (fieldError('name')) {
+        <p class="field-error">{{ fieldError('name') }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="startAt">開催日時</label>
+      <input id="startAt" type="datetime-local" formControlName="startAt" />
+      @if (fieldError('startAt')) {
+        <p class="field-error">{{ fieldError('startAt') }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="place">場所</label>
+      <input id="place" type="text" formControlName="place" maxlength="100" />
+      @if (fieldError('place')) {
+        <p class="field-error">{{ fieldError('place') }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="capacity">定員</label>
+      <input id="capacity" type="number" formControlName="capacity" min="1" />
+      @if (fieldError('capacity')) {
+        <p class="field-error">{{ fieldError('capacity') }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="applicationDeadline">申込締切</label>
+      <input id="applicationDeadline" type="datetime-local" formControlName="applicationDeadline" />
+      @if (fieldError('applicationDeadline')) {
+        <p class="field-error">{{ fieldError('applicationDeadline') }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="description">説明</label>
+      <textarea id="description" formControlName="description" maxlength="1000" rows="4"></textarea>
+      @if (fieldError('description')) {
+        <p class="field-error">{{ fieldError('description') }}</p>
+      }
+    </div>
+
+    <button type="submit" [disabled]="saving()">{{ saving() ? '保存中...' : '保存' }}</button>
+  </form>
+}

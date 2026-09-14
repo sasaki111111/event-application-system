@@ -1,5 +1,19 @@
-<!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（仮。マイページ/ログアウト等はE-2以降で追加）とrouter-outlet。 -->
+<!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（仮。ログアウト等はE-2以降で追加）とrouter-outlet。 -->
 <nav>
   <a routerLink="/events">イベント一覧</a>
+  @if (dummyUserStore.currentUserId() === '2') {
+    <a routerLink="/admin/events">イベント管理（管理者）</a>
+  }
+
+  <!-- SC-01（ログイン画面）が無いための暫定切り替え。E-2実装後に削除する。 -->
+  <span class="dummy-user-switch">
+    今の操作ユーザー：
+    <button type="button" (click)="switchUser('1')" [disabled]="dummyUserStore.currentUserId() === '1'">
+      一般ユーザー
+    </button>
+    <button type="button" (click)="switchUser('2')" [disabled]="dummyUserStore.currentUserId() === '2'">
+      管理者
+    </button>
+  </span>
 </nav>
 <router-outlet />

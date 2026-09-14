@@ -1,0 +1,44 @@
+<!-- 実行環境: ブラウザ側。admin-event-list.tsのテンプレート。 -->
+<h1>イベント管理</h1>
+
+<a routerLink="/admin/events/new">＋ 新規登録</a>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>開催日時</th>
+        <th>場所</th>
+        <th>申込状況</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (event of events(); track event.id) {
+        <tr>
+          <td>{{ event.name }}</td>
+          <td>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>{{ event.place }}</td>
+          <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
+          <td>
+            @if (event.open) {
+              <span class="badge open">受付中</span>
+            } @else {
+              <span class="badge closed">受付終了</span>
+            }
+          </td>
+          <td>
+            <a [routerLink]="['/admin/events', event.id, 'edit']">編集</a>
+            <button type="button" (click)="deleteEvent(event)">削除</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

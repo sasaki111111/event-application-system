@@ -1,0 +1,24 @@
+/* 実行環境: ブラウザ側。admin-event-form.ts専用のスタイル（最低限の見た目のみ）。 */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  max-width: 30em;
+  margin-top: 1em;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.field-error {
+  color: #c00;
+  font-size: 0.85em;
+  margin: 0;
+}
+
+.error {
+  color: #c00;
+}
