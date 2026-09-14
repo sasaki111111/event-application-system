@@ -12,8 +12,6 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 // 実行環境: サーバー側（JVM）。applicationsテーブル（テーブル定義書_v1.0.md §2.3）に対応するJPAエンティティ。
-// D-1では受付済数の集計（ApplicationRepositoryのcountメソッド）でのみ使う。
-// 申込の作成・キャンセル自体（setter・生成用コンストラクタ）はD-3・D-5で追加する。
 @Entity
 @Table(name = "applications")
 public class Application {
@@ -34,17 +32,27 @@ public class Application {
     @Column(nullable = false, length = 20)
     private String status;
 
+    // APIレスポンスに即値が必要なためDB任せにせずJava側で設定する（created_at/updated_atとは異なる扱い）
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    @Column(name = "created_at", nullable = false)
+    // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     protected Application() {
         // JPAが利用するデフォルトコンストラクタ
+    }
+
+    // D-3: イベント申込（API-03）用。生成した瞬間は必ず「受付済」
+    public Application(User user, Event event) {
+        this.user = user;
+        this.event = event;
+        this.status = ApplicationStatus.ACCEPTED;
+        this.appliedAt = LocalDateTime.now();
     }
 
     public Long getId() {
