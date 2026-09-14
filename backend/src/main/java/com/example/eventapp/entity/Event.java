@@ -9,7 +9,6 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 // 実行環境: サーバー側（JVM）。eventsテーブル（テーブル定義書_v1.0.md §2.2）に対応するJPAエンティティ。
-// setter類はD-2（登録・編集・削除API）で追加する。D-1では取得のみのため未使用。
 @Entity
 @Table(name = "events")
 public class Event {
@@ -36,14 +35,37 @@ public class Event {
     @Column(length = 1000)
     private String description;
 
-    @Column(name = "created_at", nullable = false)
+    // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     protected Event() {
         // JPAが利用するデフォルトコンストラクタ
+    }
+
+    // D-2: イベント登録（API-06）用
+    public Event(String name, LocalDateTime startAt, String place, Integer capacity,
+            LocalDateTime applicationDeadline, String description) {
+        this.name = name;
+        this.startAt = startAt;
+        this.place = place;
+        this.capacity = capacity;
+        this.applicationDeadline = applicationDeadline;
+        this.description = description;
+    }
+
+    // D-2: イベント編集（API-07）用
+    public void applyChanges(String name, LocalDateTime startAt, String place, Integer capacity,
+            LocalDateTime applicationDeadline, String description) {
+        this.name = name;
+        this.startAt = startAt;
+        this.place = place;
+        this.capacity = capacity;
+        this.applicationDeadline = applicationDeadline;
+        this.description = description;
     }
 
     public Long getId() {
