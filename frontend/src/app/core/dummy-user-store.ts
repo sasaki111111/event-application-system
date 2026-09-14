@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-01（ログイン画面）が無い間、「今どのユーザーとして操作しているか」を保持する暫定の入れ物。
-// ログイン画面ができたら、ここではなく実際のログイン結果を使うように置き換える。
+// 実行環境: ブラウザ側。ログイン中のユーザー（ダミー認証）を保持する入れ物（E-2）。
+// パスワード認証は実装対象外（要件定義書）のため、ログイン＝ロール選択のみ。未ログイン時はnull。
 import { Injectable, signal } from '@angular/core';
 
 const STORAGE_KEY = 'dummyUserId';
@@ -10,7 +10,7 @@ export class DummyUserStore {
 
   readonly currentUserId = this.userId.asReadonly();
 
-  setUserId(id: string): void {
+  login(id: string): void {
     this.userId.set(id);
     try {
       localStorage.setItem(STORAGE_KEY, id);
@@ -19,11 +19,20 @@ export class DummyUserStore {
     }
   }
 
-  private readInitial(): string {
+  logout(): void {
+    this.userId.set(null);
     try {
-      return localStorage.getItem(STORAGE_KEY) ?? '1';
+      localStorage.removeItem(STORAGE_KEY);
     } catch {
-      return '1';
+      // プライベートブラウジング等でlocalStorageが使えなくても動作は継続する
+    }
+  }
+
+  private readInitial(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return null;
     }
   }
 }

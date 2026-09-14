@@ -7,13 +7,6 @@ nav {
   border-bottom: 1px solid #ccc;
 }
 
-.dummy-user-switch {
+nav button {
   margin-left: auto;
-  font-size: 0.85em;
-  color: #666;
-}
-
-.dummy-user-switch button[disabled] {
-  font-weight: bold;
-  color: #000;
 }

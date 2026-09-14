@@ -1,24 +1,16 @@
 <!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（画面遷移図の「共通ヘッダーナビ」に対応）とrouter-outlet。 -->
 <nav>
-  @if (dummyUserStore.currentUserId() === '2') {
-    <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］ -->
-    <a routerLink="/admin/events">イベント管理</a>
-    <a routerLink="/admin/reports">申込状況・実績</a>
-  } @else {
-    <!-- 一般＝［イベント一覧／マイページ／ログアウト］ -->
-    <a routerLink="/events">イベント一覧</a>
-    <a routerLink="/my/applications">マイページ</a>
+  @if (dummyUserStore.currentUserId(); as userId) {
+    @if (userId === '2') {
+      <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］ -->
+      <a routerLink="/admin/events">イベント管理</a>
+      <a routerLink="/admin/reports">申込状況・実績</a>
+    } @else {
+      <!-- 一般＝［イベント一覧／マイページ／ログアウト］ -->
+      <a routerLink="/events">イベント一覧</a>
+      <a routerLink="/my/applications">マイページ</a>
+    }
+    <button type="button" (click)="logout()">ログアウト</button>
   }
-
-  <!-- SC-01（ログイン画面）が無いための暫定切り替え。E-2実装後に削除する（ログアウトもそこで追加）。 -->
-  <span class="dummy-user-switch">
-    今の操作ユーザー：
-    <button type="button" (click)="switchUser('1')" [disabled]="dummyUserStore.currentUserId() === '1'">
-      一般ユーザー
-    </button>
-    <button type="button" (click)="switchUser('2')" [disabled]="dummyUserStore.currentUserId() === '2'">
-      管理者
-    </button>
-  </span>
 </nav>
 <router-outlet />
