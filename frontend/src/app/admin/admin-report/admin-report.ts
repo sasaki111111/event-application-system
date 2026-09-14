@@ -54,8 +54,8 @@ export class AdminReport implements OnInit {
         this.reports.set(reports);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('申込実績の取得に失敗しました。');
+      error: (err) => {
+        this.errorMessage.set(err.error?.message ?? '申込実績の取得に失敗しました。');
         this.loading.set(false);
       },
     });

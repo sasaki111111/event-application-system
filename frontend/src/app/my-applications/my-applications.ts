@@ -46,8 +46,8 @@ export class MyApplications implements OnInit {
         this.applications.set(applications);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('申込一覧の取得に失敗しました。');
+      error: (err) => {
+        this.errorMessage.set(err.error?.message ?? '申込一覧の取得に失敗しました。');
         this.loading.set(false);
       },
     });

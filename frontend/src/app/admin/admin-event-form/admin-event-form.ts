@@ -67,8 +67,8 @@ export class AdminEventForm implements OnInit {
         });
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('イベント情報の取得に失敗しました。');
+      error: (err) => {
+        this.errorMessage.set(err.error?.message ?? 'イベント情報の取得に失敗しました。');
         this.loading.set(false);
       },
     });
@@ -108,7 +108,7 @@ export class AdminEventForm implements OnInit {
         } else if (err.status === 404) {
           this.errorMessage.set('イベントが見つかりません。');
         } else {
-          this.errorMessage.set('保存に失敗しました。');
+          this.errorMessage.set(err.error?.message ?? '保存に失敗しました。');
         }
       },
     });

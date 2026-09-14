@@ -24,8 +24,8 @@ export class EventList implements OnInit {
         this.events.set(events);
         this.loading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('イベント一覧の取得に失敗しました。バックエンドが起動しているか確認してください。');
+      error: (err) => {
+        this.errorMessage.set(err.error?.message ?? 'イベント一覧の取得に失敗しました。');
         this.loading.set(false);
       },
     });

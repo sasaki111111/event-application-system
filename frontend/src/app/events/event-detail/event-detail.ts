@@ -42,9 +42,7 @@ export class EventDetail implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.errorMessage.set(
-          err.status === 404 ? 'イベントが見つかりません。' : 'イベント詳細の取得に失敗しました。',
-        );
+        this.errorMessage.set(err.error?.message ?? 'イベント詳細の取得に失敗しました。');
         this.loading.set(false);
       },
     });
