@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。バックエンド（D-3: イベント申込、D-4: 自分の申込一覧）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（D-3: イベント申込、D-4: 自分の申込一覧、D-5: 申込キャンセル）を呼び出すサービス。
 // backendのApplicationController・各Responseと対応。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
@@ -36,5 +36,10 @@ export class ApplicationApiService {
   // API-04（一般以上、本人分のみ・申込日時の降順）
   myApplications(): Observable<MyApplication[]> {
     return this.http.get<MyApplication[]>(`${API_BASE_URL}/my/applications`);
+  }
+
+  // API-05（一般以上、本人の申込のみ）
+  cancel(applicationId: number): Observable<void> {
+    return this.http.delete<void>(`${API_BASE_URL}/applications/${applicationId}`);
   }
 }

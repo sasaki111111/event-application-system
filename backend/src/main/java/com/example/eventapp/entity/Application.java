@@ -74,4 +74,9 @@ public class Application {
     public LocalDateTime getAppliedAt() {
         return appliedAt;
     }
+
+    // D-5: 申込キャンセル（API-05）用
+    public void cancel() {
+        this.status = ApplicationStatus.CANCELLED;
+    }
 }

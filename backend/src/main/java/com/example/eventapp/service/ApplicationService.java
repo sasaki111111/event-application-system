@@ -1,6 +1,7 @@
 package com.example.eventapp.service;
 
 import com.example.eventapp.common.exception.BusinessException;
+import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.ApplicationResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
@@ -15,7 +16,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベント申込（D-3）、自分の申込一覧（D-4）の業務ロジック。
+// 実行環境: サーバー側（JVM）。イベント申込（D-3）、自分の申込一覧（D-4）、申込キャンセル（D-5）の業務ロジック。
 @Service
 public class ApplicationService {
 
@@ -70,6 +71,25 @@ public class ApplicationService {
         return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
                 .map(this::toMyApplicationResponse)
                 .toList();
+    }
+
+    // API-05: 取消可否チェック（要件定義書§8）。本人の申込以外は403
+    @Transactional
+    public void cancel(Long userId, Long applicationId) {
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new NotFoundException("申込が見つかりません"));
+
+        if (!application.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("権限がありません");
+        }
+
+        boolean cancellable = ApplicationStatus.ACCEPTED.equals(application.getStatus())
+                && LocalDateTime.now().isBefore(application.getEvent().getStartAt());
+        if (!cancellable) {
+            throw new BusinessException("取消できません");
+        }
+
+        application.cancel();
     }
 
     private MyApplicationResponse toMyApplicationResponse(Application application) {

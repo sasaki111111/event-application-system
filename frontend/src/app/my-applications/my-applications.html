@@ -15,6 +15,7 @@
         <th>開催日時</th>
         <th>ステータス</th>
         <th>申込日時</th>
+        <th>操作</th>
       </tr>
     </thead>
     <tbody>
@@ -30,11 +31,15 @@
             }
           </td>
           <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>
+            @if (application.status === '受付済') {
+              <button type="button" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
+                {{ cancellingId() === application.id ? '取消中...' : '取消' }}
+              </button>
+            }
+          </td>
         </tr>
       }
     </tbody>
   </table>
-
-  <!-- D-5（申込キャンセルAPI）実装後、ここに取消ボタンを追加する -->
-  <p class="note">（キャンセル機能は未実装です）</p>
 }
