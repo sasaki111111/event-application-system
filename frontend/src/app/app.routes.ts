@@ -7,9 +7,10 @@ import { ApplyDone } from './events/apply-done/apply-done';
 import { MyApplications } from './my-applications/my-applications';
 import { AdminEventList } from './admin/admin-event-list/admin-event-list';
 import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
+import { AdminReport } from './admin/admin-report/admin-report';
 import { adminGuard } from './core/admin-guard';
 
-// SC-02・SC-04（画面遷移図）に対応。ログイン画面(SC-01)が無いため、"/"は暫定でイベント一覧へ流す。
+// SC-02・SC-04・SC-05（画面遷移図）に対応。ログイン画面(SC-01)が無いため、"/"は暫定でイベント一覧へ流す。
 // adminGuardは管理者以外の/admin/**アクセスを弾く（E-7の先行実装）。authGuard（未ログイン制御）はE-2以降で追加する。
 export const routes: Routes = [
   { path: '', redirectTo: '/events', pathMatch: 'full' },
@@ -20,4 +21,5 @@ export const routes: Routes = [
   { path: 'admin/events', component: AdminEventList, canActivate: [adminGuard] },
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [adminGuard] },
+  { path: 'admin/reports', component: AdminReport, canActivate: [adminGuard] },
 ];

@@ -1,8 +1,9 @@
 <!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（画面遷移図の「共通ヘッダーナビ」に対応）とrouter-outlet。 -->
 <nav>
   @if (dummyUserStore.currentUserId() === '2') {
-    <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］。申込状況・実績(SC-05)はD-6/E-6実装後に追加 -->
+    <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］ -->
     <a routerLink="/admin/events">イベント管理</a>
+    <a routerLink="/admin/reports">申込状況・実績</a>
   } @else {
     <!-- 一般＝［イベント一覧／マイページ／ログアウト］ -->
     <a routerLink="/events">イベント一覧</a>

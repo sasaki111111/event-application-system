@@ -1,0 +1,23 @@
+/* 実行環境: ブラウザ側。admin-report.ts専用のスタイル（最低限の見た目のみ）。 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5em;
+  margin-bottom: 1em;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 0.5em;
+  text-align: left;
+}
+
+.error {
+  color: #c00;
+}

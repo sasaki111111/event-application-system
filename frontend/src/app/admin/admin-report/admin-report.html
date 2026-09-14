@@ -1,0 +1,45 @@
+<!-- 実行環境: ブラウザ側。admin-report.tsのテンプレート。 -->
+<h1>申込状況・実績</h1>
+
+<div class="toolbar">
+  <label>
+    並び順:
+    <select [value]="sort()" (change)="changeSort($any($event.target).value)">
+      <option value="startAt">開催日時順</option>
+      <option value="accepted_desc">申込数の多い順</option>
+    </select>
+  </label>
+
+  <button type="button" (click)="downloadCsv()" [disabled]="downloading()">
+    {{ downloading() ? 'ダウンロード中...' : 'CSVダウンロード' }}
+  </button>
+</div>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>開催日時</th>
+        <th>定員</th>
+        <th>受付済数</th>
+        <th>充足率</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (report of reports(); track report.eventId) {
+        <tr>
+          <td>{{ report.eventName }}</td>
+          <td>{{ report.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>{{ report.capacity }}</td>
+          <td>{{ report.acceptedCount }}</td>
+          <td>{{ report.fillRate * 100 | number: '1.0-0' }}%</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
