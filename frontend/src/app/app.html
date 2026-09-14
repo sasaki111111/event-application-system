@@ -1,11 +1,15 @@
-<!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（仮。ログアウト等はE-2以降で追加）とrouter-outlet。 -->
+<!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（画面遷移図の「共通ヘッダーナビ」に対応）とrouter-outlet。 -->
 <nav>
-  <a routerLink="/events">イベント一覧</a>
   @if (dummyUserStore.currentUserId() === '2') {
-    <a routerLink="/admin/events">イベント管理（管理者）</a>
+    <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］。申込状況・実績(SC-05)はD-6/E-6実装後に追加 -->
+    <a routerLink="/admin/events">イベント管理</a>
+  } @else {
+    <!-- 一般＝［イベント一覧／マイページ／ログアウト］ -->
+    <a routerLink="/events">イベント一覧</a>
+    <a routerLink="/my/applications">マイページ</a>
   }
 
-  <!-- SC-01（ログイン画面）が無いための暫定切り替え。E-2実装後に削除する。 -->
+  <!-- SC-01（ログイン画面）が無いための暫定切り替え。E-2実装後に削除する（ログアウトもそこで追加）。 -->
   <span class="dummy-user-switch">
     今の操作ユーザー：
     <button type="button" (click)="switchUser('1')" [disabled]="dummyUserStore.currentUserId() === '1'">

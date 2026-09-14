@@ -4,6 +4,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail as EventDetailModel } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
+import { DummyUserStore } from '../../core/dummy-user-store';
 
 @Component({
   selector: 'app-event-detail',
@@ -25,7 +26,13 @@ export class EventDetail implements OnInit {
     private readonly router: Router,
     private readonly eventApi: EventApiService,
     private readonly applicationApi: ApplicationApiService,
+    protected readonly dummyUserStore: DummyUserStore,
   ) {}
+
+  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない
+  protected get isAdmin(): boolean {
+    return this.dummyUserStore.currentUserId() === '2';
+  }
 
   ngOnInit(): void {
     this.eventId = Number(this.route.snapshot.paramMap.get('id'));

@@ -30,7 +30,10 @@
     <dd>{{ e.description }}</dd>
   </dl>
 
-  @if (e.open) {
+  @if (isAdmin) {
+    <!-- 要件定義書E7: 管理者は申込できない -->
+    <p class="note">管理者アカウントでは申込できません。</p>
+  } @else if (e.open) {
     <button type="button" (click)="apply()" [disabled]="applying()">
       {{ applying() ? '申込処理中...' : '申し込む' }}
     </button>
