@@ -6,8 +6,11 @@ import com.example.eventapp.dto.ApplicationCreateRequest;
 import com.example.eventapp.dto.ApplicationResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.service.ApplicationService;
-import jakarta.validation.Valid;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,17 +27,21 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final AuthContext authContext;
+    private final Validator validator;
 
-    public ApplicationController(ApplicationService applicationService, AuthContext authContext) {
+    public ApplicationController(ApplicationService applicationService, AuthContext authContext, Validator validator) {
         this.applicationService = applicationService;
         this.authContext = authContext;
+        this.validator = validator;
     }
 
     // API-03 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
+    // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @PostMapping("/api/applications")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApplicationResponse apply(@Valid @RequestBody ApplicationCreateRequest request) {
+    public ApplicationResponse apply(@RequestBody ApplicationCreateRequest request) {
         requireGeneral();
+        validate(request);
         Long userId = authContext.getCurrentUser().userId();
         return applicationService.apply(userId, request.eventId());
     }
@@ -57,6 +64,13 @@ public class ApplicationController {
     private void requireGeneral() {
         if (authContext.getCurrentUser().isAdmin()) {
             throw new ForbiddenException("管理者は申込できません");
+        }
+    }
+
+    private void validate(ApplicationCreateRequest request) {
+        Set<ConstraintViolation<ApplicationCreateRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
         }
     }
 }

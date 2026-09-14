@@ -1,5 +1,6 @@
 package com.example.eventapp.common.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         List<ErrorResponse.FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::toFieldError)
+                .toList();
+        ErrorResponse body = ErrorResponse.ofValidation(
+                HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), "入力エラー", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // D-7: 権限チェックの後に手動実行するバリデーション（@Validを使うと権限チェックより先に走ってしまうため）
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ErrorResponse.FieldError> errors = ex.getConstraintViolations().stream()
+                .map(violation -> new ErrorResponse.FieldError(
+                        violation.getPropertyPath().toString(), violation.getMessage()))
                 .toList();
         ErrorResponse body = ErrorResponse.ofValidation(
                 HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), "入力エラー", errors);

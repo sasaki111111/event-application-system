@@ -6,8 +6,11 @@ import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
 import com.example.eventapp.service.EventService;
-import jakarta.validation.Valid;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +29,12 @@ public class EventController {
 
     private final EventService eventService;
     private final AuthContext authContext;
+    private final Validator validator;
 
-    public EventController(EventService eventService, AuthContext authContext) {
+    public EventController(EventService eventService, AuthContext authContext, Validator validator) {
         this.eventService = eventService;
         this.authContext = authContext;
+        this.validator = validator;
     }
 
     // API-01 GET /api/events?status=all|open（既定all）
@@ -45,17 +50,20 @@ public class EventController {
     }
 
     // API-06 POST /api/events（管理者のみ）
+    // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.CREATED)
-    public EventDetailResponse create(@Valid @RequestBody EventUpsertRequest request) {
+    public EventDetailResponse create(@RequestBody EventUpsertRequest request) {
         requireAdmin();
+        validate(request);
         return eventService.create(request);
     }
 
     // API-07 PUT /api/events/{id}（管理者のみ）
     @PutMapping("/api/events/{id}")
-    public EventDetailResponse update(@PathVariable Long id, @Valid @RequestBody EventUpsertRequest request) {
+    public EventDetailResponse update(@PathVariable Long id, @RequestBody EventUpsertRequest request) {
         requireAdmin();
+        validate(request);
         return eventService.update(id, request);
     }
 
@@ -70,6 +78,13 @@ public class EventController {
     private void requireAdmin() {
         if (!authContext.getCurrentUser().isAdmin()) {
             throw new ForbiddenException("権限がありません");
+        }
+    }
+
+    private void validate(EventUpsertRequest request) {
+        Set<ConstraintViolation<EventUpsertRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
         }
     }
 }
