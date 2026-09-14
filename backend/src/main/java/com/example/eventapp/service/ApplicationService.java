@@ -3,6 +3,7 @@ package com.example.eventapp.service;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
@@ -10,10 +11,11 @@ import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
 import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベント申込（D-3）の業務ロジック。
+// 実行環境: サーバー側（JVM）。イベント申込（D-3）、自分の申込一覧（D-4）の業務ロジック。
 @Service
 public class ApplicationService {
 
@@ -59,6 +61,26 @@ public class ApplicationService {
                 userId,
                 saved.getStatus(),
                 saved.getAppliedAt()
+        );
+    }
+
+    // API-04: 自分の申込一覧（申込日時降順）。本人分のみ返す＝userIdでの絞り込みそのもの
+    @Transactional(readOnly = true)
+    public List<MyApplicationResponse> myApplications(Long userId) {
+        return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
+                .map(this::toMyApplicationResponse)
+                .toList();
+    }
+
+    private MyApplicationResponse toMyApplicationResponse(Application application) {
+        Event event = application.getEvent();
+        return new MyApplicationResponse(
+                application.getId(),
+                event.getId(),
+                event.getName(),
+                event.getStartAt(),
+                application.getStatus(),
+                application.getAppliedAt()
         );
     }
 }

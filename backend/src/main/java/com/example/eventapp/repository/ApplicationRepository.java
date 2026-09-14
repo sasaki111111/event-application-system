@@ -1,6 +1,7 @@
 package com.example.eventapp.repository;
 
 import com.example.eventapp.entity.Application;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 // 実行環境: サーバー側（JVM）。applicationsテーブルへの問い合わせ口。
@@ -11,4 +12,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
     // D-3: 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);
+
+    // API-04: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
+    List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
 }

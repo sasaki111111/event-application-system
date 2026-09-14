@@ -1,0 +1,40 @@
+<!-- 実行環境: ブラウザ側。my-applications.tsのテンプレート。 -->
+<h1>マイページ（申込一覧）</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (applications().length === 0) {
+  <p>申込しているイベントはありません。</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>開催日時</th>
+        <th>ステータス</th>
+        <th>申込日時</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (application of applications(); track application.id) {
+        <tr>
+          <td><a [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a></td>
+          <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>
+            @if (application.status === '受付済') {
+              <span class="badge accepted">受付済</span>
+            } @else {
+              <span class="badge cancelled">キャンセル済</span>
+            }
+          </td>
+          <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <!-- D-5（申込キャンセルAPI）実装後、ここに取消ボタンを追加する -->
+  <p class="note">（キャンセル機能は未実装です）</p>
+}
