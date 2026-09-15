@@ -228,3 +228,128 @@ tbody tr:hover {
   font-size: 0.85em;
   color: var(--color-text-muted);
 }
+
+/* dl（definition list）で「説明」のようにラベルと値を横並びにせず、
+   ラベルの下に値を書きたい項目に付ける。グリッドの2列を両方ともフル幅にすることで、
+   dt・ddがそれぞれ独立した1行になる */
+dt.full-row,
+dd.full-row {
+  grid-column: 1 / -1;
+}
+
+dd.full-row {
+  margin-top: 0.2em;
+  white-space: pre-line;
+}
+
+/* カード型一覧の共通部品（機能追加：見た目を華やかに）。イベント一覧・検索・マイページ・
+   管理者のイベント管理で共通して使う。ページ側は.card-gridで並べ、中身は.cardで囲む */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+  gap: 1.2em;
+  /* 既定のstretchだと同じ行のカードの高さが揃ってしまう（1枚が展開すると他も伸びて見える）ため、
+     各カードが自分のコンテンツの高さだけを持つようにする */
+  align-items: start;
+}
+
+.card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border-top: 5px solid var(--color-accent);
+  box-shadow: 0 2px 8px rgb(124 58 237 / 0.1);
+  padding: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 16px rgb(124 58 237 / 0.18);
+  transform: translateY(-2px);
+}
+
+/* 展開中のカードは、下の行のカードより手前に重なって見えるようにする */
+.card:has(.card-expanded) {
+  z-index: 10;
+}
+
+.card.closed {
+  border-top-color: var(--color-neutral-text);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6em;
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.card-title:hover {
+  color: var(--color-primary);
+}
+
+/* イベント名が長くても、バッジは折り返さず常に1行に収める */
+.card-header .badge {
+  flex-shrink: 0;
+}
+
+.card-meta {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 0.3em 0.6em;
+  font-size: 0.9em;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.card-meta dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.card-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* カードの下に浮かせて表示する（グリッドの行の高さには影響させず、下の行に重ねる） */
+.card-expanded {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: -1px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.18);
+  padding: 1em 1.2em 1.2em;
+  z-index: 20;
+}
+
+.card-expanded dl {
+  display: grid;
+  grid-template-columns: 6em 1fr;
+  gap: 0.3em 1em;
+  margin: 0 0 1em;
+}

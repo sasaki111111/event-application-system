@@ -8,38 +8,33 @@
 } @else if (applications().length === 0) {
   <p>申込しているイベントはありません。</p>
 } @else {
-  <table>
-    <thead>
-      <tr>
-        <th>イベント名</th>
-        <th>開催日時</th>
-        <th>ステータス</th>
-        <th>申込日時</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (application of applications(); track application.id) {
-        <tr>
-          <td><a class="btn-link btn-sm" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a></td>
-          <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
-          <td>
-            @if (application.status === '受付済') {
-              <span class="badge badge-positive">受付済</span>
-            } @else {
-              <span class="badge badge-neutral">キャンセル済</span>
-            }
-          </td>
-          <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
-          <td>
-            @if (application.status === '受付済') {
-              <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
-                {{ cancellingId() === application.id ? '取消中...' : '取消' }}
-              </button>
-            }
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="card-grid">
+    @for (application of applications(); track application.id) {
+      <div class="card" [class.closed]="application.status !== '受付済'">
+        <div class="card-header">
+          <a class="card-title" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a>
+          @if (application.status === '受付済') {
+            <span class="badge badge-positive">受付済</span>
+          } @else {
+            <span class="badge badge-neutral">キャンセル済</span>
+          }
+        </div>
+
+        <dl class="card-meta">
+          <dt>開催日時</dt>
+          <dd>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+          <dt>申込日時</dt>
+          <dd>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+        </dl>
+
+        @if (application.status === '受付済') {
+          <div class="card-actions">
+            <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
+              {{ cancellingId() === application.id ? '取消中...' : '取消' }}
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
 }

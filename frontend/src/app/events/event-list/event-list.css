@@ -1,12 +1,1 @@
-/* 実行環境: ブラウザ側。event-list.ts専用のスタイル。テーブル・バッジ・エラー表示の見た目はstyles.css（共通デザイン）を参照。 */
-.expanded-row td {
-  background: #fafbfc;
-  padding: 1em 1.2em;
-}
-
-.expanded-row dl {
-  display: grid;
-  grid-template-columns: 8em 1fr;
-  gap: 0.3em 1em;
-  margin: 0 0 1em;
-}
+/* 実行環境: ブラウザ側。event-list.ts専用のスタイル。カード一覧の見た目はstyles.css（.card-grid等、共通デザイン）を参照。 */

@@ -30,36 +30,29 @@
 
   <p class="note">{{ filteredEvents().length }}件のイベントが見つかりました。</p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>イベント名</th>
-        <th>開催日時</th>
-        <th>場所</th>
-        <th>申込状況</th>
-        <th>状態</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (event of filteredEvents(); track event.id) {
-        <tr>
-          <td>
-            <a class="btn-link btn-sm" [routerLink]="['/events', event.id]" [queryParams]="{ from: 'search' }">
-              {{ event.name }}
-            </a>
-          </td>
-          <td>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
-          <td>{{ event.place }}</td>
-          <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
-          <td>
-            @if (event.open) {
-              <span class="badge badge-positive">受付中</span>
-            } @else {
-              <span class="badge badge-neutral">受付終了</span>
-            }
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <div class="card-grid">
+    @for (event of filteredEvents(); track event.id) {
+      <div class="card" [class.closed]="!event.open">
+        <div class="card-header">
+          <a class="card-title" [routerLink]="['/events', event.id]" [queryParams]="{ from: 'search' }">
+            {{ event.name }}
+          </a>
+          @if (event.open) {
+            <span class="badge badge-positive">受付中</span>
+          } @else {
+            <span class="badge badge-neutral">受付終了</span>
+          }
+        </div>
+
+        <dl class="card-meta">
+          <dt>開催日時</dt>
+          <dd>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+          <dt>場所</dt>
+          <dd>{{ event.place }}</dd>
+          <dt>申込状況</dt>
+          <dd>{{ event.acceptedCount }} / {{ event.capacity }}</dd>
+        </dl>
+      </div>
+    }
+  </div>
 }
