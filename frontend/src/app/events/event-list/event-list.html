@@ -14,23 +14,69 @@
         <th>場所</th>
         <th>申込状況</th>
         <th>状態</th>
+        <th>詳細</th>
       </tr>
     </thead>
     <tbody>
       @for (event of events(); track event.id) {
         <tr>
-          <td><a [routerLink]="['/events', event.id]">{{ event.name }}</a></td>
+          <td><a class="btn-link btn-sm" [routerLink]="['/events', event.id]">{{ event.name }}</a></td>
           <td>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
           <td>{{ event.place }}</td>
           <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
           <td>
             @if (event.open) {
-              <span class="badge open">受付中</span>
+              <span class="badge badge-positive">受付中</span>
             } @else {
-              <span class="badge closed">受付終了</span>
+              <span class="badge badge-neutral">受付終了</span>
             }
           </td>
+          <td>
+            <button type="button" class="btn-toggle" (click)="toggleExpand(event.id)">
+              {{ expandedEventId() === event.id ? '▲' : '▼' }}
+            </button>
+          </td>
         </tr>
+        @if (expandedEventId() === event.id) {
+          <tr class="expanded-row">
+            <td colspan="6">
+              @if (expandedLoading()) {
+                <p>読み込み中...</p>
+              } @else if (expandedError()) {
+                <p class="error">{{ expandedError() }}</p>
+              } @else if (expandedDetail(); as detail) {
+                <dl>
+                  <dt>定員</dt>
+                  <dd>{{ detail.capacity }}名</dd>
+
+                  <dt>残り枠</dt>
+                  <dd>{{ detail.remaining }}名</dd>
+
+                  <dt>申込締切</dt>
+                  <dd>{{ detail.applicationDeadline | date: 'yyyy/MM/dd HH:mm' }}</dd>
+
+                  <dt>説明</dt>
+                  <dd>{{ detail.description }}</dd>
+                </dl>
+
+                @if (isAdmin) {
+                  <!-- 要件定義書E7: 管理者は申込できない -->
+                  <p class="note">管理者アカウントでは申込できません。</p>
+                } @else if (detail.open) {
+                  <button type="button" class="btn-accent" (click)="apply(event.id)" [disabled]="applying()">
+                    {{ applying() ? '申込処理中...' : '申し込む' }}
+                  </button>
+                } @else {
+                  <p class="note">このイベントは受付を終了しています。</p>
+                }
+
+                @if (applyErrorMessage()) {
+                  <p class="error">{{ applyErrorMessage() }}</p>
+                }
+              }
+            </td>
+          </tr>
+        }
       }
     </tbody>
   </table>
