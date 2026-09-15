@@ -10,6 +10,7 @@ import { MyApplications } from './my-applications/my-applications';
 import { AdminEventList } from './admin/admin-event-list/admin-event-list';
 import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
 import { AdminReport } from './admin/admin-report/admin-report';
+import { AdminUserList } from './admin/admin-user-list/admin-user-list';
 import { authGuard } from './core/auth-guard';
 import { adminGuard } from './core/admin-guard';
 
@@ -28,4 +29,5 @@ export const routes: Routes = [
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
   { path: 'admin/reports', component: AdminReport, canActivate: [authGuard, adminGuard] },
+  { path: 'admin/users', component: AdminUserList, canActivate: [authGuard, adminGuard] },
 ];

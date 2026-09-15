@@ -1,0 +1,36 @@
+<!-- 実行環境: ブラウザ側。admin-user-list.tsのテンプレート。 -->
+<h1>ユーザー管理（マスタ確認用）</h1>
+<p class="note">動作確認用の一覧です。ここから新規登録されたユーザーのID・メールアドレスを確認できます。</p>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>名前</th>
+        <th>メールアドレス</th>
+        <th>ロール</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (user of users(); track user.userId) {
+        <tr>
+          <td>{{ user.userId }}</td>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>
+            @if (user.role === 'admin') {
+              <span class="badge badge-neutral">管理者</span>
+            } @else {
+              <span class="badge badge-positive">一般</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

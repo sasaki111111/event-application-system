@@ -1,16 +1,15 @@
-// 実行環境: ブラウザ側。SC-01ログイン画面で入力されたIDが実在するか・どのロールかを
-// backendの/api/whoami（B-5の疎通確認用エンドポイントを流用）に問い合わせる窓口。
+// 実行環境: ブラウザ側。SC-01ログイン画面から呼ぶ、認証不要の窓口（機能追加）。
 // ログイン前はDummyUserStoreが空でdummyAuthInterceptorがX-User-Idを付けないため、
-// ここでは入力されたIDを直接ヘッダーに付けて問い合わせる。
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+// これらのAPI（backend側でAuthInterceptor対象外）はヘッダ無しでそのまま呼べる。
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-export interface WhoAmI {
+export interface UserResponse {
   userId: number;
   name: string;
+  email: string;
   role: string;
-  admin: boolean;
 }
 
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -19,9 +18,13 @@ const API_BASE_URL = 'http://localhost:8080/api';
 export class LoginApiService {
   constructor(private readonly http: HttpClient) {}
 
-  whoAmI(userId: string): Observable<WhoAmI> {
-    return this.http.get<WhoAmI>(`${API_BASE_URL}/whoami`, {
-      headers: new HttpHeaders({ 'X-User-Id': userId }),
-    });
+  // メールアドレスでログイン。存在しなければbackendが401を返す
+  login(email: string): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${API_BASE_URL}/login`, { email });
+  }
+
+  // 軽い会員登録。作成されるのは常に一般ユーザー
+  register(name: string, email: string): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${API_BASE_URL}/users`, { name, email });
   }
 }

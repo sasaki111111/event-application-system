@@ -3,9 +3,10 @@
   <span class="brand">イベント申込システム</span>
   @if (dummyUserStore.currentUserId(); as userId) {
     @if (userId === '2') {
-      <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］ -->
+      <!-- 管理者＝［イベント管理／申込状況・実績／ユーザー管理／ログアウト］ -->
       <a routerLink="/admin/events">イベント管理</a>
       <a routerLink="/admin/reports">申込状況・実績</a>
+      <a routerLink="/admin/users">ユーザー管理</a>
     } @else {
       <!-- 一般＝［イベント一覧／イベント検索／マイページ／ログアウト］ -->
       <a routerLink="/events">イベント一覧</a>

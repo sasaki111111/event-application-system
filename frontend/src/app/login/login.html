@@ -1,6 +1,6 @@
 <!-- 実行環境: ブラウザ側。login.tsのテンプレート。 -->
 <h1>ログイン</h1>
-<p>ユーザーIDを入力してください。IDに応じて一般ユーザー／管理者いずれかの画面に自動で移動します（ダミー認証のためパスワードは不要です）。</p>
+<p>メールアドレスを入力してください。登録内容に応じて一般ユーザー／管理者いずれかの画面に自動で移動します（ダミー認証のためパスワードは不要です）。</p>
 
 @if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
@@ -8,15 +8,55 @@
 
 <form (submit)="$event.preventDefault(); login()">
   <div class="field">
-    <label for="userId">ユーザーID</label>
+    <label for="email">メールアドレス</label>
     <input
-      id="userId"
-      type="text"
-      inputmode="numeric"
-      [value]="userId()"
-      (input)="onUserIdInput($any($event.target).value)"
-      placeholder="例: 1"
+      id="email"
+      type="email"
+      [value]="email()"
+      (input)="onEmailInput($any($event.target).value)"
+      placeholder="例: general@example.com"
     />
   </div>
   <button type="submit" [disabled]="loading()">{{ loading() ? 'ログイン中...' : 'ログイン' }}</button>
+</form>
+
+<hr />
+
+<h2>はじめての方（新規登録）</h2>
+<p>名前とメールアドレスだけで一般ユーザーとして登録し、そのままログインできます（こちらもパスワードは不要です）。</p>
+
+@if (registerErrorMessage()) {
+  <p class="error">{{ registerErrorMessage() }}</p>
+}
+
+<form (submit)="$event.preventDefault(); register()">
+  <div class="field">
+    <label for="registerName">名前</label>
+    <input
+      id="registerName"
+      type="text"
+      [value]="registerName()"
+      (input)="onRegisterNameInput($any($event.target).value)"
+      [class.invalid]="registerFieldError('name')"
+    />
+    @if (registerFieldError('name')) {
+      <p class="field-error">{{ registerFieldError('name') }}</p>
+    }
+  </div>
+  <div class="field">
+    <label for="registerEmail">メールアドレス</label>
+    <input
+      id="registerEmail"
+      type="email"
+      [value]="registerEmail()"
+      (input)="onRegisterEmailInput($any($event.target).value)"
+      [class.invalid]="registerFieldError('email')"
+    />
+    @if (registerFieldError('email')) {
+      <p class="field-error">{{ registerFieldError('email') }}</p>
+    }
+  </div>
+  <button type="submit" [disabled]="registering()">
+    {{ registering() ? '登録中...' : '登録してログイン' }}
+  </button>
 </form>

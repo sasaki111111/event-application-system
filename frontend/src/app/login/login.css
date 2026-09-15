@@ -12,3 +12,14 @@ form {
   flex-direction: column;
   gap: 0.3em;
 }
+
+hr {
+  max-width: 20em;
+  margin: 2em 0 1em;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+h2 {
+  font-size: 1.1em;
+}
