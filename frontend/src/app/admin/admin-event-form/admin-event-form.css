@@ -22,3 +22,18 @@ form {
 .error {
   color: #c00;
 }
+
+.required {
+  color: #c00;
+}
+
+.required-note {
+  font-size: 0.85em;
+  color: #666;
+}
+
+input.invalid,
+textarea.invalid {
+  border-color: #c00;
+  outline-color: #c00;
+}

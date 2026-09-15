@@ -10,42 +10,49 @@
     <p class="error">{{ errorMessage() }}</p>
   }
 
+  <p class="required-note"><span class="required">*</span> は必須項目です</p>
+
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="field">
-      <label for="name">イベント名</label>
-      <input id="name" type="text" formControlName="name" maxlength="100" />
+      <label for="name">イベント名 <span class="required">*</span></label>
+      <input id="name" type="text" formControlName="name" maxlength="100"
+        [class.invalid]="fieldError('name')" />
       @if (fieldError('name')) {
         <p class="field-error">{{ fieldError('name') }}</p>
       }
     </div>
 
     <div class="field">
-      <label for="startAt">開催日時</label>
-      <input id="startAt" type="datetime-local" formControlName="startAt" />
+      <label for="startAt">開催日時 <span class="required">*</span></label>
+      <input id="startAt" type="datetime-local" formControlName="startAt"
+        [class.invalid]="fieldError('startAt')" />
       @if (fieldError('startAt')) {
         <p class="field-error">{{ fieldError('startAt') }}</p>
       }
     </div>
 
     <div class="field">
-      <label for="place">場所</label>
-      <input id="place" type="text" formControlName="place" maxlength="100" />
+      <label for="place">場所 <span class="required">*</span></label>
+      <input id="place" type="text" formControlName="place" maxlength="100"
+        [class.invalid]="fieldError('place')" />
       @if (fieldError('place')) {
         <p class="field-error">{{ fieldError('place') }}</p>
       }
     </div>
 
     <div class="field">
-      <label for="capacity">定員</label>
-      <input id="capacity" type="number" formControlName="capacity" min="1" />
+      <label for="capacity">定員 <span class="required">*</span></label>
+      <input id="capacity" type="number" formControlName="capacity" min="1"
+        [class.invalid]="fieldError('capacity')" />
       @if (fieldError('capacity')) {
         <p class="field-error">{{ fieldError('capacity') }}</p>
       }
     </div>
 
     <div class="field">
-      <label for="applicationDeadline">申込締切</label>
-      <input id="applicationDeadline" type="datetime-local" formControlName="applicationDeadline" />
+      <label for="applicationDeadline">申込締切 <span class="required">*</span></label>
+      <input id="applicationDeadline" type="datetime-local" formControlName="applicationDeadline"
+        [class.invalid]="fieldError('applicationDeadline')" />
       @if (fieldError('applicationDeadline')) {
         <p class="field-error">{{ fieldError('applicationDeadline') }}</p>
       }

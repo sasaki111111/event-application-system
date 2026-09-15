@@ -11,6 +11,16 @@ interface FieldError {
   message: string;
 }
 
+// クライアント側バリデーション（Angular Validators）が引っかかった時のメッセージ。
+// バックエンドのEventUpsertRequestのバリデーションメッセージと表現を揃えている。
+const REQUIRED_MESSAGES: Record<string, string> = {
+  name: '名前を入力してください',
+  startAt: '開催日時を入力してください',
+  place: '場所を入力してください',
+  capacity: '定員を入力してください',
+  applicationDeadline: '申込締切を入力してください',
+};
+
 @Component({
   selector: 'app-admin-event-form',
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
@@ -42,8 +52,24 @@ export class AdminEventForm implements OnInit {
     return this.eventId() !== null;
   }
 
+  // サーバー側（保存時）のエラーを優先し、無ければクライアント側（入力中・未入力）のエラーを表示する
   protected fieldError(field: string): string | null {
-    return this.fieldErrors().find((e) => e.field === field)?.message ?? null;
+    const serverMessage = this.fieldErrors().find((e) => e.field === field)?.message;
+    if (serverMessage) {
+      return serverMessage;
+    }
+
+    const control = this.form.get(field);
+    if (!control || control.valid || !(control.touched || control.dirty)) {
+      return null;
+    }
+    if (control.hasError('required')) {
+      return REQUIRED_MESSAGES[field] ?? '入力してください';
+    }
+    if (control.hasError('min')) {
+      return '1以上で入力してください';
+    }
+    return null;
   }
 
   ngOnInit(): void {
