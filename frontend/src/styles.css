@@ -61,6 +61,7 @@ button {
   background: var(--color-primary);
   color: #fff;
   cursor: pointer;
+  vertical-align: middle;
   transition: background-color 0.15s ease;
 }
 
@@ -105,6 +106,8 @@ a.btn-link {
   color: var(--color-primary);
   text-decoration: none;
   background: var(--color-surface);
+  vertical-align: middle;
+  line-height: 1.2;
 }
 
 a.btn-link:hover {
@@ -112,10 +115,10 @@ a.btn-link:hover {
   color: #fff;
 }
 
-/* テーブルのセル内など、狭い場所で使う小さめのボタン */
-a.btn-link.btn-sm {
-  padding: 0.25em 0.6em;
-  font-size: 0.9em;
+/* テーブルのセル内など、狭い場所で使うボタン（a・button共通）。同じ行の中で大きさを揃えるために使う */
+.btn-sm {
+  padding: 0.3em 0.7em !important;
+  font-size: 0.85em !important;
 }
 
 /* 行の展開・折りたたみ（▼／▲）用の小さな丸ボタン */
