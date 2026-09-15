@@ -1,0 +1,65 @@
+<!-- 実行環境: ブラウザ側。event-search.tsのテンプレート。 -->
+<h1>イベント検索</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <div class="search-form">
+    <div class="field">
+      <label for="keyword">キーワード（イベント名・場所）</label>
+      <input
+        id="keyword"
+        type="text"
+        [value]="keyword()"
+        (input)="onKeywordInput($any($event.target).value)"
+        placeholder="例: ボードゲーム"
+      />
+    </div>
+    <div class="field">
+      <label for="dateFrom">開催日（から）</label>
+      <input id="dateFrom" type="date" [value]="dateFrom()" (input)="onDateFromInput($any($event.target).value)" />
+    </div>
+    <div class="field">
+      <label for="dateTo">開催日（まで）</label>
+      <input id="dateTo" type="date" [value]="dateTo()" (input)="onDateToInput($any($event.target).value)" />
+    </div>
+    <button type="button" class="btn-link" (click)="clearFilters()">条件をクリア</button>
+  </div>
+
+  <p class="note">{{ filteredEvents().length }}件のイベントが見つかりました。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>開催日時</th>
+        <th>場所</th>
+        <th>申込状況</th>
+        <th>状態</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (event of filteredEvents(); track event.id) {
+        <tr>
+          <td>
+            <a class="btn-link btn-sm" [routerLink]="['/events', event.id]" [queryParams]="{ from: 'search' }">
+              {{ event.name }}
+            </a>
+          </td>
+          <td>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>{{ event.place }}</td>
+          <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
+          <td>
+            @if (event.open) {
+              <span class="badge badge-positive">受付中</span>
+            } @else {
+              <span class="badge badge-neutral">受付終了</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

@@ -7,8 +7,9 @@
       <a routerLink="/admin/events">イベント管理</a>
       <a routerLink="/admin/reports">申込状況・実績</a>
     } @else {
-      <!-- 一般＝［イベント一覧／マイページ／ログアウト］ -->
+      <!-- 一般＝［イベント一覧／イベント検索／マイページ／ログアウト］ -->
       <a routerLink="/events">イベント一覧</a>
+      <a routerLink="/events/search">イベント検索</a>
       <a routerLink="/my/applications">マイページ</a>
     }
     <button type="button" (click)="logout()">ログアウト</button>

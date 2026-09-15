@@ -21,6 +21,10 @@ export class EventDetail implements OnInit {
 
   private eventId = 0;
 
+  // 検索画面（/events/search）から来た場合は「戻る」の行き先をそちらにする（?from=searchで判定）
+  protected readonly backLink = signal<string>('/events');
+  protected readonly backLabel = signal<string>('← イベント一覧に戻る');
+
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
@@ -36,6 +40,12 @@ export class EventDetail implements OnInit {
 
   ngOnInit(): void {
     this.eventId = Number(this.route.snapshot.paramMap.get('id'));
+
+    if (this.route.snapshot.queryParamMap.get('from') === 'search') {
+      this.backLink.set('/events/search');
+      this.backLabel.set('← イベント検索に戻る');
+    }
+
     this.eventApi.detail(this.eventId).subscribe({
       next: (event) => {
         this.event.set(event);
