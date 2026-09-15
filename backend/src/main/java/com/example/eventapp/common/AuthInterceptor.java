@@ -31,6 +31,12 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        // 軽い会員登録（機能追加）: POST /api/usersはログイン前に呼ばれるため認証不要。
+        // GET /api/users（ユーザー一覧、管理者専用）はこの対象外＝通常通り認証・権限チェックされる。
+        if ("POST".equalsIgnoreCase(request.getMethod()) && "/api/users".equals(request.getRequestURI())) {
+            return true;
+        }
+
         String header = request.getHeader(HEADER_NAME);
         if (header == null || header.isBlank()) {
             throw new UnauthorizedException("認証が必要です");

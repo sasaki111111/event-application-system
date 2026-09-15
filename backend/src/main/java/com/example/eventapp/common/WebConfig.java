@@ -21,7 +21,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // API-10（ログイン）とping（起動確認用）は認証不要（API設計書§0・§2）
+        // ログイン・ping（起動確認用）は認証不要（API設計書§0・§2）。
+        // POST /api/users（軽い会員登録、機能追加）はAuthInterceptor側でメソッド単位に個別許可している
+        // （GET /api/usersは一覧＝管理者専用のため、パス単位でここに含めるとGETまで無認証になってしまう）。
         registry.addInterceptor(new AuthInterceptor(userRepository, authContext))
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/login", "/api/ping");

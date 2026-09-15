@@ -28,14 +28,27 @@ public class User {
     @Column(nullable = false, length = 20)
     private String role;
 
-    @Column(name = "created_at", nullable = false)
+    // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
+    // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
+    // 本番のschema.sql同様のDEFAULTを持たせるためのもの（本番はddl-auto: noneのため影響しない）
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false,
+            columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false,
+            columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
 
     protected User() {
         // JPAが利用するデフォルトコンストラクタ
+    }
+
+    // 機能追加（軽い会員登録）: 名前・メールアドレスのみで一般ユーザーを作成する。
+    // パスワードは扱わない（要件定義書の前提どおりダミー認証のまま）ため、roleは常にgeneral固定でよい。
+    public User(String name, String email, String role) {
+        this.name = name;
+        this.email = email;
+        this.role = role;
     }
 
     public Long getId() {
