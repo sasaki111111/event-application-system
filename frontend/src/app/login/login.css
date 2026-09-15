@@ -1,12 +1,6 @@
-/* 実行環境: ブラウザ側。login.ts専用のスタイル（最低限の見た目のみ）。 */
+/* 実行環境: ブラウザ側。login.ts専用のスタイル。ボタンの見た目はstyles.css（共通デザイン）を参照。 */
 .login-options {
   display: flex;
   gap: 1em;
   margin-top: 1em;
-}
-
-.login-options button {
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  cursor: pointer;
 }

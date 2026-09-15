@@ -1,5 +1,6 @@
 <!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（画面遷移図の「共通ヘッダーナビ」に対応）とrouter-outlet。 -->
 <nav>
+  <span class="brand">イベント申込システム</span>
   @if (dummyUserStore.currentUserId(); as userId) {
     @if (userId === '2') {
       <!-- 管理者＝［イベント管理／申込状況・実績／ログアウト］ -->
@@ -13,4 +14,6 @@
     <button type="button" (click)="logout()">ログアウト</button>
   }
 </nav>
-<router-outlet />
+<main class="page">
+  <router-outlet />
+</main>

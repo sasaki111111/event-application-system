@@ -1,4 +1,4 @@
-/* 実行環境: ブラウザ側。admin-event-form.ts専用のスタイル（最低限の見た目のみ）。 */
+/* 実行環境: ブラウザ側。admin-event-form.ts専用のスタイル。エラー・必須マークの見た目はstyles.css（共通デザイン）を参照。 */
 form {
   display: flex;
   flex-direction: column;
@@ -11,29 +11,4 @@ form {
   display: flex;
   flex-direction: column;
   gap: 0.3em;
-}
-
-.field-error {
-  color: #c00;
-  font-size: 0.85em;
-  margin: 0;
-}
-
-.error {
-  color: #c00;
-}
-
-.required {
-  color: #c00;
-}
-
-.required-note {
-  font-size: 0.85em;
-  color: #666;
-}
-
-input.invalid,
-textarea.invalid {
-  border-color: #c00;
-  outline-color: #c00;
 }

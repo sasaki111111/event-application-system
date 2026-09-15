@@ -1,5 +1,5 @@
 <!-- 実行環境: ブラウザ側。event-detail.tsのテンプレート。 -->
-<a routerLink="/events">← イベント一覧に戻る</a>
+<a class="btn-link" routerLink="/events">← イベント一覧に戻る</a>
 
 @if (loading()) {
   <p>読み込み中...</p>
@@ -34,7 +34,7 @@
     <!-- 要件定義書E7: 管理者は申込できない -->
     <p class="note">管理者アカウントでは申込できません。</p>
   } @else if (e.open) {
-    <button type="button" (click)="apply()" [disabled]="applying()">
+    <button type="button" class="btn-accent" (click)="apply()" [disabled]="applying()">
       {{ applying() ? '申込処理中...' : '申し込む' }}
     </button>
   } @else {

@@ -1,7 +1,7 @@
 <!-- 実行環境: ブラウザ側。admin-event-list.tsのテンプレート。 -->
 <h1>イベント管理</h1>
 
-<a routerLink="/admin/events/new">＋ 新規登録</a>
+<a class="btn-link" routerLink="/admin/events/new">＋ 新規登録</a>
 
 @if (loading()) {
   <p>読み込み中...</p>
@@ -28,14 +28,14 @@
           <td>{{ event.acceptedCount }} / {{ event.capacity }}</td>
           <td>
             @if (event.open) {
-              <span class="badge open">受付中</span>
+              <span class="badge badge-positive">受付中</span>
             } @else {
-              <span class="badge closed">受付終了</span>
+              <span class="badge badge-neutral">受付終了</span>
             }
           </td>
           <td>
-            <a [routerLink]="['/admin/events', event.id, 'edit']">編集</a>
-            <button type="button" (click)="deleteEvent(event)">削除</button>
+            <a class="btn-link btn-sm" [routerLink]="['/admin/events', event.id, 'edit']">編集</a>
+            <button type="button" class="btn-danger" (click)="deleteEvent(event)">削除</button>
           </td>
         </tr>
       }

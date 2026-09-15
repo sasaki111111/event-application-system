@@ -21,19 +21,19 @@
     <tbody>
       @for (application of applications(); track application.id) {
         <tr>
-          <td><a [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a></td>
+          <td><a class="btn-link btn-sm" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a></td>
           <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
           <td>
             @if (application.status === '受付済') {
-              <span class="badge accepted">受付済</span>
+              <span class="badge badge-positive">受付済</span>
             } @else {
-              <span class="badge cancelled">キャンセル済</span>
+              <span class="badge badge-neutral">キャンセル済</span>
             }
           </td>
           <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
           <td>
             @if (application.status === '受付済') {
-              <button type="button" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
+              <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
                 {{ cancellingId() === application.id ? '取消中...' : '取消' }}
               </button>
             }
