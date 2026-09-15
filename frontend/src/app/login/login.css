@@ -1,6 +1,14 @@
-/* 実行環境: ブラウザ側。login.ts専用のスタイル。ボタンの見た目はstyles.css（共通デザイン）を参照。 */
-.login-options {
+/* 実行環境: ブラウザ側。login.ts専用のスタイル。ボタン・入力欄の見た目はstyles.css（共通デザイン）を参照。 */
+form {
   display: flex;
+  flex-direction: column;
   gap: 1em;
+  max-width: 20em;
   margin-top: 1em;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
 }

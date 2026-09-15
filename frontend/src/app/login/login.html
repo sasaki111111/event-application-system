@@ -1,8 +1,22 @@
 <!-- 実行環境: ブラウザ側。login.tsのテンプレート。 -->
 <h1>ログイン</h1>
-<p>ダミー認証のため、パスワードは不要です。ロールを選んでログインしてください。</p>
+<p>ユーザーIDを入力してください。IDに応じて一般ユーザー／管理者いずれかの画面に自動で移動します（ダミー認証のためパスワードは不要です）。</p>
 
-<div class="login-options">
-  <button type="button" (click)="loginAsGeneral()">一般ユーザーとしてログイン</button>
-  <button type="button" (click)="loginAsAdmin()">管理者としてログイン</button>
-</div>
+@if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+}
+
+<form (submit)="$event.preventDefault(); login()">
+  <div class="field">
+    <label for="userId">ユーザーID</label>
+    <input
+      id="userId"
+      type="text"
+      inputmode="numeric"
+      [value]="userId()"
+      (input)="onUserIdInput($any($event.target).value)"
+      placeholder="例: 1"
+    />
+  </div>
+  <button type="submit" [disabled]="loading()">{{ loading() ? 'ログイン中...' : 'ログイン' }}</button>
+</form>
