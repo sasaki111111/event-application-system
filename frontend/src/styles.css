@@ -4,6 +4,7 @@
 
 :root {
   --color-primary: #7c3aed;
+  --color-primary-light: color-mix(in srgb, #7c3aed 68%, white);
   --color-primary-hover: #6d28d9;
   --color-accent: #f59e0b;
   --color-accent-hover: #d97f06;
@@ -31,9 +32,15 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
   font-family: var(--font-family);
   color: var(--color-text);
-  background: var(--color-bg);
+  /* 単色だと寂しいため、上部にはっきり分かる程度のグラデーションを付ける
+     （primaryとaccentをうっすら混ぜるだけで、新しい色そのものは増やさない） */
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 36%, white) 0%, transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 24%, white) 0%, var(--color-bg) 520px);
+  background-attachment: fixed;
 }
 
 a {
@@ -56,9 +63,9 @@ button {
   font-family: inherit;
   font-size: 0.95em;
   padding: 0.5em 1em;
-  border: 1px solid var(--color-primary);
+  border: 1px solid var(--color-primary-light);
   border-radius: var(--radius);
-  background: var(--color-primary);
+  background: var(--color-primary-light);
   color: #fff;
   cursor: pointer;
   vertical-align: middle;
