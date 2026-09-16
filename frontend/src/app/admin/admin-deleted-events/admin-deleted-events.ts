@@ -1,11 +1,12 @@
 // 実行環境: ブラウザ側。機能追加（ソフトデリート）: 削除済みイベントの確認・復元画面（/admin/events/deleted）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { DeletedEvent, EventApiService } from '../../core/event-api';
 
 @Component({
   selector: 'app-admin-deleted-events',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './admin-deleted-events.html',
   styleUrl: './admin-deleted-events.css',
 })
