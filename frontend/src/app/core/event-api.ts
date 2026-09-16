@@ -30,6 +30,16 @@ export interface EventUpsertRequest {
   description?: string;
 }
 
+// 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧1件分（backendのDeletedEventResponseと対応）
+export interface DeletedEvent {
+  id: number;
+  name: string;
+  startAt: string;
+  place: string;
+  capacity: number;
+  deletedAt: string;
+}
+
 const API_BASE_URL = 'http://localhost:8080/api';
 
 @Injectable({ providedIn: 'root' })
@@ -57,8 +67,18 @@ export class EventApiService {
     return this.http.put<EventDetail>(`${API_BASE_URL}/events/${id}`, request);
   }
 
-  // API-08（管理者のみ）
+  // API-08（管理者のみ）。実体はソフトデリート（deleted_atを立てるのみ）
   remove(id: number): Observable<void> {
     return this.http.delete<void>(`${API_BASE_URL}/events/${id}`);
+  }
+
+  // 機能追加（ソフトデリート、管理者のみ）: 削除済みイベント一覧
+  listDeleted(): Observable<DeletedEvent[]> {
+    return this.http.get<DeletedEvent[]>(`${API_BASE_URL}/events/deleted`);
+  }
+
+  // 機能追加（ソフトデリートの復元、管理者のみ）
+  restore(id: number): Observable<EventDetail> {
+    return this.http.post<EventDetail>(`${API_BASE_URL}/events/${id}/restore`, {});
   }
 }

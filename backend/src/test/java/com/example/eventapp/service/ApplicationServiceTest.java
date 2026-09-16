@@ -59,7 +59,7 @@ class ApplicationServiceTest {
     @Test
     void apply_正常系_定員に余裕があれば受付済で申込できる() {
         Event event = openEvent(5);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event));
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.ACCEPTED)).thenReturn(0L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
@@ -81,7 +81,7 @@ class ApplicationServiceTest {
     // 異常系: 存在しないイベントへの申込は404相当の例外
     @Test
     void apply_異常系_イベントが存在しなければNotFoundException() {
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.empty());
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
                 .isInstanceOf(NotFoundException.class);
@@ -93,7 +93,7 @@ class ApplicationServiceTest {
     void apply_異常系_受付終了のイベントには申込できない() {
         Event closedEvent = mock(Event.class);
         when(closedEvent.isOpen(any(LocalDateTime.class))).thenReturn(false);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(closedEvent));
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(closedEvent));
 
         assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
                 .isInstanceOf(BusinessException.class)
@@ -105,7 +105,7 @@ class ApplicationServiceTest {
     @Test
     void apply_機能追加_定員に達していればキャンセル待ちで登録される() {
         Event fullEvent = openEvent(3);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(fullEvent));
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(fullEvent));
         when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.ACCEPTED)).thenReturn(3L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
@@ -125,7 +125,7 @@ class ApplicationServiceTest {
     @Test
     void apply_異常系_二重申込はできない() {
         Event event = openEvent(5);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event));
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(true);
 
@@ -139,7 +139,7 @@ class ApplicationServiceTest {
     @Test
     void apply_機能追加_キャンセル待ち中の二重申込もできない() {
         Event event = openEvent(1);
-        when(eventRepository.findById(EVENT_ID)).thenReturn(Optional.of(event));
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(true);
 

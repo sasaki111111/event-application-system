@@ -2,6 +2,7 @@ package com.example.eventapp.controller;
 
 import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.common.exception.ForbiddenException;
+import com.example.eventapp.dto.DeletedEventResponse;
 import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
@@ -49,6 +50,13 @@ public class EventController {
         return eventService.getDetail(id);
     }
 
+    // 機能追加（ソフトデリート） GET /api/events/deleted（管理者のみ）
+    @GetMapping("/api/events/deleted")
+    public List<DeletedEventResponse> listDeleted() {
+        requireAdmin();
+        return eventService.listDeleted();
+    }
+
     // API-06 POST /api/events（管理者のみ）
     // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @PostMapping("/api/events")
@@ -73,6 +81,13 @@ public class EventController {
     public void delete(@PathVariable Long id) {
         requireAdmin();
         eventService.delete(id);
+    }
+
+    // 機能追加（ソフトデリートの復元） POST /api/events/{id}/restore（管理者のみ）
+    @PostMapping("/api/events/{id}/restore")
+    public EventDetailResponse restore(@PathVariable Long id) {
+        requireAdmin();
+        return eventService.restore(id);
     }
 
     private void requireAdmin() {

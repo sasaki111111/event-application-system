@@ -35,6 +35,11 @@ public class Event {
     @Column(length = 1000)
     private String description;
 
+    // 機能追加（ソフトデリート）: NULL=有効、日時あり=削除済み。物理削除はせず、管理者が「削除済み
+    // イベント」画面から復元できるようにする。
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
     // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
     // 本番のschema.sql同様のDEFAULTを持たせるためのもの（本番はddl-auto: noneのため影響しない）
@@ -100,8 +105,22 @@ public class Event {
         return description;
     }
 
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
     // 受付中か（要件定義書§4）：現在 <= 申込締切 かつ 現在 < 開催日時
     public boolean isOpen(LocalDateTime now) {
         return !now.isAfter(applicationDeadline) && now.isBefore(startAt);
+    }
+
+    // 機能追加（ソフトデリート）: 物理削除の代わりに削除日時を記録する
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    // 機能追加（ソフトデリートの復元）
+    public void restore() {
+        this.deletedAt = null;
     }
 }

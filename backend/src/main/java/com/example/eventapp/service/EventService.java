@@ -2,6 +2,7 @@ package com.example.eventapp.service;
 
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.NotFoundException;
+import com.example.eventapp.dto.DeletedEventResponse;
 import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
@@ -32,9 +33,24 @@ public class EventService {
         LocalDateTime now = LocalDateTime.now();
         boolean openOnly = "open".equals(status);
 
-        return eventRepository.findAllByOrderByStartAtAsc().stream()
+        return eventRepository.findAllByDeletedAtIsNullOrderByStartAtAsc().stream()
                 .filter(event -> !openOnly || event.isOpen(now))
                 .map(event -> toSummary(event, now))
+                .toList();
+    }
+
+    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（API-XX）
+    @Transactional(readOnly = true)
+    public List<DeletedEventResponse> listDeleted() {
+        return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
+                .map(event -> new DeletedEventResponse(
+                        event.getId(),
+                        event.getName(),
+                        event.getStartAt(),
+                        event.getPlace(),
+                        event.getCapacity(),
+                        event.getDeletedAt()
+                ))
                 .toList();
     }
 
@@ -76,17 +92,27 @@ public class EventService {
     }
 
     // API-08: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
+    // 機能追加（ソフトデリート）: 物理削除ではなくdeleted_atを立てるのみ。「削除済みイベント」画面から復元できる。
     @Transactional
     public void delete(Long id) {
         Event event = findByIdOrThrow(id);
         if (countAccepted(event.getId()) > 0) {
             throw new BusinessException("申込があるため削除できません");
         }
-        eventRepository.delete(event);
+        event.softDelete();
+    }
+
+    // 機能追加（ソフトデリートの復元）。削除済みでなければ404。
+    @Transactional
+    public EventDetailResponse restore(Long id) {
+        Event event = eventRepository.findByIdAndDeletedAtIsNotNull(id)
+                .orElseThrow(() -> new NotFoundException("削除済みイベントが見つかりません"));
+        event.restore();
+        return toDetail(event);
     }
 
     private Event findByIdOrThrow(Long id) {
-        return eventRepository.findById(id)
+        return eventRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
     }
 

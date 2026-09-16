@@ -1,0 +1,37 @@
+<!-- 実行環境: ブラウザ側。admin-deleted-events.tsのテンプレート。 -->
+<h1>削除済みイベント</h1>
+<p class="note">削除（ソフトデリート）したイベントの一覧です。「復元」を押すと、一般ユーザー側の一覧にも再度表示されます。</p>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (events().length === 0) {
+  <p>削除済みのイベントはありません。</p>
+} @else {
+  <div class="card-grid">
+    @for (event of events(); track event.id) {
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">{{ event.name }}</span>
+          <span class="badge badge-neutral">削除済み</span>
+        </div>
+
+        <dl class="card-meta">
+          <dt>開催日時</dt>
+          <dd>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+          <dt>場所</dt>
+          <dd>{{ event.place }}</dd>
+          <dt>定員</dt>
+          <dd>{{ event.capacity }}</dd>
+          <dt>削除日時</dt>
+          <dd>{{ event.deletedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+        </dl>
+
+        <div class="card-actions">
+          <button type="button" class="btn-accent" (click)="restoreEvent(event)">復元</button>
+        </div>
+      </div>
+    }
+  </div>
+}

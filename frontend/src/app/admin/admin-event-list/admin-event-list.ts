@@ -23,7 +23,7 @@ export class AdminEventList implements OnInit {
   }
 
   protected deleteEvent(event: EventSummary): void {
-    if (!confirm(`「${event.name}」を削除しますか？`)) {
+    if (!confirm(`「${event.name}」を削除しますか？（削除済みイベント画面から後で復元できます）`)) {
       return;
     }
     this.eventApi.remove(event.id).subscribe({

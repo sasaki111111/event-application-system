@@ -33,6 +33,8 @@ CREATE TABLE events (
     -- application_deadlineがstart_at以前であることはアプリ側で担保する（DB制約にはしない）
     application_deadline  DATETIME     NOT NULL,
     description           VARCHAR(1000) NULL,
+    -- 機能追加（ソフトデリート）: NULL=有効、日時あり=削除済み（管理者の「削除済みイベント」画面から復元可能）
+    deleted_at            DATETIME     NULL,
     created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

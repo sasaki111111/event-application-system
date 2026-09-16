@@ -31,7 +31,7 @@ public class ReportService {
     @Transactional(readOnly = true)
     public List<EventReportResponse> summarize(String sort) {
         List<EventReportResponse> reports = new ArrayList<>(
-                eventRepository.findAllByOrderByStartAtAsc().stream().map(this::toReport).toList()
+                eventRepository.findAllByDeletedAtIsNullOrderByStartAtAsc().stream().map(this::toReport).toList()
         );
 
         if ("accepted_desc".equals(sort)) {

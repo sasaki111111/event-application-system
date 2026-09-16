@@ -40,7 +40,7 @@ public class ApplicationService {
     // userIdは呼出元（Controller）がX-User-Idから渡す
     @Transactional
     public ApplicationResponse apply(Long userId, Long eventId) {
-        Event event = eventRepository.findById(eventId)
+        Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
 
         if (!event.isOpen(LocalDateTime.now())) {
