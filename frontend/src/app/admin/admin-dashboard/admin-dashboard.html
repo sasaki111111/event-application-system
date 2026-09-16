@@ -1,0 +1,23 @@
+<!-- 実行環境: ブラウザ側。admin-dashboard.tsのテンプレート。 -->
+<h1>ダッシュボード</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else {
+  <div class="stat-grid">
+    <div class="stat-card">
+      <p class="stat-label">総イベント数</p>
+      <p class="stat-value">{{ totalEvents() }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">総ユーザー数</p>
+      <p class="stat-value">{{ totalUsers() }}</p>
+    </div>
+    <div class="stat-card">
+      <p class="stat-label">受付済の申込数（全イベント合計）</p>
+      <p class="stat-value">{{ totalAcceptedApplications() }}</p>
+    </div>
+  </div>
+}

@@ -51,7 +51,7 @@ export class Login {
       next: (user) => {
         this.loading.set(false);
         this.dummyUserStore.login(String(user.userId));
-        this.router.navigateByUrl(user.role === 'admin' ? '/admin/events' : '/events');
+        this.router.navigateByUrl(user.role === 'admin' ? '/admin/dashboard' : '/events');
       },
       error: (err) => {
         this.loading.set(false);

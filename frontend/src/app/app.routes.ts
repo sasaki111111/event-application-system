@@ -7,6 +7,7 @@ import { EventSearch } from './events/event-search/event-search';
 import { EventDetail } from './events/event-detail/event-detail';
 import { ApplyDone } from './events/apply-done/apply-done';
 import { MyApplications } from './my-applications/my-applications';
+import { AdminDashboard } from './admin/admin-dashboard/admin-dashboard';
 import { AdminEventList } from './admin/admin-event-list/admin-event-list';
 import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
 import { AdminReport } from './admin/admin-report/admin-report';
@@ -25,6 +26,7 @@ export const routes: Routes = [
   { path: 'events/:id', component: EventDetail, canActivate: [authGuard] },
   { path: 'events/:id/done', component: ApplyDone, canActivate: [authGuard] },
   { path: 'my/applications', component: MyApplications, canActivate: [authGuard] },
+  { path: 'admin/dashboard', component: AdminDashboard, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events', component: AdminEventList, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
