@@ -34,8 +34,11 @@
     <!-- 要件定義書E7: 管理者は申込できない -->
     <p class="note">管理者アカウントでは申込できません。</p>
   } @else if (e.open) {
+    @if (e.remaining <= 0) {
+      <p class="note">満席のため、申し込むとキャンセル待ちに登録されます。</p>
+    }
     <button type="button" class="btn-accent" (click)="apply()" [disabled]="applying()">
-      {{ applying() ? '申込処理中...' : '申し込む' }}
+      {{ applying() ? '申込処理中...' : (e.remaining <= 0 ? 'キャンセル待ちで申し込む' : '申し込む') }}
     </button>
   } @else {
     <p class="note">このイベントは受付を終了しています。</p>

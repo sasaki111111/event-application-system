@@ -1,7 +1,9 @@
 package com.example.eventapp.repository;
 
 import com.example.eventapp.entity.Application;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 // 実行環境: サーバー側（JVM）。applicationsテーブルへの問い合わせ口。
@@ -12,6 +14,12 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
     // D-3: 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);
+
+    // 機能追加（キャンセル待ち）: 二重申込チェックを受付済・キャンセル待ちの両方に対して行う
+    boolean existsByUser_IdAndEvent_IdAndStatusIn(Long userId, Long eventId, Collection<String> statuses);
+
+    // 機能追加（キャンセル待ちの繰り上げ）: 対象イベントで最も古いキャンセル待ちを1件取得する
+    Optional<Application> findFirstByEvent_IdAndStatusOrderByAppliedAtAsc(Long eventId, String status);
 
     // API-04: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);

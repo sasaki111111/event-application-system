@@ -24,7 +24,7 @@ export class MyApplications implements OnInit {
 
   // API-05: すでにキャンセル済／開催日時経過は400（要件定義書§8「取消可否チェック」）
   protected cancel(application: MyApplication): void {
-    if (!confirm(`「${application.eventName}」への申込を取り消しますか？`)) {
+    if (!confirm(`「${application.eventName}」への申込をキャンセルしますか？`)) {
       return;
     }
 
@@ -33,7 +33,7 @@ export class MyApplications implements OnInit {
       next: () => this.loadApplications(),
       error: (err) => {
         this.cancellingId.set(null);
-        alert(err.error?.message ?? '取消に失敗しました。');
+        alert(err.error?.message ?? 'キャンセルに失敗しました。');
       },
     });
   }

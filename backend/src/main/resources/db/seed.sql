@@ -118,3 +118,8 @@ INSERT INTO events (name, start_at, place, capacity, application_deadline, descr
      '2027-05-15 23:59:00', '地元醸造所のクラフトビールが集まるフェスです。'),
     ('ジャズライブナイト', '2027-05-27 19:00:00', 'ジャズバーBlue Note', 30,
      '2027-05-21 23:59:00', '生演奏のジャズを楽しむライブナイトです。');
+
+-- 定員超過（E1）の動作確認用サンプル（定員1名）
+INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
+    ('先着1名限定：特別ワークショップ', '2026-09-25 19:00:00', 'コミュニティスペースあおば', 1,
+     '2026-09-22 23:59:59', '（サンプル：定員超過の動作確認用。定員1名のイベントです。）');

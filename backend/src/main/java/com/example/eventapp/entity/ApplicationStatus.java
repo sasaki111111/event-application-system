@@ -6,6 +6,8 @@ public final class ApplicationStatus {
 
     public static final String ACCEPTED = "受付済";
     public static final String CANCELLED = "キャンセル済";
+    // 機能追加：キャンセル待ち。定員超過時に登録され、受付済の枠が空くと自動的にACCEPTEDへ繰り上がる
+    public static final String WAITLISTED = "キャンセル待ち";
 
     private ApplicationStatus() {
     }

@@ -53,9 +53,14 @@ public class Application {
 
     // D-3: イベント申込（API-03）用。生成した瞬間は必ず「受付済」
     public Application(User user, Event event) {
+        this(user, event, ApplicationStatus.ACCEPTED);
+    }
+
+    // 機能追加（キャンセル待ち）: 定員超過時は最初から「キャンセル待ち」で作る
+    public Application(User user, Event event, String status) {
         this.user = user;
         this.event = event;
-        this.status = ApplicationStatus.ACCEPTED;
+        this.status = status;
         this.appliedAt = LocalDateTime.now();
     }
 
@@ -82,5 +87,10 @@ public class Application {
     // D-5: 申込キャンセル（API-05）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
+    }
+
+    // 機能追加（キャンセル待ちの繰り上げ）: 受付済の枠が空いた時にキャンセル待ちから昇格させる
+    public void promote() {
+        this.status = ApplicationStatus.ACCEPTED;
     }
 }

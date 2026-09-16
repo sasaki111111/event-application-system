@@ -207,6 +207,12 @@ tbody tr:hover {
   color: var(--color-success-text);
 }
 
+/* キャンセル待ち（機能追加）: 「注意して見てほしい」という意味合いでアンバー系にする */
+.badge-waiting {
+  background: color-mix(in srgb, var(--color-accent) 18%, white);
+  color: var(--color-accent-hover);
+}
+
 .badge-neutral {
   background: var(--color-neutral-bg);
   color: var(--color-neutral-text);
