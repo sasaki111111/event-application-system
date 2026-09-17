@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>イベント申込システム構成図</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF3F8;
+    --surface:#FFFFFF;
+    --surface-2:#F3F8FC;
+    --ink:#0F2438;
+    --muted:#51667C;
+    --line:#C7D4E0;
+    --accent:#C6811A;
+    --fe:#C7263D;
+    --be:#3E8A22;
+    --db:#1C7C93;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1826;
+      --surface:#122238;
+      --surface-2:#16283F;
+      --ink:#DCE6F0;
+      --muted:#93A8BC;
+      --line:#2A4761;
+      --accent:#F0B85A;
+      --fe:#E8677B;
+      --be:#7FC456;
+      --db:#5CC2DB;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0B1826;
+    --surface:#122238;
+    --surface-2:#16283F;
+    --ink:#DCE6F0;
+    --muted:#93A8BC;
+    --line:#2A4761;
+    --accent:#F0B85A;
+    --fe:#E8677B;
+    --be:#7FC456;
+    --db:#5CC2DB;
+  }
+
+  *{box-sizing:border-box;}
+  html{background:var(--paper);}
+  body{
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1.6px) 0 0/22px 22px,
+      var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans JP','Hiragino Kaku Gothic ProN',sans-serif;
+    padding-block:40px 80px;
+    margin:0;
+  }
+  img{max-width:100%;}
+  [hidden]{display:none!important;}
+  .sheet{
+    max-width:760px;
+    margin:0 auto;
+    padding-inline:20px;
+  }
+
+  /* ---------- title block ---------- */
+  .kicker{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  h1{
+    font-size:clamp(22px,4.4vw,30px);
+    line-height:1.3;
+    margin:6px 0 18px;
+    text-wrap:balance;
+    font-weight:700;
+  }
+  .lede{
+    font-size:14.5px;
+    line-height:1.85;
+    color:var(--ink);
+    max-width:64ch;
+  }
+  .lede b{font-weight:600;}
+
+  .titleblock{
+    margin-top:26px;
+    border:1.5px solid var(--line);
+    border-radius:2px;
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    background:var(--surface);
+  }
+  @media(min-width:560px){ .titleblock{grid-template-columns:repeat(4,1fr);} }
+  .tb-cell{
+    padding:10px 14px;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .tb-cell:nth-child(2n){border-right:none;}
+  @media(min-width:560px){
+    .tb-cell:nth-child(2n){border-right:1px solid var(--line);}
+    .tb-cell:nth-child(4n){border-right:none;}
+  }
+  .tb-cell:nth-last-child(-n+2){border-bottom:none;}
+  @media(min-width:560px){ .tb-cell:nth-last-child(-n+4){border-bottom:none;} }
+  .tb-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    letter-spacing:.08em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .tb-value{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    font-weight:600;
+    margin-top:3px;
+  }
+
+  /* ---------- section rhythm ---------- */
+  .rule{
+    border:none;
+    border-top:1px dashed var(--line);
+    margin:44px 0 30px;
+  }
+  h2{
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:700;
+    margin:0 0 4px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  h2 .num{
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--accent);
+  }
+  h3{
+    font-size:19px;
+    margin:0 0 14px;
+    font-weight:700;
+    text-wrap:balance;
+  }
+  p.note{
+    font-size:13.5px;
+    line-height:1.8;
+    color:var(--muted);
+    max-width:64ch;
+    margin:10px 0 0;
+  }
+
+  /* ---------- legend ---------- */
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    row-gap:10px;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--surface);
+    font-size:12.5px;
+  }
+  .legend .item{display:flex;align-items:center;gap:7px;}
+  .legend .sw{width:10px;height:10px;border-radius:50%;flex:none;}
+  .legend .sw.line{
+    width:20px;height:0;border-radius:0;
+    border-top:2.5px dashed var(--muted);
+  }
+  .legend .sw.accentline{
+    width:20px;height:0;border-radius:0;
+    border-top:3px solid var(--accent);
+  }
+
+  /* ---------- diagram frame ---------- */
+  .diagram{
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--surface-2);
+    padding:14px 10px;
+    margin-top:18px;
+  }
+  .diagram svg{display:block;width:100%;height:auto;overflow:visible;}
+  figure{margin:0;}
+  figcaption{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:10px;
+    text-align:center;
+  }
+
+  /* svg element classes (shared across inline diagrams) */
+  .dg-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5;}
+  .dg-callout{fill:var(--surface-2);stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3;}
+  .dg-chip{fill:var(--surface-2);stroke:var(--line);stroke-width:1;}
+  .dg-chip-text{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink);}
+  .dg-title{font-family:'IBM Plex Sans JP',sans-serif;font-weight:700;font-size:13px;fill:var(--ink);}
+  .dg-filename{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13.5px;fill:var(--ink);}
+  .dg-sub{font-family:'IBM Plex Sans JP',sans-serif;font-size:11px;fill:var(--muted);}
+  .dg-label{font-family:'IBM Plex Sans JP',sans-serif;font-size:11px;fill:var(--muted);}
+  .dg-label-strong{font-family:'IBM Plex Sans JP',sans-serif;font-size:11px;font-weight:600;fill:var(--ink);}
+  .dg-line{stroke:var(--ink);stroke-width:1.5;fill:none;}
+  .dg-line-accent{stroke:var(--accent);stroke-width:3;fill:none;}
+  .dg-line-dash{stroke:var(--muted);stroke-width:1.25;stroke-dasharray:4 3;fill:none;}
+  .dg-fe{fill:var(--fe);}
+  .dg-be{fill:var(--be);}
+  .dg-db{fill:var(--db);}
+  .dg-cyl-body{fill:var(--surface);stroke:var(--db);stroke-width:1.5;}
+  .dg-cyl-top{fill:var(--surface-2);stroke:var(--db);stroke-width:1.5;}
+
+  /* ---------- API boundary band ---------- */
+  .boundary{
+    position:relative;
+    margin:0;
+    padding:22px 0 26px;
+    border-top:3px solid var(--accent);
+    border-bottom:3px solid var(--accent);
+    background:
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--accent) 7%, transparent) 0 10px, transparent 10px 20px);
+  }
+  .boundary-tag{
+    position:absolute;
+    top:-13px;left:50%;
+    transform:translateX(-50%);
+    background:var(--paper);
+    padding:0 10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.08em;
+    color:var(--accent);
+  }
+  .boundary-inner{padding:0 4px;}
+  .boundary-title{
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  .contract{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .contract-row{
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--surface);
+    overflow:hidden;
+  }
+  .contract-cat{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--accent);
+    padding:7px 12px 0;
+  }
+  .contract-cols{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+  }
+  .contract-cell{
+    padding:6px 12px 12px;
+    font-size:12px;
+    line-height:1.6;
+  }
+  .contract-cell.fe{border-right:1px dashed var(--accent);}
+  .contract-cell code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    background:var(--surface-2);
+    padding:1px 5px;
+    border-radius:4px;
+    border:1px solid var(--line);
+  }
+  .side-tag{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:10px;color:var(--muted);
+    margin-bottom:4px;
+  }
+  .side-tag .sw{width:7px;height:7px;border-radius:50%;}
+
+  /* ---------- directory tree footer ---------- */
+  pre.tree{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    line-height:1.9;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px 18px;
+    overflow-x:auto;
+    color:var(--ink);
+  }
+  pre.tree .c{color:var(--muted);}
+
+  footer{
+    margin-top:50px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    font-size:11.5px;
+    color:var(--muted);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  @media (max-width:420px){
+    .contract-cols{grid-template-columns:1fr;}
+    .contract-cell.fe{border-right:none;border-bottom:1px dashed var(--accent);}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <p class="kicker">Codebase reading aid — 補助資料</p>
+  <h1>イベント申込システム<br>アーキテクチャ構成図</h1>
+  <p class="lede">
+    <code>docs/コードベース解説.md</code>に書かれている内容を、<b>1件のリクエストが実際にどの部品をどう通っていくか</b>という流れで描き直したもの。
+    ブラウザを出発して frontend の中を降り、<b>API という約束事の境界</b>を越えて backend の中を降り、MySQL に着地するまでを上から下へたどれる。
+  </p>
+
+  <div class="titleblock">
+    <div class="tb-cell"><div class="tb-label">図名</div><div class="tb-value">システム構成図</div></div>
+    <div class="tb-cell"><div class="tb-label">図番</div><div class="tb-value">EAS-ARCH-01</div></div>
+    <div class="tb-cell"><div class="tb-label">版</div><div class="tb-value">要件定義書 v1.7 準拠</div></div>
+    <div class="tb-cell"><div class="tb-label">縮尺</div><div class="tb-value">NTS（原寸なし）</div></div>
+  </div>
+
+  <hr class="rule">
+
+  <h2><span class="num">00</span>凡例</h2>
+  <h3>読み方</h3>
+  <div class="legend">
+    <span class="item"><span class="sw" style="background:var(--fe)"></span>frontend（Angular）のファイル</span>
+    <span class="item"><span class="sw" style="background:var(--be)"></span>backend（Spring Boot）のファイル</span>
+    <span class="item"><span class="sw" style="background:var(--db)"></span>DB／テーブル</span>
+    <span class="item"><span class="sw line"></span>処理の受け渡し</span>
+    <span class="item"><span class="sw accentline"></span>HTTP（API境界を越える瞬間）</span>
+  </div>
+
+  <hr class="rule">
+
+  <h2><span class="num">01</span>frontend → API → backend → DB</h2>
+  <h3>1本のリクエストが通る道</h3>
+  <p class="note">
+    上から順に「ブラウザで押した操作」が「画面部品」→「API通信の窓口」→「送信前の共通処理」まで frontend の中を降り、
+    <b style="color:var(--accent)">API境界</b>を越えて backend に入ると「受付」→「業務ロジック」→「DB問い合わせ」→「DBの1行」まで降りて、最後に MySQL に届く。
+  </p>
+
+  <div class="diagram">
+  <figure>
+  <svg viewBox="0 0 680 804" role="img" aria-label="frontendの内部を、app.tsから画面部品・core配下のAPI窓口・インターセプターまで降りてAPIへ向かう流れ図">
+    <defs>
+      <marker id="ahFe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+      </marker>
+      <marker id="ahFeAccent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"></path>
+      </marker>
+    </defs>
+    <g style="color:var(--ink)">
+
+      <!-- Box1: app.ts -->
+      <rect x="20" y="20" width="4" height="76" class="dg-fe"></rect>
+      <rect x="20" y="20" width="640" height="76" class="dg-box"></rect>
+      <text x="40" y="42" class="dg-label">frontendの起点（src/app/）</text>
+      <text x="40" y="62" class="dg-filename">app.ts</text>
+      <text x="40" y="80" class="dg-sub">共通ナビ ＋ &lt;router-outlet&gt;（画面の差し込み口）</text>
+
+      <!-- Arrow1: routing + guards -->
+      <line x1="340" y1="102" x2="340" y2="154" class="dg-line" marker-end="url(#ahFe)"></line>
+      <text x="356" y="128" class="dg-label-strong">app.routes.ts がURLを見て画面を決定</text>
+      <text x="356" y="146" class="dg-label">🔒 authGuard：未ログイン → /login</text>
+      <text x="356" y="164" class="dg-label">🔒 adminGuard：一般ユーザー → /events</text>
+
+      <!-- Box2: page groups -->
+      <rect x="20" y="186" width="4" height="124" class="dg-fe"></rect>
+      <rect x="20" y="186" width="640" height="124" class="dg-box"></rect>
+      <text x="40" y="208" class="dg-title">画面コンポーネント</text>
+      <rect x="40" y="222" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="241" class="dg-chip-text">login/</text>
+      <rect x="350" y="222" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="241" class="dg-chip-text">events/（一覧・検索・詳細・完了）</text>
+      <rect x="40" y="262" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="281" class="dg-chip-text">my-applications/</text>
+      <rect x="350" y="262" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="281" class="dg-chip-text">admin/（ダッシュボード等6画面）</text>
+
+      <!-- Arrow2 -->
+      <line x1="340" y1="316" x2="340" y2="368" class="dg-line" marker-end="url(#ahFe)"></line>
+      <text x="356" y="346" class="dg-label-strong">画面がデータを要求する</text>
+
+      <!-- Box3: core services -->
+      <rect x="20" y="374" width="4" height="166" class="dg-fe"></rect>
+      <rect x="20" y="374" width="640" height="166" class="dg-box"></rect>
+      <text x="40" y="396" class="dg-title">core/ — API通信の窓口（型定義もここ）</text>
+      <rect x="40" y="410" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="429" class="dg-chip-text">event-api.ts</text>
+      <rect x="350" y="410" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="429" class="dg-chip-text">application-api.ts</text>
+      <rect x="40" y="450" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="469" class="dg-chip-text">report-api.ts</text>
+      <rect x="350" y="450" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="469" class="dg-chip-text">user-api.ts</text>
+      <rect x="40" y="490" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="509" class="dg-chip-text">login-api.ts</text>
+
+      <!-- Arrow3 -->
+      <line x1="340" y1="546" x2="340" y2="598" class="dg-line" marker-end="url(#ahFe)"></line>
+      <text x="356" y="576" class="dg-label-strong">送信前にインターセプターを通す</text>
+
+      <!-- Box4: interceptors -->
+      <rect x="20" y="604" width="4" height="92" class="dg-fe"></rect>
+      <rect x="20" y="604" width="640" height="92" class="dg-box"></rect>
+      <text x="40" y="624" class="dg-title">送信直前のインターセプター</text>
+      <text x="40" y="642" class="dg-sub">全リクエスト・全レスポンスに自動で処理を挟む</text>
+      <rect x="40" y="656" width="298" height="28" rx="5" class="dg-chip"></rect>
+      <text x="52" y="674" class="dg-chip-text">dummy-auth-interceptor.ts</text>
+      <rect x="350" y="656" width="298" height="28" rx="5" class="dg-chip"></rect>
+      <text x="362" y="674" class="dg-chip-text">http-error-interceptor.ts</text>
+
+      <!-- Arrow4: into boundary, accent -->
+      <line x1="340" y1="702" x2="340" y2="772" class="dg-line-accent" marker-end="url(#ahFeAccent)"></line>
+      <text x="356" y="732" class="dg-label-strong" style="fill:var(--accent)">HTTPリクエスト</text>
+      <text x="356" y="750" class="dg-label">GET / POST / PUT / DELETE</text>
+      <text x="356" y="766" class="dg-label">＋ X-User-Id ヘッダ（誰が申込中か）</text>
+    </g>
+  </svg>
+  </figure>
+  </div>
+
+  <div class="boundary">
+    <span class="boundary-tag">API — 約束事の境界</span>
+    <div class="boundary-inner">
+      <p class="boundary-title">docs/design/API設計書_v1.1.md が定めた「一致していなければ壊れる」対応表</p>
+      <div class="contract">
+
+        <div class="contract-row">
+          <div class="contract-cat">どのURLに聞くか</div>
+          <div class="contract-cols">
+            <div class="contract-cell fe">
+              <span class="side-tag"><span class="sw" style="background:var(--fe)"></span>frontend</span><br>
+              <code>event-api.ts</code> がURLを組み立てる
+            </div>
+            <div class="contract-cell">
+              <span class="side-tag"><span class="sw" style="background:var(--be)"></span>backend</span><br>
+              <code>EventController.java</code> の<code>@GetMapping</code>等が受ける
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-row">
+          <div class="contract-cat">返ってくるデータの形</div>
+          <div class="contract-cols">
+            <div class="contract-cell fe">
+              <code>interface EventSummary {…}</code>
+            </div>
+            <div class="contract-cell">
+              <code>EventSummaryResponse.java</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-row">
+          <div class="contract-cat">認証方法</div>
+          <div class="contract-cols">
+            <div class="contract-cell fe">
+              <code>login-api.ts</code> → <code>dummy-user-store.ts</code> → <code>dummy-auth-interceptor.ts</code>がヘッダ付与
+            </div>
+            <div class="contract-cell">
+              <code>AuthInterceptor.java</code>がヘッダを検証
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-row">
+          <div class="contract-cat">エラーの形</div>
+          <div class="contract-cols">
+            <div class="contract-cell fe">
+              <code>http-error-interceptor.ts</code>が受け取る
+            </div>
+            <div class="contract-cell">
+              <code>ErrorResponse.java</code>として返す
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+  <figure>
+  <svg viewBox="0 0 680 1384" role="img" aria-label="backendの内部を、AuthInterceptorからController・Service・Repository・Entityへ降りてMySQLに届くまでの流れ図。ServiceからGlobalExceptionHandlerへの分岐も示す">
+    <defs>
+      <marker id="ahBe" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+      </marker>
+      <marker id="ahBeAccent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"></path>
+      </marker>
+    </defs>
+    <g style="color:var(--ink)">
+
+      <!-- continuation from boundary -->
+      <line x1="340" y1="0" x2="340" y2="14" class="dg-line-accent"></line>
+      <text x="356" y="12" class="dg-label" style="fill:var(--accent)">backend が受信</text>
+
+      <!-- Box1: AuthInterceptor -->
+      <rect x="20" y="20" width="4" height="76" class="dg-be"></rect>
+      <rect x="20" y="20" width="640" height="76" class="dg-box"></rect>
+      <text x="40" y="42" class="dg-label">common/ — 全APIに共通の関所</text>
+      <text x="40" y="62" class="dg-filename">🔒 AuthInterceptor.java</text>
+      <text x="40" y="80" class="dg-sub">X-User-Idヘッダを検証し、AuthContextに保持</text>
+
+      <!-- Arrow1 -->
+      <line x1="340" y1="102" x2="340" y2="154" class="dg-line" marker-end="url(#ahBe)"></line>
+      <text x="356" y="132" class="dg-label-strong">検証OKなら通過（NGなら401）</text>
+
+      <!-- Box2: Controller -->
+      <rect x="20" y="160" width="4" height="240" class="dg-be"></rect>
+      <rect x="20" y="160" width="640" height="240" class="dg-box"></rect>
+      <text x="40" y="182" class="dg-title">controller/ — HTTPリクエストの入口</text>
+      <text x="40" y="198" class="dg-sub">requireAdmin()等の権限チェック → Serviceへ依頼</text>
+      <rect x="40" y="214" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="233" class="dg-chip-text">EventController.java</text>
+      <rect x="350" y="214" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="233" class="dg-chip-text">ApplicationController.java</text>
+      <rect x="40" y="254" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="273" class="dg-chip-text">UserController.java</text>
+      <rect x="350" y="254" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="273" class="dg-chip-text">PingController.java</text>
+      <rect x="40" y="294" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="313" class="dg-chip-text">ReportController.java</text>
+      <text x="40" y="344" class="dg-label">dto/ — 入出力の形（例）</text>
+      <rect x="40" y="356" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="375" class="dg-chip-text">EventSummaryResponse 等</text>
+      <rect x="350" y="356" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="375" class="dg-chip-text">EventUpsertRequest 等</text>
+
+      <!-- Arrow2 -->
+      <line x1="340" y1="406" x2="340" y2="458" class="dg-line" marker-end="url(#ahBe)"></line>
+      <text x="356" y="436" class="dg-label-strong">Serviceを呼び出す</text>
+
+      <!-- Box3: Service -->
+      <rect x="20" y="464" width="4" height="180" class="dg-be"></rect>
+      <rect x="20" y="464" width="640" height="180" class="dg-box"></rect>
+      <text x="40" y="486" class="dg-title">service/ — 業務ロジック（計算・判断）</text>
+      <text x="40" y="502" class="dg-sub">定員チェック・二重申込・キャンセル待ち繰り上げ 等</text>
+      <rect x="40" y="518" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="537" class="dg-chip-text">EventService.java</text>
+      <rect x="350" y="518" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="537" class="dg-chip-text">ApplicationService.java</text>
+      <rect x="40" y="558" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="577" class="dg-chip-text">UserService.java</text>
+      <rect x="350" y="558" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="577" class="dg-chip-text">PingService.java</text>
+      <rect x="40" y="598" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="617" class="dg-chip-text">ReportService.java</text>
+
+      <!-- exception branch + arrow to Repository -->
+      <path d="M660,569 C 520,600 470,620 392,656" class="dg-line-dash"></path>
+      <rect x="380" y="656" width="280" height="88" rx="6" class="dg-callout"></rect>
+      <text x="396" y="676" class="dg-filename" style="font-size:12px">GlobalExceptionHandler</text>
+      <text x="396" y="692" class="dg-label">各層の例外（401/403/404/400）を</text>
+      <text x="396" y="706" class="dg-label">ErrorResponse（JSON）へ統一変換</text>
+      <text x="396" y="724" class="dg-label" style="font-style:italic">↩ frontendのhttp-error-interceptor.tsへ</text>
+
+      <line x1="200" y1="650" x2="200" y2="726" class="dg-line" marker-end="url(#ahBe)"></line>
+      <text x="216" y="692" class="dg-label-strong">Repositoryの<tspan x="216" dy="16">メソッドを呼ぶ</tspan></text>
+
+      <!-- Box4: Repository -->
+      <rect x="20" y="750" width="4" height="150" class="dg-be"></rect>
+      <rect x="20" y="750" width="640" height="150" class="dg-box"></rect>
+      <text x="40" y="772" class="dg-title">repository/ — DBへの問い合わせ窓口</text>
+      <text x="40" y="788" class="dg-sub">Spring Data JPAがメソッド名から自動でSQLを生成</text>
+      <rect x="40" y="804" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="823" class="dg-chip-text">EventRepository.java</text>
+      <rect x="350" y="804" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="823" class="dg-chip-text">ApplicationRepository.java</text>
+      <rect x="40" y="844" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="863" class="dg-chip-text">UserRepository.java</text>
+
+      <!-- Arrow4 -->
+      <line x1="340" y1="906" x2="340" y2="958" class="dg-line" marker-end="url(#ahBe)"></line>
+      <text x="356" y="928" class="dg-label-strong">Hibernateが1行 ⇄ 1オブジェクトに<tspan x="356" dy="16">変換する</tspan></text>
+
+      <!-- Box5: Entity -->
+      <rect x="20" y="964" width="4" height="150" class="dg-be"></rect>
+      <rect x="20" y="964" width="640" height="150" class="dg-box"></rect>
+      <text x="40" y="986" class="dg-title">entity/ — DBの1行をJavaで表現</text>
+      <text x="40" y="1002" class="dg-sub">isOpen()／softDelete()等、業務メソッドも持つ</text>
+      <rect x="40" y="1018" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="1037" class="dg-chip-text">Event.java</text>
+      <rect x="350" y="1018" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="1037" class="dg-chip-text">Application.java</text>
+      <rect x="40" y="1058" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="52" y="1077" class="dg-chip-text">User.java</text>
+      <rect x="350" y="1058" width="298" height="30" rx="5" class="dg-chip"></rect>
+      <text x="362" y="1077" class="dg-chip-text">ApplicationStatus.java</text>
+
+      <!-- Arrow5 -->
+      <line x1="340" y1="1120" x2="340" y2="1172" class="dg-line" marker-end="url(#ahBe)"></line>
+      <text x="356" y="1150" class="dg-label-strong">SQL（INSERT / SELECT / UPDATE）</text>
+
+      <!-- DB cylinder -->
+      <ellipse cx="340" cy="1220" rx="160" ry="16" class="dg-cyl-top"></ellipse>
+      <path d="M180,1220 L180,1304 A160,16 0 0 0 500,1304 L500,1220" class="dg-cyl-body"></path>
+      <line x1="180" y1="1220" x2="180" y2="1304" style="stroke:var(--db);stroke-width:1.5"></line>
+      <line x1="500" y1="1220" x2="500" y2="1304" style="stroke:var(--db);stroke-width:1.5"></line>
+      <text x="340" y="1266" text-anchor="middle" class="dg-filename">MySQL — eventapp</text>
+
+      <rect x="90" y="1314" width="160" height="26" rx="5" class="dg-chip"></rect>
+      <text x="170" y="1331" text-anchor="middle" class="dg-chip-text dg-db" style="fill:var(--db)">users</text>
+      <rect x="260" y="1314" width="160" height="26" rx="5" class="dg-chip"></rect>
+      <text x="340" y="1331" text-anchor="middle" class="dg-chip-text" style="fill:var(--db)">events</text>
+      <rect x="430" y="1314" width="160" height="26" rx="5" class="dg-chip"></rect>
+      <text x="510" y="1331" text-anchor="middle" class="dg-chip-text" style="fill:var(--db)">applications</text>
+    </g>
+  </svg>
+  </figure>
+  <figcaption>ブラウザからMySQLまで、1本のリクエストが実際に通る全経路。破線はGlobalExceptionHandlerへの分岐(他層からも同様に集約される)</figcaption>
+  </div>
+
+  <hr class="rule">
+
+  <h2><span class="num">02</span>アプリの起動シーケンス</h2>
+  <h3>ブラウザが最初に何をするか</h3>
+  <p class="note">上の図が「1回のAPIリクエスト」の流れなのに対し、こちらは<b>ページを開いた瞬間の1回だけ</b>起きる処理。</p>
+  <div class="diagram">
+  <figure>
+  <svg viewBox="0 0 640 110" role="img" aria-label="index.htmlからmain.tsを経てapp.tsが起動するまでの順序図">
+    <defs>
+      <marker id="ahBoot" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+      </marker>
+    </defs>
+    <g style="color:var(--ink)">
+      <rect x="20" y="30" width="160" height="42" rx="6" class="dg-box"></rect>
+      <text x="100" y="55" text-anchor="middle" class="dg-chip-text">index.html</text>
+      <line x1="182" y1="51" x2="228" y2="51" class="dg-line" marker-end="url(#ahBoot)"></line>
+      <text x="205" y="42" text-anchor="middle" class="dg-label">読み込み</text>
+
+      <rect x="230" y="30" width="160" height="42" rx="6" class="dg-box"></rect>
+      <text x="310" y="55" text-anchor="middle" class="dg-chip-text">main.ts</text>
+      <line x1="392" y1="51" x2="438" y2="51" class="dg-line" marker-end="url(#ahBoot)"></line>
+      <text x="415" y="42" text-anchor="middle" class="dg-label">起動</text>
+
+      <rect x="440" y="30" width="160" height="42" rx="6" class="dg-box"></rect>
+      <text x="520" y="49" text-anchor="middle" class="dg-chip-text">app.ts</text>
+      <text x="520" y="64" text-anchor="middle" class="dg-label" style="font-size:9px">(共通ナビ+outlet)</text>
+    </g>
+  </svg>
+  </figure>
+  <figcaption>ここから先が、上の「01」の図のいちばん上（app.ts）につながる</figcaption>
+  </div>
+
+  <hr class="rule">
+
+  <h2><span class="num">03</span>リポジトリ全体の見取り図</h2>
+  <h3>ルート直下</h3>
+  <pre class="tree"><span class="c">event-application-system/</span>
+├─ docs/              <span class="c">設計書（要件定義書・API設計書・テーブル定義書 等）とWBS</span>
+├─ backend/           <span class="c">Spring Bootプロジェクト一式（上図 01 backend部分）</span>
+├─ frontend/          <span class="c">Angularプロジェクト一式（上図 01 frontend部分）</span>
+├─ .github/           <span class="c">Issue・PRテンプレート</span>
+├─ README.md          <span class="c">セットアップ手順</span>
+└─ .gitignore         <span class="c">Git管理から除外するファイルの一覧</span></pre>
+
+  <footer>
+    <span>docs/コードベース解説.md を元に作成</span>
+    <span>EAS-ARCH-01 · SHEET 1/1</span>
+  </footer>
+
+</div>
+</body>
+</html>

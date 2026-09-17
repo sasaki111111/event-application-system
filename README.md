@@ -67,6 +67,15 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
+> **コマンドプロンプト（cmd.exe）で実行する場合**：`./mvnw` の `./` はGit Bash／PowerShell向けの書き方で、cmd.exeでは付けずに実行する。
+>
+> ```
+> cd backend
+> mvnw spring-boot:run -Dspring-boot.run.profiles=local
+> ```
+>
+> フロントエンド側の `npm install`／`npm start` はシェルを問わずそのまま使える。
+
 起動後、`http://localhost:8080/api/ping` にアクセスして `pong` が返ることを確認できる（B-3の起動確認用エンドポイント）。起動ログにHikariCPの接続完了ログが出ればMySQL接続も確認できている（B-4）。
 
 ダミー認証（B-5）の疎通確認は `http://localhost:8080/api/whoami` に `X-User-Id: 1`（一般ユーザー）または `X-User-Id: 2`（管理者）ヘッダを付けてアクセスする。ヘッダが無い・不正なIDの場合は401が返る。業務APIはD以降で実装する。
