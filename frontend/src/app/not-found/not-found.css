@@ -1,0 +1,15 @@
+/* 実行環境: ブラウザ側。not-found.ts専用のスタイル。 */
+.not-found {
+  text-align: center;
+  padding: 64px 20px;
+}
+
+.not-found h1 {
+  font-size: 3rem;
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+}
+
+.not-found p {
+  margin: 0 0 24px;
+}
