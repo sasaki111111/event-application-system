@@ -11,6 +11,9 @@ public record EventSummaryResponse(
         Integer capacity,
         LocalDateTime applicationDeadline,
         long acceptedCount,
-        boolean open
+        boolean open,
+        String organizerName,
+        String imageUrl,
+        String category
 ) {
 }

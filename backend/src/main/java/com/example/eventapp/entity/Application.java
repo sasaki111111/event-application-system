@@ -28,6 +28,11 @@ public class Application {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    // 申し込んだ区分。対象イベントに区分が無い場合はNULL（区分単位の申込ロジックは今後の対応で使用）
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ticket_type_id")
+    private TicketType ticketType;
+
     // '受付済' または 'キャンセル済'（要件定義書§4）
     @Column(nullable = false, length = 20)
     private String status;
@@ -74,6 +79,10 @@ public class Application {
 
     public Event getEvent() {
         return event;
+    }
+
+    public TicketType getTicketType() {
+        return ticketType;
     }
 
     public String getStatus() {

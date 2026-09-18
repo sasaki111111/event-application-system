@@ -12,6 +12,13 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // 受付済数の集計（acceptedCount／充足率）に使う。テーブル定義書§5「カラムにしない派生値」
     long countByEvent_IdAndStatus(Long eventId, String status);
 
+    // 区分単位の受付済数の集計（区分ありイベントのticketTypes[].acceptedCount、定員判定にも使用）
+    long countByTicketType_IdAndStatus(Long ticketTypeId, String status);
+
+    // イベント保存時の区分全置換ロジックで、区分に紐づく申込（受付済・キャンセル待ち）が
+    // 残っていないかを確認するために使う（残っている場合は区分の変更を拒否する）
+    boolean existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(Long eventId, Collection<String> statuses);
+
     // D-3: 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);
 

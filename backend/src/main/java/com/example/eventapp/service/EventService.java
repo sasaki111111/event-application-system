@@ -6,12 +6,17 @@ import com.example.eventapp.dto.DeletedEventResponse;
 import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
+import com.example.eventapp.dto.TicketTypeRequest;
+import com.example.eventapp.dto.TicketTypeResponse;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +24,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EventService {
 
+    // 区分の全置換を拒否する対象ステータス（この状態の申込が区分に残っていれば変更させない）
+    private static final Set<String> ACTIVE_STATUSES = Set.of(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
+
     private final EventRepository eventRepository;
     private final ApplicationRepository applicationRepository;
+    private final TicketTypeRepository ticketTypeRepository;
 
-    public EventService(EventRepository eventRepository, ApplicationRepository applicationRepository) {
+    public EventService(EventRepository eventRepository, ApplicationRepository applicationRepository,
+            TicketTypeRepository ticketTypeRepository) {
         this.eventRepository = eventRepository;
         this.applicationRepository = applicationRepository;
+        this.ticketTypeRepository = ticketTypeRepository;
     }
 
     // API-01: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
@@ -39,7 +50,7 @@ public class EventService {
                 .toList();
     }
 
-    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（API-XX）
+    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（API-13）
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
@@ -70,9 +81,14 @@ public class EventService {
                 request.place(),
                 request.capacity(),
                 request.applicationDeadline(),
-                request.description()
+                request.description(),
+                request.organizerName(),
+                request.imageUrl(),
+                request.category(),
+                request.extraQuestion()
         );
         Event saved = eventRepository.save(event);
+        saveTicketTypes(saved, request.ticketTypes());
         return toDetail(saved);
     }
 
@@ -86,8 +102,13 @@ public class EventService {
                 request.place(),
                 request.capacity(),
                 request.applicationDeadline(),
-                request.description()
+                request.description(),
+                request.organizerName(),
+                request.imageUrl(),
+                request.category(),
+                request.extraQuestion()
         );
+        saveTicketTypes(event, request.ticketTypes());
         return toDetail(event);
     }
 
@@ -111,6 +132,34 @@ public class EventService {
         return toDetail(event);
     }
 
+    // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
+    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（詳細設計書_v2.0.md§3.5参照）。
+    private void saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
+        if (requests == null) {
+            // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
+            // （テーブル定義書_v2.0.md§2.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
+            // リクエストのcapacityは区分の無いイベントの場合のみ有効に使われる）
+            List<TicketType> existing = ticketTypeRepository.findByEvent_Id(event.getId());
+            if (!existing.isEmpty()) {
+                event.syncCapacityFromTicketTypes(existing.stream().mapToInt(TicketType::getCapacity).sum());
+            }
+            return;
+        }
+        if (applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(event.getId(), ACTIVE_STATUSES)) {
+            throw new BusinessException("区分に申込があるため変更できません");
+        }
+        ticketTypeRepository.deleteByEvent_Id(event.getId());
+        if (requests.isEmpty()) {
+            return;
+        }
+        int totalCapacity = 0;
+        for (TicketTypeRequest request : requests) {
+            ticketTypeRepository.save(new TicketType(event, request.name(), request.capacity()));
+            totalCapacity += request.capacity();
+        }
+        event.syncCapacityFromTicketTypes(totalCapacity);
+    }
+
     private Event findByIdOrThrow(Long id) {
         return eventRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
@@ -125,12 +174,18 @@ public class EventService {
                 event.getCapacity(),
                 event.getApplicationDeadline(),
                 countAccepted(event.getId()),
-                event.isOpen(now)
+                event.isOpen(now),
+                event.getOrganizerName(),
+                event.getImageUrl(),
+                event.getCategory()
         );
     }
 
     private EventDetailResponse toDetail(Event event) {
         long acceptedCount = countAccepted(event.getId());
+        List<TicketTypeResponse> ticketTypes = ticketTypeRepository.findByEvent_Id(event.getId()).stream()
+                .map(this::toTicketTypeResponse)
+                .toList();
         return new EventDetailResponse(
                 event.getId(),
                 event.getName(),
@@ -141,7 +196,23 @@ public class EventService {
                 acceptedCount,
                 event.isOpen(LocalDateTime.now()),
                 event.getDescription(),
-                event.getCapacity() - acceptedCount
+                event.getCapacity() - acceptedCount,
+                event.getOrganizerName(),
+                event.getImageUrl(),
+                event.getCategory(),
+                event.getExtraQuestion(),
+                ticketTypes
+        );
+    }
+
+    private TicketTypeResponse toTicketTypeResponse(TicketType ticketType) {
+        long accepted = applicationRepository.countByTicketType_IdAndStatus(ticketType.getId(), ApplicationStatus.ACCEPTED);
+        return new TicketTypeResponse(
+                ticketType.getId(),
+                ticketType.getName(),
+                ticketType.getCapacity(),
+                accepted,
+                ticketType.getCapacity() - accepted
         );
     }
 

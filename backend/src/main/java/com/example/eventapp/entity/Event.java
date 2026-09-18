@@ -40,6 +40,19 @@ public class Event {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "organizer_name", length = 100)
+    private String organizerName;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(length = 50)
+    private String category;
+
+    // 申込時アンケートの質問文言。NULL＝アンケート無し
+    @Column(name = "extra_question", length = 200)
+    private String extraQuestion;
+
     // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
     // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
     // 本番のschema.sql同様のDEFAULTを持たせるためのもの（本番はddl-auto: noneのため影響しない）
@@ -57,24 +70,34 @@ public class Event {
 
     // D-2: イベント登録（API-06）用
     public Event(String name, LocalDateTime startAt, String place, Integer capacity,
-            LocalDateTime applicationDeadline, String description) {
+            LocalDateTime applicationDeadline, String description,
+            String organizerName, String imageUrl, String category, String extraQuestion) {
         this.name = name;
         this.startAt = startAt;
         this.place = place;
         this.capacity = capacity;
         this.applicationDeadline = applicationDeadline;
         this.description = description;
+        this.organizerName = organizerName;
+        this.imageUrl = imageUrl;
+        this.category = category;
+        this.extraQuestion = extraQuestion;
     }
 
     // D-2: イベント編集（API-07）用
     public void applyChanges(String name, LocalDateTime startAt, String place, Integer capacity,
-            LocalDateTime applicationDeadline, String description) {
+            LocalDateTime applicationDeadline, String description,
+            String organizerName, String imageUrl, String category, String extraQuestion) {
         this.name = name;
         this.startAt = startAt;
         this.place = place;
         this.capacity = capacity;
         this.applicationDeadline = applicationDeadline;
         this.description = description;
+        this.organizerName = organizerName;
+        this.imageUrl = imageUrl;
+        this.category = category;
+        this.extraQuestion = extraQuestion;
     }
 
     public Long getId() {
@@ -109,6 +132,22 @@ public class Event {
         return deletedAt;
     }
 
+    public String getOrganizerName() {
+        return organizerName;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getExtraQuestion() {
+        return extraQuestion;
+    }
+
     // 受付中か（要件定義書§4）：現在 <= 申込締切 かつ 現在 < 開催日時
     public boolean isOpen(LocalDateTime now) {
         return !now.isAfter(applicationDeadline) && now.isBefore(startAt);
@@ -122,5 +161,11 @@ public class Event {
     // 機能追加（ソフトデリートの復元）
     public void restore() {
         this.deletedAt = null;
+    }
+
+    // 機能追加（定員区分）: 区分を保存した際、capacityを区分の定員合計に同期させる
+    // （区分の無いイベントではEventUpsertRequest.capacity()がそのまま定員になるため呼び出さない）
+    public void syncCapacityFromTicketTypes(int totalCapacity) {
+        this.capacity = totalCapacity;
     }
 }
