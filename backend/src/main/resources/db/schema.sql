@@ -5,8 +5,9 @@
 -- 実行例:
 --   mysql -u eventapp_app -p eventapp < backend/src/main/resources/db/schema.sql
 
--- 外部キーの都合上、依存される側から先に作成し、削除(DROP)はその逆順で行う。
--- 作成順: users → events → ticket_types → favorites → event_comments → applications
+-- 外部キーの都合上、依存される側から先に作成し、削除(DROP)は依存する側から先に行う
+-- （drop順はcreate順を厳密に逆転させたものである必要はなく、「子→親」の順を守っていればよい）。
+-- 作成順: users → events → favorites → ticket_types → event_comments → applications
 DROP TABLE IF EXISTS applications;
 DROP TABLE IF EXISTS event_comments;
 DROP TABLE IF EXISTS favorites;
@@ -53,23 +54,6 @@ CREATE TABLE events (
 -- API-01（一覧の開催日時昇順ソート）用インデックス
 CREATE INDEX idx_events_start_at ON events (start_at);
 
--- 2.5 ticket_types（定員区分／チケット種別）
-CREATE TABLE ticket_types (
-    id         BIGINT       NOT NULL AUTO_INCREMENT,
-    event_id   BIGINT       NOT NULL,
-    name       VARCHAR(50)  NOT NULL,
-    capacity   INT          NOT NULL,
-    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    CONSTRAINT chk_ticket_types_capacity CHECK (capacity >= 1),
-    CONSTRAINT fk_ticket_types_event
-        FOREIGN KEY (event_id) REFERENCES events (id)
-        ON DELETE CASCADE
-) ENGINE = InnoDB;
-
-CREATE INDEX idx_ticket_types_event ON ticket_types (event_id);
-
 -- 2.4 favorites（お気に入り）
 CREATE TABLE favorites (
     id         BIGINT   NOT NULL AUTO_INCREMENT,
@@ -88,6 +72,23 @@ CREATE TABLE favorites (
         ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
+-- 2.5 ticket_types（定員区分／チケット種別）
+-- event_id列にはfk_ticket_types_eventの作成時にInnoDBが自動でインデックスを張るため、
+-- 別途CREATE INDEXは行わない（同一列への重複インデックスを避けるため）
+CREATE TABLE ticket_types (
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    event_id   BIGINT       NOT NULL,
+    name       VARCHAR(50)  NOT NULL,
+    capacity   INT          NOT NULL,
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT chk_ticket_types_capacity CHECK (capacity >= 1),
+    CONSTRAINT fk_ticket_types_event
+        FOREIGN KEY (event_id) REFERENCES events (id)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
 -- 2.6 event_comments（イベントコメント）
 CREATE TABLE event_comments (
     id         BIGINT       NOT NULL AUTO_INCREMENT,
@@ -97,15 +98,15 @@ CREATE TABLE event_comments (
     created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    CONSTRAINT fk_comments_event
+    CONSTRAINT fk_event_comments_event
         FOREIGN KEY (event_id) REFERENCES events (id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_comments_user
+    CONSTRAINT fk_event_comments_user
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE RESTRICT
 ) ENGINE = InnoDB;
 
-CREATE INDEX idx_comments_event_created ON event_comments (event_id, created_at);
+CREATE INDEX idx_event_comments_event_created ON event_comments (event_id, created_at);
 
 -- 2.3 applications（申込）
 -- (user_id, event_id)にUNIQUE制約は付けない：キャンセル後の再申込を許すため
@@ -131,6 +132,10 @@ CREATE TABLE applications (
     CONSTRAINT fk_applications_event
         FOREIGN KEY (event_id) REFERENCES events (id)
         ON DELETE CASCADE,
+    -- RESTRICTは「申込が残っている区分は削除できない」という業務ルール（テーブル定義書§4）のため。
+    -- events→ticket_types・events→applicationsは共にCASCADEだが、物理削除はAPI経由では発生しない
+    -- （イベント削除はソフトデリートのみ。EventService.delete()参照）ため、CASCADE同士の処理順序に
+    -- InnoDBの保証が無い点（子テーブル間の処理順は未規定）がこのRESTRICTと衝突することはない。
     CONSTRAINT fk_applications_ticket_type
         FOREIGN KEY (ticket_type_id) REFERENCES ticket_types (id)
         ON DELETE RESTRICT
