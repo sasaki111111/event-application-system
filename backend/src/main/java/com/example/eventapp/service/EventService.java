@@ -16,16 +16,13 @@ import com.example.eventapp.repository.EventRepository;
 import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。イベント一覧・詳細（D-1）、登録・編集・削除（D-2）の業務ロジック。
 @Service
 public class EventService {
-
-    // 区分の全置換を拒否する対象ステータス（この状態の申込が区分に残っていれば変更させない）
-    private static final Set<String> ACTIVE_STATUSES = Set.of(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
 
     private final EventRepository eventRepository;
     private final ApplicationRepository applicationRepository;
@@ -88,8 +85,8 @@ public class EventService {
                 request.extraQuestion()
         );
         Event saved = eventRepository.save(event);
-        saveTicketTypes(saved, request.ticketTypes());
-        return toDetail(saved);
+        List<TicketType> ticketTypes = saveTicketTypes(saved, request.ticketTypes());
+        return toDetail(saved, ticketTypes);
     }
 
     // API-07: イベント編集。指定IDが無ければ404
@@ -108,8 +105,8 @@ public class EventService {
                 request.category(),
                 request.extraQuestion()
         );
-        saveTicketTypes(event, request.ticketTypes());
-        return toDetail(event);
+        List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
+        return toDetail(event, ticketTypes);
     }
 
     // API-08: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
@@ -133,8 +130,9 @@ public class EventService {
     }
 
     // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
+    // 戻り値は更新後の区分一覧（呼び出し側がtoDetail()で再度クエリしなくて済むように）。
     // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（詳細設計書_v2.0.md§3.5参照）。
-    private void saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
+    private List<TicketType> saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
         if (requests == null) {
             // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
             // （テーブル定義書_v2.0.md§2.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
@@ -143,21 +141,27 @@ public class EventService {
             if (!existing.isEmpty()) {
                 event.syncCapacityFromTicketTypes(existing.stream().mapToInt(TicketType::getCapacity).sum());
             }
-            return;
+            return existing;
         }
-        if (applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(event.getId(), ACTIVE_STATUSES)) {
+        if (applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+                event.getId(), ApplicationStatus.ACTIVE_STATUSES)) {
             throw new BusinessException("区分に申込があるため変更できません");
         }
-        ticketTypeRepository.deleteByEvent_Id(event.getId());
+        try {
+            ticketTypeRepository.deleteByEvent_Id(event.getId());
+        } catch (DataIntegrityViolationException e) {
+            // 上のチェックは受付済・キャンセル待ちのみを見ているため、キャンセル済の申込が
+            // 区分を参照したまま残っているケースはここで拾う（fk_applications_ticket_typeはRESTRICT）
+            throw new BusinessException("区分に申込の履歴が残っているため変更できません");
+        }
         if (requests.isEmpty()) {
-            return;
+            return List.of();
         }
-        int totalCapacity = 0;
-        for (TicketTypeRequest request : requests) {
-            ticketTypeRepository.save(new TicketType(event, request.name(), request.capacity()));
-            totalCapacity += request.capacity();
-        }
-        event.syncCapacityFromTicketTypes(totalCapacity);
+        List<TicketType> saved = requests.stream()
+                .map(request -> ticketTypeRepository.save(new TicketType(event, request.name(), request.capacity())))
+                .toList();
+        event.syncCapacityFromTicketTypes(saved.stream().mapToInt(TicketType::getCapacity).sum());
+        return saved;
     }
 
     private Event findByIdOrThrow(Long id) {
@@ -182,8 +186,12 @@ public class EventService {
     }
 
     private EventDetailResponse toDetail(Event event) {
+        return toDetail(event, ticketTypeRepository.findByEvent_Id(event.getId()));
+    }
+
+    private EventDetailResponse toDetail(Event event, List<TicketType> ticketTypeEntities) {
         long acceptedCount = countAccepted(event.getId());
-        List<TicketTypeResponse> ticketTypes = ticketTypeRepository.findByEvent_Id(event.getId()).stream()
+        List<TicketTypeResponse> ticketTypes = ticketTypeEntities.stream()
                 .map(this::toTicketTypeResponse)
                 .toList();
         return new EventDetailResponse(

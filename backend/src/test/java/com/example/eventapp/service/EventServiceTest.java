@@ -3,6 +3,7 @@ package com.example.eventapp.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -23,9 +24,9 @@ import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 // 実行環境: サーバー側（JVM）。G-1: EventService.delete()の業務ロジック（要件定義書§8）のユニットテスト。
 // D-8時点で「削除はカスケードされる」と誤認していたが、実際は受付済の申込が残っていると削除を拒否する
@@ -50,6 +51,8 @@ class EventServiceTest {
         eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository);
         // toDetail()が呼ばれる大半のテストで空の区分一覧を返す既定値にしておく
         when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
+        // saveTicketTypes()が戻り値の区分一覧をcapacity合計に使うため、保存した引数をそのまま返す既定値にしておく
+        when(ticketTypeRepository.save(any(TicketType.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     // 正常系: 受付済の申込が無いイベントは削除（ソフトデリート）できる
@@ -189,8 +192,8 @@ class EventServiceTest {
         Event event = mock(Event.class);
         when(event.getId()).thenReturn(EVENT_ID);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(EVENT_ID, ACTIVE_STATUSES()))
-                .thenReturn(false);
+        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+                EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
         EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
 
         eventService.update(EVENT_ID, request);
@@ -206,8 +209,8 @@ class EventServiceTest {
         Event event = mock(Event.class);
         when(event.getId()).thenReturn(EVENT_ID);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(EVENT_ID, ACTIVE_STATUSES()))
-                .thenReturn(true);
+        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+                EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(true);
         EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
 
         assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
@@ -216,8 +219,23 @@ class EventServiceTest {
         verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
     }
 
-    private static Set<String> ACTIVE_STATUSES() {
-        return Set.of(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
+    // 異常系（機能追加：定員区分）: キャンセル済の申込が区分を参照したまま残っている場合、
+    // 事前チェック（受付済・キャンセル待ちのみ判定）をすり抜けてDB制約（RESTRICT）違反になるが、
+    // 500ではなく分かりやすいBusinessExceptionに変換する
+    @Test
+    void update_異常系_キャンセル済の申込が区分を参照していれば変更できない() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+                EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
+        doThrow(new DataIntegrityViolationException("FK制約違反"))
+                .when(ticketTypeRepository).deleteByEvent_Id(EVENT_ID);
+        EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
+
+        assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("区分に申込の履歴が残っているため変更できません");
     }
 
     private EventUpsertRequest upsertRequestWithTicketTypes(TicketTypeRequest... ticketTypes) {

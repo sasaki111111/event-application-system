@@ -13,7 +13,6 @@ import com.example.eventapp.repository.EventRepository;
 import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 // 最も古いキャンセル待ちを自動で「受付済」に繰り上げる。
 @Service
 public class ApplicationService {
-
-    private static final Set<String> ACTIVE_STATUSES = Set.of(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
 
     private final ApplicationRepository applicationRepository;
     private final EventRepository eventRepository;
@@ -48,7 +45,7 @@ public class ApplicationService {
         }
 
         boolean alreadyApplied = applicationRepository
-                .existsByUser_IdAndEvent_IdAndStatusIn(userId, eventId, ACTIVE_STATUSES);
+                .existsByUser_IdAndEvent_IdAndStatusIn(userId, eventId, ApplicationStatus.ACTIVE_STATUSES);
         if (alreadyApplied) {
             throw new BusinessException("すでに申し込み済みです");
         }
@@ -88,7 +85,7 @@ public class ApplicationService {
             throw new ForbiddenException("権限がありません");
         }
 
-        boolean cancellable = ACTIVE_STATUSES.contains(application.getStatus())
+        boolean cancellable = ApplicationStatus.ACTIVE_STATUSES.contains(application.getStatus())
                 && LocalDateTime.now().isBefore(application.getEvent().getStartAt());
         if (!cancellable) {
             throw new BusinessException("取消できません");
