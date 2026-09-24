@@ -143,8 +143,10 @@ public class EventService {
             }
             return existing;
         }
-        if (applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
-                event.getId(), ApplicationStatus.ACTIVE_STATUSES)) {
+        // ticketTypeが無い（区分の無いイベントだった時点で申し込まれた）申込も含めて判定する。
+        // そうしないと、区分の無いイベントに初めて区分を追加した際、既存の申込がどの区分にも
+        // 属さないまま区分単位の定員判定・繰り上げから漏れてしまう
+        if (applicationRepository.existsByEvent_IdAndStatusIn(event.getId(), ApplicationStatus.ACTIVE_STATUSES)) {
             throw new BusinessException("区分に申込があるため変更できません");
         }
         try {

@@ -16,9 +16,10 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // 区分単位の受付済数の集計（区分ありイベントのticketTypes[].acceptedCount、定員判定にも使用）
     long countByTicketType_IdAndStatus(Long ticketTypeId, String status);
 
-    // イベント保存時の区分全置換ロジックで、区分に紐づく申込（受付済・キャンセル待ち）が
-    // 残っていないかを確認するために使う（残っている場合は区分の変更を拒否する）
-    boolean existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(Long eventId, Collection<String> statuses);
+    // イベント保存時の区分全置換ロジックで、対象イベントに申込（受付済・キャンセル待ち）が
+    // 残っていないかを確認するために使う（残っている場合は区分の変更を拒否する）。
+    // ticketTypeが無い申込（区分の無いイベントだった時点の申込）も対象に含める
+    boolean existsByEvent_IdAndStatusIn(Long eventId, Collection<String> statuses);
 
     // D-3: 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);

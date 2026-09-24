@@ -81,8 +81,7 @@ public class ApplicationService {
 
     // 区分存在・必須チェック（要件定義書§8 E11・E12）。区分の無いイベントはticketTypeIdを無視する（API設計書§0）。
     private TicketType resolveTicketType(Long eventId, Long ticketTypeId) {
-        List<TicketType> ticketTypes = ticketTypeRepository.findByEvent_Id(eventId);
-        if (ticketTypes.isEmpty()) {
+        if (!ticketTypeRepository.existsByEvent_Id(eventId)) {
             return null;
         }
         if (ticketTypeId == null) {

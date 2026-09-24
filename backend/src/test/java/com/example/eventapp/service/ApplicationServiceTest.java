@@ -53,7 +53,7 @@ class ApplicationServiceTest {
         applicationService = new ApplicationService(
                 applicationRepository, eventRepository, userRepository, ticketTypeRepository);
         // 区分の無いイベントを既定値にしておく（区分ありのテストでは個別にstubし直す）
-        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(false);
     }
 
     private Event openEvent(int capacity) {
@@ -264,7 +264,7 @@ class ApplicationServiceTest {
         Event event = openEvent(999);
         TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
         when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
         when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(1L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
@@ -285,7 +285,7 @@ class ApplicationServiceTest {
         Event event = openEvent(999);
         TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
         when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
         when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(2L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
@@ -302,9 +302,8 @@ class ApplicationServiceTest {
     @Test
     void apply_異常系_区分があるのに未指定なら区分を選択してくださいで拒否される() {
         Event event = openEvent(999);
-        TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
 
@@ -318,9 +317,8 @@ class ApplicationServiceTest {
     @Test
     void apply_異常系_存在しない区分を指定すると指定された区分が見つかりませんで拒否される() {
         Event event = openEvent(999);
-        TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
         when(ticketTypeRepository.findByIdAndEvent_Id(99L, EVENT_ID)).thenReturn(Optional.empty());
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
