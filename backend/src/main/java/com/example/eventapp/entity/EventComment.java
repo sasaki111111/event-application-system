@@ -71,4 +71,9 @@ public class EventComment {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+
+    // 削除可否チェック（要件定義書§8 E10）で使う本人判定
+    public boolean isOwnedBy(Long userId) {
+        return user.getId().equals(userId);
+    }
 }

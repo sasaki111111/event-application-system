@@ -52,7 +52,7 @@ public class EventCommentService {
         EventComment comment = eventCommentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("コメントが見つかりません"));
 
-        boolean allowed = isAdmin || comment.getUser().getId().equals(userId);
+        boolean allowed = isAdmin || comment.isOwnedBy(userId);
         if (!allowed) {
             throw new ForbiddenException("削除できません");
         }
@@ -70,7 +70,7 @@ public class EventCommentService {
                 comment.getUser().getName(),
                 comment.getBody(),
                 comment.getCreatedAt(),
-                comment.getUser().getId().equals(currentUserId)
+                comment.isOwnedBy(currentUserId)
         );
     }
 }
