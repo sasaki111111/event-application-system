@@ -1,42 +1,93 @@
 <!-- 実行環境: ブラウザ側。my-applications.tsのテンプレート。 -->
-<h1>マイページ（申込一覧）</h1>
+<h1>マイページ</h1>
 
-@if (loading()) {
-  <p>読み込み中...</p>
-} @else if (errorMessage()) {
-  <p class="error">{{ errorMessage() }}</p>
-} @else if (applications().length === 0) {
-  <p>申込しているイベントはありません。</p>
-} @else {
-  <div class="card-grid">
-    @for (application of applications(); track application.id) {
-      <div class="card" [class.closed]="application.status === 'キャンセル済'">
-        <div class="card-header">
-          <a class="card-title" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a>
-          @if (application.status === '受付済') {
-            <span class="badge badge-positive">受付済</span>
-          } @else if (application.status === 'キャンセル待ち') {
-            <span class="badge badge-waiting">キャンセル待ち</span>
-          } @else {
-            <span class="badge badge-neutral">キャンセル済</span>
+<!-- 機能追加（お気に入りタブ） -->
+<div class="view-toggle">
+  <button type="button" class="btn-toggle" [class.active]="activeTab() === 'applications'" (click)="setTab('applications')">
+    申込一覧
+  </button>
+  <button type="button" class="btn-toggle" [class.active]="activeTab() === 'favorites'" (click)="setTab('favorites')">
+    お気に入り
+  </button>
+</div>
+
+@if (activeTab() === 'applications') {
+  @if (loading()) {
+    <p>読み込み中...</p>
+  } @else if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  } @else if (applications().length === 0) {
+    <p>申込しているイベントはありません。</p>
+  } @else {
+    <div class="card-grid">
+      @for (application of applications(); track application.id) {
+        <div class="card" [class.closed]="application.status === 'キャンセル済'">
+          <div class="card-header">
+            <a class="card-title" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a>
+            @if (application.status === '受付済') {
+              <span class="badge badge-positive">受付済</span>
+            } @else if (application.status === 'キャンセル待ち') {
+              <span class="badge badge-waiting">
+                キャンセル待ち @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
+              </span>
+            } @else {
+              <span class="badge badge-neutral">キャンセル済</span>
+            }
+          </div>
+
+          <dl class="card-meta">
+            <dt>開催日時</dt>
+            <dd>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+            <dt>申込日時</dt>
+            <dd>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+          </dl>
+
+          @if (application.status === '受付済' || application.status === 'キャンセル待ち') {
+            <div class="card-actions">
+              <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
+                {{ cancellingId() === application.id ? 'キャンセル中...' : 'キャンセル' }}
+              </button>
+            </div>
           }
         </div>
+      }
+    </div>
+  }
+} @else {
+  <!-- 機能追加（お気に入りタブ） -->
+  @if (favoritesLoading()) {
+    <p>読み込み中...</p>
+  } @else if (favoritesErrorMessage()) {
+    <p class="error">{{ favoritesErrorMessage() }}</p>
+  } @else if (favorites().length === 0) {
+    <p>お気に入り登録しているイベントはありません。</p>
+  } @else {
+    <div class="card-grid">
+      @for (favorite of favorites(); track favorite.id) {
+        <div class="card" [class.closed]="!favorite.open">
+          <div class="card-header">
+            <a class="card-title" [routerLink]="['/events', favorite.id]">{{ favorite.name }}</a>
+            @if (favorite.open) {
+              <span class="badge badge-positive">受付中</span>
+            } @else {
+              <span class="badge badge-neutral">受付終了</span>
+            }
+          </div>
 
-        <dl class="card-meta">
-          <dt>開催日時</dt>
-          <dd>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
-          <dt>申込日時</dt>
-          <dd>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
-        </dl>
+          <dl class="card-meta">
+            <dt>開催日時</dt>
+            <dd>{{ favorite.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+            <dt>場所</dt>
+            <dd>{{ favorite.place }}</dd>
+          </dl>
 
-        @if (application.status === '受付済' || application.status === 'キャンセル待ち') {
           <div class="card-actions">
-            <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
-              {{ cancellingId() === application.id ? 'キャンセル中...' : 'キャンセル' }}
+            <button type="button" class="btn-danger" (click)="unfavorite(favorite)" [disabled]="unfavoritingId() === favorite.id">
+              {{ unfavoritingId() === favorite.id ? '解除中...' : 'お気に入り解除' }}
             </button>
           </div>
-        }
-      </div>
-    }
-  </div>
+        </div>
+      }
+    </div>
+  }
 }

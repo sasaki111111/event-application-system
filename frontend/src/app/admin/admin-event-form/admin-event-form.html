@@ -42,10 +42,15 @@
 
     <div class="field">
       <label for="capacity">定員 <span class="required">*</span></label>
-      <input id="capacity" type="number" formControlName="capacity" min="1"
-        [class.invalid]="fieldError('capacity')" />
-      @if (fieldError('capacity')) {
-        <p class="field-error">{{ fieldError('capacity') }}</p>
+      @if (hasTicketTypes) {
+        <input id="capacity" type="number" [value]="ticketTypesCapacitySum" disabled />
+        <p class="note">区分の合計値が自動的に設定されます。</p>
+      } @else {
+        <input id="capacity" type="number" formControlName="capacity" min="1"
+          [class.invalid]="fieldError('capacity')" />
+        @if (fieldError('capacity')) {
+          <p class="field-error">{{ fieldError('capacity') }}</p>
+        }
       }
     </div>
 
@@ -64,6 +69,43 @@
       @if (fieldError('description')) {
         <p class="field-error">{{ fieldError('description') }}</p>
       }
+    </div>
+
+    <!-- 機能追加（イベント情報の拡張） -->
+    <div class="field">
+      <label for="organizerName">主催者名</label>
+      <input id="organizerName" type="text" formControlName="organizerName" maxlength="100" />
+    </div>
+
+    <div class="field">
+      <label for="imageUrl">画像URL</label>
+      <input id="imageUrl" type="text" formControlName="imageUrl" maxlength="500" />
+    </div>
+
+    <div class="field">
+      <label for="category">カテゴリ</label>
+      <input id="category" type="text" formControlName="category" maxlength="50" />
+    </div>
+
+    <div class="field">
+      <label for="extraQuestion">申込時アンケート文言</label>
+      <input id="extraQuestion" type="text" formControlName="extraQuestion" maxlength="200"
+        placeholder="例: アレルギーの有無をご記入ください" />
+    </div>
+
+    <!-- 機能追加（定員区分） -->
+    <div class="field">
+      <label>参加区分（任意、複数可）</label>
+      <div formArrayName="ticketTypes" class="ticket-type-list">
+        @for (group of ticketTypesArray.controls; track group; let i = $index) {
+          <div class="ticket-type-row" [formGroupName]="i">
+            <input type="text" formControlName="name" placeholder="区分名（例: 一般枠）" maxlength="50" />
+            <input type="number" formControlName="capacity" placeholder="定員" min="1" />
+            <button type="button" class="btn-danger btn-sm" (click)="removeTicketType(i)">削除</button>
+          </div>
+        }
+      </div>
+      <button type="button" class="btn-link" (click)="addTicketType()">＋ 区分を追加</button>
     </div>
 
     <button type="submit" [disabled]="saving()">{{ saving() ? '保存中...' : '保存' }}</button>

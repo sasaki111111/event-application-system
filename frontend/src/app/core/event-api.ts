@@ -13,11 +13,33 @@ export interface EventSummary {
   applicationDeadline: string;
   acceptedCount: number;
   open: boolean;
+  // 機能追加（イベント情報の拡張）
+  organizerName: string | null;
+  imageUrl: string | null;
+  category: string | null;
+}
+
+// 機能追加（定員区分）: イベント詳細のticketTypes[]1件分（backendのTicketTypeResponseと対応）
+export interface TicketType {
+  id: number;
+  name: string;
+  capacity: number;
+  acceptedCount: number;
+  remaining: number;
 }
 
 export interface EventDetail extends EventSummary {
   description: string;
   remaining: number;
+  // 機能追加（イベント情報の拡張・定員区分）
+  extraQuestion: string | null;
+  ticketTypes: TicketType[];
+}
+
+// 定員区分の登録・編集時の入力1件分（backendのTicketTypeRequestと対応、機能追加）
+export interface TicketTypeRequest {
+  name: string;
+  capacity: number;
 }
 
 // API-06・API-07のリクエストボディ（backendのEventUpsertRequestと対応）
@@ -28,6 +50,12 @@ export interface EventUpsertRequest {
   capacity: number;
   applicationDeadline: string;
   description?: string;
+  // 機能追加（イベント情報の拡張・定員区分）
+  organizerName?: string;
+  imageUrl?: string;
+  category?: string;
+  extraQuestion?: string;
+  ticketTypes?: TicketTypeRequest[];
 }
 
 // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧1件分（backendのDeletedEventResponseと対応）

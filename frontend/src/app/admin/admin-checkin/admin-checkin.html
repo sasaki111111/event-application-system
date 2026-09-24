@@ -1,0 +1,56 @@
+<!-- 実行環境: ブラウザ側。admin-checkin.tsのテンプレート。 -->
+<a class="btn-link" routerLink="/admin/events">← イベント管理に戻る</a>
+
+<h1>当日受付</h1>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (attendees().length === 0) {
+  <p>申込者はいません。</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>申込者</th>
+        <th>区分</th>
+        <th>ステータス</th>
+        <th>チェックイン</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (attendee of attendees(); track attendee.applicationId) {
+        <tr>
+          <td>{{ attendee.userName }}</td>
+          <td>{{ attendee.ticketTypeName ?? '-' }}</td>
+          <td>
+            @if (attendee.status === '受付済') {
+              <span class="badge badge-positive">受付済</span>
+            } @else if (attendee.status === 'キャンセル待ち') {
+              <span class="badge badge-waiting">キャンセル待ち</span>
+            } @else {
+              <span class="badge badge-neutral">キャンセル済</span>
+            }
+          </td>
+          <td>
+            @if (attendee.checkedInAt) {
+              {{ attendee.checkedInAt | date: 'yyyy/MM/dd HH:mm' }}
+            } @else {
+              未チェックイン
+            }
+          </td>
+          <td>
+            @if (attendee.status === '受付済' && !attendee.checkedInAt) {
+              <button type="button" class="btn-accent btn-sm"
+                (click)="checkIn(attendee)" [disabled]="checkingInId() === attendee.applicationId">
+                {{ checkingInId() === attendee.applicationId ? '処理中...' : 'チェックイン' }}
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

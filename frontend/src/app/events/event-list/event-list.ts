@@ -1,11 +1,21 @@
 // 実行環境: ブラウザ側。SC-02の一覧部分（イベント一覧）。
 // 各行を展開すると詳細（API-02）を取得して表示し、その場で申込（API-03）もできる（機能追加）。
+// 機能追加: 一覧表示／開催カレンダー表示の切替。
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail, EventSummary } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
+import { FavoriteApiService } from '../../core/favorite-api';
 import { DummyUserStore } from '../../core/dummy-user-store';
+
+// カレンダー1マス分（当月外の日も前後の穴埋めとして含む）
+interface CalendarDay {
+  date: Date;
+  inMonth: boolean;
+  isToday: boolean;
+  events: EventSummary[];
+}
 
 @Component({
   selector: 'app-event-list',
@@ -26,9 +36,65 @@ export class EventList implements OnInit {
   protected readonly applying = signal(false);
   protected readonly applyErrorMessage = signal<string | null>(null);
 
+  // 機能追加（定員区分・アンケート）: 展開中カードの申込フォーム入力状態
+  protected readonly selectedTicketTypeId = signal<number | null>(null);
+  protected readonly extraAnswer = signal('');
+
+  // 機能追加（開催カレンダー表示）: 表示モードの切替と、表示中の月
+  protected readonly viewMode = signal<'list' | 'calendar'>('list');
+  protected readonly calendarMonth = signal(this.startOfMonth(new Date()));
+
+  protected readonly calendarMonthLabel = computed(() => {
+    const month = this.calendarMonth();
+    return `${month.getFullYear()}年${month.getMonth() + 1}月`;
+  });
+
+  // 月の1日が入る週の日曜から、月の末日が入る週の土曜までを6週分並べる（常に42マス、レイアウトが安定する）
+  protected readonly calendarWeeks = computed<CalendarDay[][]>(() => {
+    const month = this.calendarMonth();
+    const events = this.events();
+    const today = new Date();
+    const todayKey = this.dateKey(today);
+
+    const eventsByDate = new Map<string, EventSummary[]>();
+    for (const event of events) {
+      const key = event.startAt.slice(0, 10);
+      const list = eventsByDate.get(key);
+      if (list) {
+        list.push(event);
+      } else {
+        eventsByDate.set(key, [event]);
+      }
+    }
+
+    const firstCell = new Date(month.getFullYear(), month.getMonth(), 1 - month.getDay());
+    const days: CalendarDay[] = [];
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(firstCell.getFullYear(), firstCell.getMonth(), firstCell.getDate() + i);
+      const key = this.dateKey(date);
+      days.push({
+        date,
+        inMonth: date.getMonth() === month.getMonth(),
+        isToday: key === todayKey,
+        events: eventsByDate.get(key) ?? [],
+      });
+    }
+
+    const weeks: CalendarDay[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      weeks.push(days.slice(i, i + 7));
+    }
+    return weeks;
+  });
+
+  // 機能追加（お気に入り）: お気に入り登録済みのイベントID一覧
+  protected readonly favoriteEventIds = signal<Set<number>>(new Set());
+  protected readonly favoriteBusyId = signal<number | null>(null);
+
   constructor(
     private readonly eventApi: EventApiService,
     private readonly applicationApi: ApplicationApiService,
+    private readonly favoriteApi: FavoriteApiService,
     private readonly router: Router,
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
@@ -49,6 +115,41 @@ export class EventList implements OnInit {
         this.loading.set(false);
       },
     });
+
+    // お気に入りは一般ユーザー・管理者の両方が使える（要件定義書§4）
+    this.favoriteApi.myFavorites().subscribe({
+      next: (favorites) => this.favoriteEventIds.set(new Set(favorites.map((f) => f.id))),
+      error: () => {
+        // お気に入り一覧の取得失敗は一覧表示自体をブロックしない（ボタンが未反映のままになるだけ）
+      },
+    });
+  }
+
+  // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）なので、現在の表示状態で単純に出し分ける
+  protected toggleFavorite(eventId: number): void {
+    const wasFavorited = this.favoriteEventIds().has(eventId);
+    this.favoriteBusyId.set(eventId);
+
+    const onSuccess = (favorited: boolean) => {
+      const next = new Set(this.favoriteEventIds());
+      if (favorited) {
+        next.add(eventId);
+      } else {
+        next.delete(eventId);
+      }
+      this.favoriteEventIds.set(next);
+      this.favoriteBusyId.set(null);
+    };
+    const onError = (err: { error?: { message?: string } }) => {
+      this.favoriteBusyId.set(null);
+      alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
+    };
+
+    if (wasFavorited) {
+      this.favoriteApi.remove(eventId).subscribe({ next: () => onSuccess(false), error: onError });
+    } else {
+      this.favoriteApi.add(eventId).subscribe({ next: () => onSuccess(true), error: onError });
+    }
   }
 
   // 行の「▼／▲」を押した時：もう一度押すと閉じる。開く時は詳細APIを呼んで取得する
@@ -62,6 +163,8 @@ export class EventList implements OnInit {
     this.expandedDetail.set(null);
     this.expandedError.set(null);
     this.applyErrorMessage.set(null);
+    this.selectedTicketTypeId.set(null);
+    this.extraAnswer.set('');
     this.expandedLoading.set(true);
 
     this.eventApi.detail(eventId).subscribe({
@@ -76,12 +179,48 @@ export class EventList implements OnInit {
     });
   }
 
+  protected setViewMode(mode: 'list' | 'calendar'): void {
+    this.viewMode.set(mode);
+  }
+
+  protected previousMonth(): void {
+    const month = this.calendarMonth();
+    this.calendarMonth.set(new Date(month.getFullYear(), month.getMonth() - 1, 1));
+  }
+
+  protected nextMonth(): void {
+    const month = this.calendarMonth();
+    this.calendarMonth.set(new Date(month.getFullYear(), month.getMonth() + 1, 1));
+  }
+
+  private startOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  private dateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  protected onTicketTypeChange(value: string): void {
+    this.selectedTicketTypeId.set(value ? Number(value) : null);
+  }
+
+  protected onExtraAnswerInput(value: string): void {
+    this.extraAnswer.set(value);
+  }
+
   // 展開部分の「申し込む」。API-03を呼び、成功したら申込完了画面へ画面遷移する
   protected apply(eventId: number): void {
     this.applyErrorMessage.set(null);
     this.applying.set(true);
 
-    this.applicationApi.apply(eventId).subscribe({
+    const ticketTypeId = this.selectedTicketTypeId() ?? undefined;
+    const extraAnswer = this.extraAnswer().trim() || undefined;
+
+    this.applicationApi.apply(eventId, ticketTypeId, extraAnswer).subscribe({
       next: (application) => {
         this.applying.set(false);
         this.router.navigate(['/events', eventId, 'done'], { state: { application } });

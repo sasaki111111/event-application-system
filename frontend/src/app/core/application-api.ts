@@ -7,6 +7,8 @@ import { Observable } from 'rxjs';
 export interface ApplicationResponse {
   id: number;
   eventId: number;
+  // 機能追加（定員区分）: 区分の無いイベントへの申込はNULL
+  ticketTypeId: number | null;
   userId: number;
   status: string;
   appliedAt: string;
@@ -20,6 +22,8 @@ export interface MyApplication {
   startAt: string;
   status: string;
   appliedAt: string;
+  // 機能追加（定員区分）: キャンセル待ちの順位（1始まり）。キャンセル待ち以外はNULL
+  waitlistRank: number | null;
 }
 
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -28,9 +32,14 @@ const API_BASE_URL = 'http://localhost:8080/api';
 export class ApplicationApiService {
   constructor(private readonly http: HttpClient) {}
 
-  // API-03（一般以上、本人のuserIdに紐付け。userIdはX-User-Idヘッダから自動で決まる）
-  apply(eventId: number): Observable<ApplicationResponse> {
-    return this.http.post<ApplicationResponse>(`${API_BASE_URL}/applications`, { eventId });
+  // API-03（一般以上、本人のuserIdに紐付け。userIdはX-User-Idヘッダから自動で決まる）。
+  // ticketTypeId・extraAnswerは区分・アンケートがあるイベントの場合のみ指定する（機能追加）
+  apply(eventId: number, ticketTypeId?: number, extraAnswer?: string): Observable<ApplicationResponse> {
+    return this.http.post<ApplicationResponse>(`${API_BASE_URL}/applications`, {
+      eventId,
+      ticketTypeId,
+      extraAnswer,
+    });
   }
 
   // API-04（一般以上、本人分のみ・申込日時の降順）

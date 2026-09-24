@@ -13,6 +13,7 @@ import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
 import { AdminReport } from './admin/admin-report/admin-report';
 import { AdminUserList } from './admin/admin-user-list/admin-user-list';
 import { AdminDeletedEvents } from './admin/admin-deleted-events/admin-deleted-events';
+import { AdminCheckin } from './admin/admin-checkin/admin-checkin';
 import { NotFound } from './not-found/not-found';
 import { authGuard } from './core/auth-guard';
 import { adminGuard } from './core/admin-guard';
@@ -33,6 +34,8 @@ export const routes: Routes = [
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/deleted', component: AdminDeletedEvents, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
+  // 機能追加（当日受付）
+  { path: 'admin/events/:id/checkin', component: AdminCheckin, canActivate: [authGuard, adminGuard] },
   { path: 'admin/reports', component: AdminReport, canActivate: [authGuard, adminGuard] },
   { path: 'admin/users', component: AdminUserList, canActivate: [authGuard, adminGuard] },
   // 画面遷移図§3「未定義URLにアクセス→404」（機能追加）。ワイルドカードは必ず配列の最後に置く

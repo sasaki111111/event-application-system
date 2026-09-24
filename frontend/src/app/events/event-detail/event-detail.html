@@ -6,8 +6,34 @@
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else if (event(); as e) {
-  <h1>{{ e.name }}</h1>
+  <div class="title-row">
+    <h1>{{ e.name }}</h1>
+    <!-- 機能追加（お気に入り） -->
+    <button
+      type="button"
+      class="btn-favorite"
+      [class.active]="isFavorited()"
+      [disabled]="favoriteBusy()"
+      (click)="toggleFavorite()"
+      [title]="isFavorited() ? 'お気に入り解除' : 'お気に入り登録'"
+    >
+      {{ isFavorited() ? '★ お気に入り済み' : '☆ お気に入りに追加' }}
+    </button>
+  </div>
+
+  @if (e.imageUrl) {
+    <img class="event-image" [src]="e.imageUrl" [alt]="e.name" />
+  }
+
   <dl>
+    @if (e.organizerName) {
+      <dt>主催者</dt>
+      <dd>{{ e.organizerName }}</dd>
+    }
+    @if (e.category) {
+      <dt>カテゴリ</dt>
+      <dd>{{ e.category }}</dd>
+    }
     <dt>開催日時</dt>
     <dd>{{ e.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
 
@@ -30,6 +56,37 @@
     <dd class="full-row">{{ e.description }}</dd>
   </dl>
 
+  @if (!isAdmin && e.open) {
+    <!-- 機能追加（定員区分）: 区分があるイベントのみ選択欄を表示する -->
+    @if (e.ticketTypes.length > 0) {
+      <div class="field">
+        <label for="ticketType">参加区分 <span class="required">*</span></label>
+        <select id="ticketType" (change)="onTicketTypeChange($any($event.target).value)">
+          <option value="">選択してください</option>
+          @for (ticketType of e.ticketTypes; track ticketType.id) {
+            <option [value]="ticketType.id">
+              {{ ticketType.name }}（残り{{ ticketType.remaining }}/{{ ticketType.capacity }}）
+            </option>
+          }
+        </select>
+      </div>
+    }
+
+    <!-- 機能追加（申込時アンケート）: イベントにextraQuestionが設定されている場合のみ表示 -->
+    @if (e.extraQuestion) {
+      <div class="field">
+        <label for="extraAnswer">{{ e.extraQuestion }}</label>
+        <textarea
+          id="extraAnswer"
+          rows="3"
+          maxlength="500"
+          [value]="extraAnswer()"
+          (input)="onExtraAnswerInput($any($event.target).value)"
+        ></textarea>
+      </div>
+    }
+  }
+
   @if (isAdmin) {
     <!-- 要件定義書E7: 管理者は申込できない -->
     <p class="note">管理者アカウントでは申込できません。</p>
@@ -47,4 +104,45 @@
   @if (applyErrorMessage()) {
     <p class="error">{{ applyErrorMessage() }}</p>
   }
+
+  <!-- 機能追加（イベントコメント）: 開催前後を問わず投稿可能 -->
+  <section class="comments">
+    <h2>コメント</h2>
+
+    <div class="field">
+      <label for="commentBody">コメントを投稿する</label>
+      <textarea
+        id="commentBody"
+        rows="3"
+        maxlength="500"
+        [value]="commentBody()"
+        (input)="onCommentBodyInput($any($event.target).value)"
+      ></textarea>
+      <button type="button" (click)="postComment()" [disabled]="postingComment() || !commentBody().trim()">
+        {{ postingComment() ? '投稿中...' : '投稿' }}
+      </button>
+      @if (commentErrorMessage()) {
+        <p class="error">{{ commentErrorMessage() }}</p>
+      }
+    </div>
+
+    @if (comments().length === 0) {
+      <p class="note">まだコメントはありません。</p>
+    } @else {
+      <ul class="comment-list">
+        @for (comment of comments(); track comment.id) {
+          <li class="comment-item">
+            <div class="comment-header">
+              <span class="comment-author">{{ comment.userName }}</span>
+              <span class="comment-date">{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+              @if (comment.mine || isAdmin) {
+                <button type="button" class="btn-link btn-sm" (click)="deleteComment(comment)">削除</button>
+              }
+            </div>
+            <p class="comment-body">{{ comment.body }}</p>
+          </li>
+        }
+      </ul>
+    }
+  </section>
 }

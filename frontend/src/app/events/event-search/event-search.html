@@ -25,6 +25,15 @@
       <label for="dateTo">開催日（まで）</label>
       <input id="dateTo" type="date" [value]="dateTo()" (input)="onDateToInput($any($event.target).value)" />
     </div>
+    <div class="field">
+      <label for="category">カテゴリ</label>
+      <select id="category" [value]="category()" (change)="onCategoryInput($any($event.target).value)">
+        <option value="">すべて</option>
+        @for (option of categoryOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+    </div>
     <button type="button" class="btn-link" (click)="clearFilters()">条件をクリア</button>
   </div>
 
@@ -49,6 +58,10 @@
           <dd>{{ event.startAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
           <dt>場所</dt>
           <dd>{{ event.place }}</dd>
+          @if (event.category) {
+            <dt>カテゴリ</dt>
+            <dd>{{ event.category }}</dd>
+          }
           <dt>申込状況</dt>
           <dd>{{ event.acceptedCount }} / {{ event.capacity }}</dd>
         </dl>
