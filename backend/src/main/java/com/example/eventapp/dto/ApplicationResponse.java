@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record ApplicationResponse(
         Long id,
         Long eventId,
+        Long ticketTypeId,
         Long userId,
         String status,
         LocalDateTime appliedAt

@@ -192,7 +192,7 @@ class EventServiceTest {
         Event event = mock(Event.class);
         when(event.getId()).thenReturn(EVENT_ID);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+        when(applicationRepository.existsByEvent_IdAndStatusIn(
                 EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
         EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
 
@@ -209,7 +209,7 @@ class EventServiceTest {
         Event event = mock(Event.class);
         when(event.getId()).thenReturn(EVENT_ID);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+        when(applicationRepository.existsByEvent_IdAndStatusIn(
                 EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(true);
         EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
 
@@ -227,7 +227,7 @@ class EventServiceTest {
         Event event = mock(Event.class);
         when(event.getId()).thenReturn(EVENT_ID);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
-        when(applicationRepository.existsByEvent_IdAndTicketTypeIsNotNullAndStatusIn(
+        when(applicationRepository.existsByEvent_IdAndStatusIn(
                 EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
         doThrow(new DataIntegrityViolationException("FK制約違反"))
                 .when(ticketTypeRepository).deleteByEvent_Id(EVENT_ID);
@@ -236,6 +236,25 @@ class EventServiceTest {
         assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("区分に申込の履歴が残っているため変更できません");
+    }
+
+    // 異常系（機能追加：定員区分）: 区分の無いイベントに初めて区分を追加しようとしても、
+    // 既存の申込（ticketTypeがNULL）が受付済・キャンセル待ちで残っていれば変更を拒否する。
+    // これを許すと、既存の申込がどの区分にも属さないまま区分単位の定員判定・繰り上げから
+    // 漏れてしまう（code-review PR#4で指摘）
+    @Test
+    void update_異常系_区分の無いイベントでも申込が残っていれば区分を追加できない() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(applicationRepository.existsByEvent_IdAndStatusIn(EVENT_ID, ApplicationStatus.ACTIVE_STATUSES))
+                .thenReturn(true);
+        EventUpsertRequest request = upsertRequestWithTicketTypes(new TicketTypeRequest("一般枠", 20));
+
+        assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("区分に申込があるため変更できません");
+        verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
     }
 
     private EventUpsertRequest upsertRequestWithTicketTypes(TicketTypeRequest... ticketTypes) {
