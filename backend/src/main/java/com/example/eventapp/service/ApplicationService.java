@@ -4,6 +4,8 @@ import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.AttendeeResponse;
+import com.example.eventapp.dto.CheckInResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
@@ -100,6 +102,41 @@ public class ApplicationService {
                     .findFirstByEvent_IdAndStatusOrderByAppliedAtAsc(eventId, ApplicationStatus.WAITLISTED)
                     .ifPresent(Application::promote);
         }
+    }
+
+    // API-18: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
+    @Transactional(readOnly = true)
+    public List<AttendeeResponse> listAttendees(Long eventId) {
+        eventRepository.findByIdAndDeletedAtIsNull(eventId)
+                .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
+
+        return applicationRepository.findByEvent_IdOrderByAppliedAtAsc(eventId).stream()
+                .map(this::toAttendeeResponse)
+                .toList();
+    }
+
+    // API-19: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
+    @Transactional
+    public CheckInResponse checkIn(Long applicationId) {
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new NotFoundException("申込が見つかりません"));
+
+        if (!ApplicationStatus.ACCEPTED.equals(application.getStatus())) {
+            throw new BusinessException("受付済の申込のみチェックインできます");
+        }
+        application.checkIn();
+
+        return new CheckInResponse(application.getId(), application.getCheckedInAt());
+    }
+
+    private AttendeeResponse toAttendeeResponse(Application application) {
+        return new AttendeeResponse(
+                application.getId(),
+                application.getUser().getName(),
+                application.getTicketType() != null ? application.getTicketType().getName() : null,
+                application.getStatus(),
+                application.getCheckedInAt()
+        );
     }
 
     private MyApplicationResponse toMyApplicationResponse(Application application) {
