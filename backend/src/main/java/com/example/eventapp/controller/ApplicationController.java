@@ -43,7 +43,7 @@ public class ApplicationController {
         requireGeneral();
         validate(request);
         Long userId = authContext.getCurrentUser().userId();
-        return applicationService.apply(userId, request.eventId());
+        return applicationService.apply(userId, request.eventId(), request.ticketTypeId(), request.extraAnswer());
     }
 
     // API-04 GET /api/my/applications（一般以上、本人分のみ）

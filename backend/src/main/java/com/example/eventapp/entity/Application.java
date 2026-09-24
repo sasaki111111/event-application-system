@@ -41,6 +41,10 @@ public class Application {
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
+    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 API-03）
+    @Column(name = "extra_answer", length = 500)
+    private String extraAnswer;
+
     // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
     // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
     // 本番のschema.sql同様のDEFAULTを持たせるためのもの（本番はddl-auto: noneのため影響しない）
@@ -63,9 +67,16 @@ public class Application {
 
     // 機能追加（キャンセル待ち）: 定員超過時は最初から「キャンセル待ち」で作る
     public Application(User user, Event event, String status) {
+        this(user, event, null, status, null);
+    }
+
+    // 機能追加（定員区分）: 区分単位の申込用。ticketTypeは区分の無いイベントへの申込ではNULL
+    public Application(User user, Event event, TicketType ticketType, String status, String extraAnswer) {
         this.user = user;
         this.event = event;
+        this.ticketType = ticketType;
         this.status = status;
+        this.extraAnswer = extraAnswer;
         this.appliedAt = LocalDateTime.now();
     }
 
@@ -91,6 +102,10 @@ public class Application {
 
     public LocalDateTime getAppliedAt() {
         return appliedAt;
+    }
+
+    public String getExtraAnswer() {
+        return extraAnswer;
     }
 
     // D-5: 申込キャンセル（API-05）用
