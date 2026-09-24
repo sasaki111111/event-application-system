@@ -2,10 +2,12 @@ package com.example.eventapp.controller;
 
 import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.common.exception.ForbiddenException;
+import com.example.eventapp.dto.AttendeeResponse;
 import com.example.eventapp.dto.DeletedEventResponse;
 import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
+import com.example.eventapp.service.ApplicationService;
 import com.example.eventapp.service.EventService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -29,11 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class EventController {
 
     private final EventService eventService;
+    private final ApplicationService applicationService;
     private final AuthContext authContext;
     private final Validator validator;
 
-    public EventController(EventService eventService, AuthContext authContext, Validator validator) {
+    public EventController(EventService eventService, ApplicationService applicationService,
+            AuthContext authContext, Validator validator) {
         this.eventService = eventService;
+        this.applicationService = applicationService;
         this.authContext = authContext;
         this.validator = validator;
     }
@@ -88,6 +93,13 @@ public class EventController {
     public EventDetailResponse restore(@PathVariable Long id) {
         requireAdmin();
         return eventService.restore(id);
+    }
+
+    // API-18 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
+    @GetMapping("/api/events/{id}/attendees")
+    public List<AttendeeResponse> attendees(@PathVariable Long id) {
+        requireAdmin();
+        return applicationService.listAttendees(id);
     }
 
     private void requireAdmin() {

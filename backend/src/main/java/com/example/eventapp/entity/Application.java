@@ -41,6 +41,10 @@ public class Application {
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
+    // 当日受付でチェックインされた日時。NULL＝未チェックイン（機能追加）
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
+
     // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
     // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
     // 本番のschema.sql同様のDEFAULTを持たせるためのもの（本番はddl-auto: noneのため影響しない）
@@ -93,6 +97,10 @@ public class Application {
         return appliedAt;
     }
 
+    public LocalDateTime getCheckedInAt() {
+        return checkedInAt;
+    }
+
     // D-5: 申込キャンセル（API-05）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
@@ -101,5 +109,10 @@ public class Application {
     // 機能追加（キャンセル待ちの繰り上げ）: 受付済の枠が空いた時にキャンセル待ちから昇格させる
     public void promote() {
         this.status = ApplicationStatus.ACCEPTED;
+    }
+
+    // 機能追加（当日受付）: チェックイン可否チェック（要件定義書§8 E8）はService側で行う
+    public void checkIn() {
+        this.checkedInAt = LocalDateTime.now();
     }
 }
