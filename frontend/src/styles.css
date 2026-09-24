@@ -255,6 +255,20 @@ dd.full-row {
   white-space: pre-line;
 }
 
+/* タブ・表示モードの切替ボタン共通部品（機能追加）。イベント一覧の一覧／カレンダー切替、
+   マイページの申込一覧／お気に入り切替で使う */
+.view-toggle {
+  display: flex;
+  gap: 0.4em;
+  margin-bottom: var(--spacing-3);
+}
+
+.view-toggle button.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
 /* カード型一覧の共通部品（機能追加：見た目を華やかに）。イベント一覧・検索・マイページ・
    管理者のイベント管理で共通して使う。ページ側は.card-gridで並べ、中身は.cardで囲む */
 .card-grid {

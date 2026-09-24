@@ -12,3 +12,32 @@ form {
   flex-direction: column;
   gap: 0.3em;
 }
+
+/* 機能追加（定員区分） */
+.ticket-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ticket-type-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.ticket-type-row {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+}
+
+.ticket-type-row input[type='text'] {
+  flex: 2;
+}
+
+.ticket-type-row input[type='number'] {
+  flex: 1;
+  min-width: 5em;
+}

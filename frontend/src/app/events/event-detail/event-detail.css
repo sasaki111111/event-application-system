@@ -4,3 +4,99 @@ dl {
   grid-template-columns: 8em 1fr;
   gap: 0.3em 1em;
 }
+
+/* 機能追加（イベント情報の拡張）: イベント画像 */
+.event-image {
+  display: block;
+  max-width: 100%;
+  max-height: 20em;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 1em;
+}
+
+.field {
+  margin-bottom: 1em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+/* 機能追加（お気に入り） */
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  flex-wrap: wrap;
+}
+
+.title-row h1 {
+  margin: 0;
+}
+
+.btn-favorite {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.btn-favorite:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-favorite.active {
+  color: var(--color-accent-hover);
+  border-color: var(--color-accent);
+}
+
+/* 機能追加（イベントコメント） */
+.comments {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--color-border);
+}
+
+.comment-list {
+  list-style: none;
+  margin: 1em 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+}
+
+.comment-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.8em 1em;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin-bottom: 0.3em;
+}
+
+.comment-author {
+  font-weight: 700;
+}
+
+.comment-date {
+  color: var(--color-text-muted);
+  font-size: 0.85em;
+  flex: 1;
+}
+
+.comment-body {
+  margin: 0;
+  white-space: pre-line;
+}

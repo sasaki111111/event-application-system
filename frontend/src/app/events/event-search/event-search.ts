@@ -20,11 +20,21 @@ export class EventSearch implements OnInit {
   protected readonly keyword = signal('');
   protected readonly dateFrom = signal('');
   protected readonly dateTo = signal('');
+  // 機能追加: カテゴリ絞り込み（フロント側のみ、選択肢は取得済みイベントのカテゴリ値から生成）
+  protected readonly category = signal('');
+
+  protected readonly categoryOptions = computed(() => {
+    const categories = this.events()
+      .map((event) => event.category)
+      .filter((category): category is string => !!category);
+    return Array.from(new Set(categories)).sort();
+  });
 
   protected readonly filteredEvents = computed(() => {
     const keyword = this.keyword().trim().toLowerCase();
     const from = this.dateFrom();
     const to = this.dateTo();
+    const category = this.category();
 
     return this.events().filter((event) => {
       if (keyword && !event.name.toLowerCase().includes(keyword) && !event.place.toLowerCase().includes(keyword)) {
@@ -35,6 +45,9 @@ export class EventSearch implements OnInit {
         return false;
       }
       if (to && startDate > to) {
+        return false;
+      }
+      if (category && event.category !== category) {
         return false;
       }
       return true;
@@ -68,9 +81,14 @@ export class EventSearch implements OnInit {
     this.dateTo.set(value);
   }
 
+  protected onCategoryInput(value: string): void {
+    this.category.set(value);
+  }
+
   protected clearFilters(): void {
     this.keyword.set('');
     this.dateFrom.set('');
     this.dateTo.set('');
+    this.category.set('');
   }
 }

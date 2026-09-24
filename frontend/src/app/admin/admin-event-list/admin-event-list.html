@@ -31,6 +31,7 @@
         </dl>
 
         <div class="card-actions">
+          <a class="btn-link btn-sm" [routerLink]="['/admin/events', event.id, 'checkin']">受付</a>
           <button type="button" class="btn-danger" (click)="deleteEvent(event)">削除</button>
         </div>
       </div>

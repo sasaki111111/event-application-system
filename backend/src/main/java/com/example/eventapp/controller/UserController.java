@@ -1,7 +1,6 @@
 package com.example.eventapp.controller;
 
 import com.example.eventapp.common.AuthContext;
-import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.dto.LoginRequest;
 import com.example.eventapp.dto.UserRegisterRequest;
 import com.example.eventapp.dto.UserResponse;
@@ -45,13 +44,7 @@ public class UserController {
     // GET /api/users（管理者のみ。マスタ確認用の一覧）
     @GetMapping("/api/users")
     public List<UserResponse> list() {
-        requireAdmin();
+        authContext.requireAdmin();
         return userService.list();
-    }
-
-    private void requireAdmin() {
-        if (!authContext.getCurrentUser().isAdmin()) {
-            throw new ForbiddenException("権限がありません");
-        }
     }
 }

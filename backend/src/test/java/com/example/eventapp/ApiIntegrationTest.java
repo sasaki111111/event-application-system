@@ -151,7 +151,7 @@ class ApiIntegrationTest {
     @Test
     void api03_一般ユーザーは申込できる() {
         Event event = openEvent();
-        ApplicationCreateRequest request = new ApplicationCreateRequest(event.getId());
+        ApplicationCreateRequest request = new ApplicationCreateRequest(event.getId(), null, null);
 
         ResponseEntity<ApplicationResponse> response = restTemplate.exchange(
                 url("/api/applications"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),
@@ -165,7 +165,7 @@ class ApiIntegrationTest {
     @Test
     void api04_自分の申込一覧取得() {
         Event event = openEvent();
-        ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(event.getId());
+        ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(event.getId(), null, null);
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(applyRequest, authHeaders(GENERAL_USER_ID)), ApplicationResponse.class);
 
@@ -184,7 +184,7 @@ class ApiIntegrationTest {
         Event event = openEvent();
         ResponseEntity<ApplicationResponse> applyResponse = restTemplate.exchange(
                 url("/api/applications"), HttpMethod.POST,
-                new HttpEntity<>(new ApplicationCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
+                new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(GENERAL_USER_ID)),
                 ApplicationResponse.class);
         Long applicationId = applyResponse.getBody().id();
 

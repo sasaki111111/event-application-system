@@ -1,5 +1,6 @@
 // 実行環境: ブラウザ側。SC-04のイベント登録・編集フォーム（D-2対応、E-5）。
 // ルートに:idがあれば編集モード（PUT）、無ければ新規登録モード（POST）として動く。
+// 機能追加: 主催者名・画像URL・カテゴリ・アンケート文言・定員区分（複数、追加/削除可能）の入力欄。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -46,7 +47,42 @@ export class AdminEventForm implements OnInit {
     capacity: [1, [Validators.required, Validators.min(1)]],
     applicationDeadline: ['', Validators.required],
     description: [''],
+    // 機能追加（イベント情報の拡張）
+    organizerName: [''],
+    imageUrl: [''],
+    category: [''],
+    extraQuestion: [''],
+    // 機能追加（定員区分）: 区分を1件以上入力した場合はcapacityが自動計算され、上の定員入力は無視される
+    ticketTypes: this.fb.nonNullable.array<ReturnType<typeof this.newTicketTypeGroup>>([]),
   });
+
+  protected get ticketTypesArray() {
+    return this.form.controls.ticketTypes;
+  }
+
+  protected get hasTicketTypes(): boolean {
+    return this.ticketTypesArray.length > 0;
+  }
+
+  private newTicketTypeGroup(name = '', capacity = 1) {
+    return this.fb.nonNullable.group({
+      name: [name, Validators.required],
+      capacity: [capacity, [Validators.required, Validators.min(1)]],
+    });
+  }
+
+  protected addTicketType(): void {
+    this.ticketTypesArray.push(this.newTicketTypeGroup());
+  }
+
+  protected removeTicketType(index: number): void {
+    this.ticketTypesArray.removeAt(index);
+  }
+
+  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、テーブル定義書_v2.0.md§2.2）
+  protected get ticketTypesCapacitySum(): number {
+    return this.ticketTypesArray.controls.reduce((sum, group) => sum + (group.value.capacity ?? 0), 0);
+  }
 
   protected get isEditMode(): boolean {
     return this.eventId() !== null;
@@ -90,7 +126,14 @@ export class AdminEventForm implements OnInit {
           capacity: event.capacity,
           applicationDeadline: this.toDatetimeLocal(event.applicationDeadline),
           description: event.description,
+          organizerName: event.organizerName ?? '',
+          imageUrl: event.imageUrl ?? '',
+          category: event.category ?? '',
+          extraQuestion: event.extraQuestion ?? '',
         });
+        for (const ticketType of event.ticketTypes) {
+          this.ticketTypesArray.push(this.newTicketTypeGroup(ticketType.name, ticketType.capacity));
+        }
         this.loading.set(false);
       },
       error: (err) => {
@@ -111,13 +154,22 @@ export class AdminEventForm implements OnInit {
     this.saving.set(true);
 
     const value = this.form.getRawValue();
+    // 区分が1件以上ある場合、画面には合計値を表示しているが対応するinputにformControlNameを
+    // 付けていない（自動計算の見た目のみのため）ので、capacityフィールド自体もその合計値を送る
+    const capacity = this.hasTicketTypes ? this.ticketTypesCapacitySum : value.capacity;
     const request = {
       name: value.name,
       startAt: this.toIsoWithSeconds(value.startAt),
       place: value.place,
-      capacity: value.capacity,
+      capacity,
       applicationDeadline: this.toIsoWithSeconds(value.applicationDeadline),
       description: value.description || undefined,
+      organizerName: value.organizerName || undefined,
+      imageUrl: value.imageUrl || undefined,
+      category: value.category || undefined,
+      extraQuestion: value.extraQuestion || undefined,
+      // 区分は常に現在のフォームの内容で全置換する（0件なら「区分無し」に確定させる）
+      ticketTypes: value.ticketTypes,
     };
 
     const id = this.eventId();
