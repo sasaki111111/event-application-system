@@ -1,5 +1,6 @@
 package com.example.eventapp.common;
 
+import com.example.eventapp.common.exception.ForbiddenException;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
@@ -19,5 +20,12 @@ public class AuthContext {
 
     public void setCurrentUser(CurrentUser currentUser) {
         this.currentUser = currentUser;
+    }
+
+    // 管理者専用APIの権限チェック（各Controllerに重複していたものを集約）
+    public void requireAdmin() {
+        if (!currentUser.isAdmin()) {
+            throw new ForbiddenException("権限がありません");
+        }
     }
 }

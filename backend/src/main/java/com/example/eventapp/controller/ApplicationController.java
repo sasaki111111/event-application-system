@@ -66,19 +66,13 @@ public class ApplicationController {
     // API-19 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
     @PutMapping("/api/applications/{id}/check-in")
     public CheckInResponse checkIn(@PathVariable Long id) {
-        requireAdmin();
+        authContext.requireAdmin();
         return applicationService.checkIn(id);
     }
 
     private void requireGeneral() {
         if (authContext.getCurrentUser().isAdmin()) {
             throw new ForbiddenException("管理者は申込できません");
-        }
-    }
-
-    private void requireAdmin() {
-        if (!authContext.getCurrentUser().isAdmin()) {
-            throw new ForbiddenException("権限がありません");
         }
     }
 

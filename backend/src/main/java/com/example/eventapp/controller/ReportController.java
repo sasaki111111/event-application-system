@@ -1,7 +1,6 @@
 package com.example.eventapp.controller;
 
 import com.example.eventapp.common.AuthContext;
-import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.dto.EventReportResponse;
 import com.example.eventapp.service.ReportService;
 import java.util.List;
@@ -29,7 +28,7 @@ public class ReportController {
     public ResponseEntity<Object> report(
             @RequestParam(defaultValue = "json") String format,
             @RequestParam(defaultValue = "startAt") String sort) {
-        requireAdmin();
+        authContext.requireAdmin();
 
         if ("csv".equals(format)) {
             String csv = reportService.toCsv();
@@ -41,11 +40,5 @@ public class ReportController {
 
         List<EventReportResponse> summary = reportService.summarize(sort);
         return ResponseEntity.ok(summary);
-    }
-
-    private void requireAdmin() {
-        if (!authContext.getCurrentUser().isAdmin()) {
-            throw new ForbiddenException("権限がありません");
-        }
     }
 }

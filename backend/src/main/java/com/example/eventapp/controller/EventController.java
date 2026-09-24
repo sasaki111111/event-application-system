@@ -1,7 +1,6 @@
 package com.example.eventapp.controller;
 
 import com.example.eventapp.common.AuthContext;
-import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.dto.AttendeeResponse;
 import com.example.eventapp.dto.DeletedEventResponse;
 import com.example.eventapp.dto.EventDetailResponse;
@@ -58,7 +57,7 @@ public class EventController {
     // 機能追加（ソフトデリート） GET /api/events/deleted（管理者のみ）
     @GetMapping("/api/events/deleted")
     public List<DeletedEventResponse> listDeleted() {
-        requireAdmin();
+        authContext.requireAdmin();
         return eventService.listDeleted();
     }
 
@@ -67,7 +66,7 @@ public class EventController {
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.CREATED)
     public EventDetailResponse create(@RequestBody EventUpsertRequest request) {
-        requireAdmin();
+        authContext.requireAdmin();
         validate(request);
         return eventService.create(request);
     }
@@ -75,7 +74,7 @@ public class EventController {
     // API-07 PUT /api/events/{id}（管理者のみ）
     @PutMapping("/api/events/{id}")
     public EventDetailResponse update(@PathVariable Long id, @RequestBody EventUpsertRequest request) {
-        requireAdmin();
+        authContext.requireAdmin();
         validate(request);
         return eventService.update(id, request);
     }
@@ -84,28 +83,22 @@ public class EventController {
     @DeleteMapping("/api/events/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        requireAdmin();
+        authContext.requireAdmin();
         eventService.delete(id);
     }
 
     // 機能追加（ソフトデリートの復元） POST /api/events/{id}/restore（管理者のみ）
     @PostMapping("/api/events/{id}/restore")
     public EventDetailResponse restore(@PathVariable Long id) {
-        requireAdmin();
+        authContext.requireAdmin();
         return eventService.restore(id);
     }
 
     // API-18 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
     @GetMapping("/api/events/{id}/attendees")
     public List<AttendeeResponse> attendees(@PathVariable Long id) {
-        requireAdmin();
+        authContext.requireAdmin();
         return applicationService.listAttendees(id);
-    }
-
-    private void requireAdmin() {
-        if (!authContext.getCurrentUser().isAdmin()) {
-            throw new ForbiddenException("権限がありません");
-        }
     }
 
     private void validate(EventUpsertRequest request) {
