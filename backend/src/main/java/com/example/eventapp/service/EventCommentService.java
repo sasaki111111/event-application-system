@@ -32,7 +32,7 @@ public class EventCommentService {
     @Transactional(readOnly = true)
     public List<EventCommentResponse> list(Long eventId, Long currentUserId) {
         requireEvent(eventId);
-        return eventCommentRepository.findByEvent_IdOrderByCreatedAtAsc(eventId).stream()
+        return eventCommentRepository.findByEvent_IdOrderByCreatedAtAscIdAsc(eventId).stream()
                 .map(comment -> toResponse(comment, currentUserId))
                 .toList();
     }

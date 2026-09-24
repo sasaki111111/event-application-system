@@ -53,7 +53,7 @@ class EventCommentServiceTest {
         when(author.getId()).thenReturn(USER_ID);
         when(author.getName()).thenReturn("投稿者");
         EventComment comment = new EventComment(event, author, "コメント本文");
-        when(eventCommentRepository.findByEvent_IdOrderByCreatedAtAsc(EVENT_ID)).thenReturn(List.of(comment));
+        when(eventCommentRepository.findByEvent_IdOrderByCreatedAtAscIdAsc(EVENT_ID)).thenReturn(List.of(comment));
 
         List<EventCommentResponse> result = eventCommentService.list(EVENT_ID, USER_ID);
 
@@ -70,7 +70,7 @@ class EventCommentServiceTest {
         User author = mock(User.class);
         when(author.getId()).thenReturn(OTHER_USER_ID);
         EventComment comment = new EventComment(event, author, "コメント本文");
-        when(eventCommentRepository.findByEvent_IdOrderByCreatedAtAsc(EVENT_ID)).thenReturn(List.of(comment));
+        when(eventCommentRepository.findByEvent_IdOrderByCreatedAtAscIdAsc(EVENT_ID)).thenReturn(List.of(comment));
 
         List<EventCommentResponse> result = eventCommentService.list(EVENT_ID, USER_ID);
 
