@@ -9,6 +9,8 @@ public record MyApplicationResponse(
         String eventName,
         LocalDateTime startAt,
         String status,
-        LocalDateTime appliedAt
+        LocalDateTime appliedAt,
+        // キャンセル待ちの順位（1始まり）。statusが「キャンセル待ち」以外はNULL
+        Long waitlistRank
 ) {
 }

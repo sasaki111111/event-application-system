@@ -14,26 +14,31 @@ import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.entity.User;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.TicketTypeRepository;
 import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-// 実行環境: サーバー側（JVM）。G-1: ApplicationServiceの業務ロジック（要件定義書§8＋機能追加のキャンセル待ち）のユニットテスト。
+// 実行環境: サーバー側（JVM）。G-1: ApplicationServiceの業務ロジック（要件定義書§8＋機能追加のキャンセル待ち・定員区分）のユニットテスト。
 // JUnit5＋Mockito。Repositoryは全てモック化し、DBに触れずにビジネスロジックだけを検証する。
 class ApplicationServiceTest {
 
     private ApplicationRepository applicationRepository;
     private EventRepository eventRepository;
     private UserRepository userRepository;
+    private TicketTypeRepository ticketTypeRepository;
     private ApplicationService applicationService;
 
     private static final Long USER_ID = 1L;
@@ -44,7 +49,11 @@ class ApplicationServiceTest {
         applicationRepository = mock(ApplicationRepository.class);
         eventRepository = mock(EventRepository.class);
         userRepository = mock(UserRepository.class);
-        applicationService = new ApplicationService(applicationRepository, eventRepository, userRepository);
+        ticketTypeRepository = mock(TicketTypeRepository.class);
+        applicationService = new ApplicationService(
+                applicationRepository, eventRepository, userRepository, ticketTypeRepository);
+        // 区分の無いイベントを既定値にしておく（区分ありのテストでは個別にstubし直す）
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
     }
 
     private Event openEvent(int capacity) {
@@ -70,7 +79,7 @@ class ApplicationServiceTest {
         Application saved = new Application(user, event);
         when(applicationRepository.save(captor.capture())).thenReturn(saved);
 
-        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID);
+        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, null, null);
 
         assertThat(response.eventId()).isEqualTo(EVENT_ID);
         assertThat(response.userId()).isEqualTo(USER_ID);
@@ -83,7 +92,7 @@ class ApplicationServiceTest {
     void apply_異常系_イベントが存在しなければNotFoundException() {
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, null, null))
                 .isInstanceOf(NotFoundException.class);
         verifyNoInteractions(applicationRepository);
     }
@@ -95,7 +104,7 @@ class ApplicationServiceTest {
         when(closedEvent.isOpen(any(LocalDateTime.class))).thenReturn(false);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(closedEvent));
 
-        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("申込受付は終了しました");
         verifyNoInteractions(applicationRepository);
@@ -115,7 +124,7 @@ class ApplicationServiceTest {
         ArgumentCaptor<Application> captor = ArgumentCaptor.forClass(Application.class);
         when(applicationRepository.save(captor.capture())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID);
+        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, null, null);
 
         assertThat(response.status()).isEqualTo(ApplicationStatus.WAITLISTED);
         assertThat(captor.getValue().getStatus()).isEqualTo(ApplicationStatus.WAITLISTED);
@@ -129,7 +138,7 @@ class ApplicationServiceTest {
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("すでに申し込み済みです");
         verify(applicationRepository, never()).save(any());
@@ -143,7 +152,7 @@ class ApplicationServiceTest {
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID))
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("すでに申し込み済みです");
     }
@@ -176,8 +185,8 @@ class ApplicationServiceTest {
 
         User waitingUser = mock(User.class);
         Application waitlisted = new Application(waitingUser, event, ApplicationStatus.WAITLISTED);
-        when(applicationRepository.findFirstByEvent_IdAndStatusOrderByAppliedAtAsc(EVENT_ID, ApplicationStatus.WAITLISTED))
-                .thenReturn(Optional.of(waitlisted));
+        when(applicationRepository.findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(
+                EVENT_ID, ApplicationStatus.WAITLISTED)).thenReturn(Optional.of(waitlisted));
 
         applicationService.cancel(USER_ID, 100L);
 
@@ -199,7 +208,8 @@ class ApplicationServiceTest {
         applicationService.cancel(USER_ID, 100L);
 
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.CANCELLED);
-        verify(applicationRepository, never()).findFirstByEvent_IdAndStatusOrderByAppliedAtAsc(anyLong(), any());
+        verify(applicationRepository, never())
+                .findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(anyLong(), any());
     }
 
     // 異常系: 他人の申込は取消できない（403相当）
@@ -239,5 +249,148 @@ class ApplicationServiceTest {
 
         assertThatThrownBy(() -> applicationService.cancel(USER_ID, 100L))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    private TicketType ticketType(Long id, int capacity) {
+        TicketType ticketType = mock(TicketType.class);
+        when(ticketType.getId()).thenReturn(id);
+        when(ticketType.getCapacity()).thenReturn(capacity);
+        return ticketType;
+    }
+
+    // 正常系（機能追加：定員区分）: 区分の定員に余裕があれば、その区分の受付済数で判定し受付済になる
+    @Test
+    void apply_機能追加_区分の定員に余裕があれば受付済で申込できる() {
+        Event event = openEvent(999);
+        TicketType ticketType = ticketType(1L, 2);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
+        when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(1L);
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
+                .thenReturn(false);
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
+        when(applicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, 1L, null);
+
+        assertThat(response.status()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(response.ticketTypeId()).isEqualTo(1L);
+        verify(applicationRepository, never()).countByEvent_IdAndStatus(anyLong(), any());
+    }
+
+    // 機能追加（定員区分）: 区分の定員に達していれば、イベント全体に空きがあってもその区分はキャンセル待ちになる
+    @Test
+    void apply_機能追加_区分の定員に達していればキャンセル待ちで登録される() {
+        Event event = openEvent(999);
+        TicketType ticketType = ticketType(1L, 2);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
+        when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(2L);
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
+                .thenReturn(false);
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
+        when(applicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, 1L, null);
+
+        assertThat(response.status()).isEqualTo(ApplicationStatus.WAITLISTED);
+    }
+
+    // 異常系（機能追加：定員区分）: 区分があるイベントで区分未指定は400（要件定義書§8 E12）
+    @Test
+    void apply_異常系_区分があるのに未指定なら区分を選択してくださいで拒否される() {
+        Event event = openEvent(999);
+        TicketType ticketType = ticketType(1L, 2);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, null, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("区分を選択してください");
+        verify(applicationRepository, never()).save(any());
+    }
+
+    // 異常系（機能追加：定員区分）: 対象イベントに属さない区分の指定は404（要件定義書§8 E11）
+    @Test
+    void apply_異常系_存在しない区分を指定すると指定された区分が見つかりませんで拒否される() {
+        Event event = openEvent(999);
+        TicketType ticketType = ticketType(1L, 2);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+        when(ticketTypeRepository.findByIdAndEvent_Id(99L, EVENT_ID)).thenReturn(Optional.empty());
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, 99L, null))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("指定された区分が見つかりません");
+        verify(applicationRepository, never()).save(any());
+    }
+
+    // 機能追加（定員区分）: 区分ありの申込をキャンセルすると、同じ区分で最も古いキャンセル待ちが繰り上がる
+    @Test
+    void cancel_機能追加_区分単位でキャンセル待ちが繰り上がる() {
+        User owner = mock(User.class);
+        when(owner.getId()).thenReturn(USER_ID);
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(event.getStartAt()).thenReturn(LocalDateTime.now().plusDays(1));
+        TicketType ticketType = ticketType(1L, 2);
+        Application application = new Application(owner, event, ticketType, ApplicationStatus.ACCEPTED, null);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        User waitingUser = mock(User.class);
+        Application waitlisted = new Application(waitingUser, event, ticketType, ApplicationStatus.WAITLISTED, null);
+        when(applicationRepository.findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(1L, ApplicationStatus.WAITLISTED))
+                .thenReturn(Optional.of(waitlisted));
+
+        applicationService.cancel(USER_ID, 100L);
+
+        assertThat(application.getStatus()).isEqualTo(ApplicationStatus.CANCELLED);
+        assertThat(waitlisted.getStatus()).isEqualTo(ApplicationStatus.ACCEPTED);
+        verify(applicationRepository, never())
+                .findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(anyLong(), any());
+    }
+
+    // 正常系（機能追加：定員区分）: 自分の申込一覧でキャンセル待ちの順位が区分単位で計算される
+    @Test
+    void myApplications_機能追加_区分単位でキャンセル待ちの順位が計算される() {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(event.getName()).thenReturn("テストイベント");
+        when(event.getStartAt()).thenReturn(LocalDateTime.now().plusDays(1));
+        TicketType ticketType = ticketType(1L, 2);
+        Application application = new Application(user, event, ticketType, ApplicationStatus.WAITLISTED, null);
+        when(applicationRepository.findByUser_IdOrderByAppliedAtDesc(USER_ID)).thenReturn(List.of(application));
+        when(applicationRepository.countByTicketType_IdAndStatusAndAppliedAtLessThan(
+                1L, ApplicationStatus.WAITLISTED, application.getAppliedAt())).thenReturn(2L);
+
+        List<MyApplicationResponse> result = applicationService.myApplications(USER_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).waitlistRank()).isEqualTo(3L);
+    }
+
+    // 正常系: キャンセル待ち以外の申込はwaitlistRankがNULLになる
+    @Test
+    void myApplications_正常系_受付済の申込はwaitlistRankがNULL() {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(event.getName()).thenReturn("テストイベント");
+        when(event.getStartAt()).thenReturn(LocalDateTime.now().plusDays(1));
+        Application application = new Application(user, event);
+        when(applicationRepository.findByUser_IdOrderByAppliedAtDesc(USER_ID)).thenReturn(List.of(application));
+
+        List<MyApplicationResponse> result = applicationService.myApplications(USER_ID);
+
+        assertThat(result.get(0).waitlistRank()).isNull();
+        verify(applicationRepository, never())
+                .countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(anyLong(), any(), any());
     }
 }

@@ -1,6 +1,7 @@
 package com.example.eventapp.repository;
 
 import com.example.eventapp.entity.Application;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -25,8 +26,17 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // 機能追加（キャンセル待ち）: 二重申込チェックを受付済・キャンセル待ちの両方に対して行う
     boolean existsByUser_IdAndEvent_IdAndStatusIn(Long userId, Long eventId, Collection<String> statuses);
 
-    // 機能追加（キャンセル待ちの繰り上げ）: 対象イベントで最も古いキャンセル待ちを1件取得する
-    Optional<Application> findFirstByEvent_IdAndStatusOrderByAppliedAtAsc(Long eventId, String status);
+    // 機能追加（キャンセル待ちの繰り上げ、区分の無いイベント）: 対象イベントで最も古いキャンセル待ちを1件取得する
+    Optional<Application> findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(Long eventId, String status);
+
+    // 機能追加（キャンセル待ちの繰り上げ、区分単位）: 対象区分で最も古いキャンセル待ちを1件取得する
+    Optional<Application> findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(Long ticketTypeId, String status);
+
+    // 機能追加（キャンセル待ちの順位計算、区分の無いイベント）: 自分より申込日時が古いキャンセル待ちの件数
+    long countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(Long eventId, String status, LocalDateTime appliedAt);
+
+    // 機能追加（キャンセル待ちの順位計算、区分単位）: 自分より申込日時が古いキャンセル待ちの件数
+    long countByTicketType_IdAndStatusAndAppliedAtLessThan(Long ticketTypeId, String status, LocalDateTime appliedAt);
 
     // API-04: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
