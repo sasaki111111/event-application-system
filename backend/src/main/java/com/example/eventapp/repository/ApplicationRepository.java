@@ -42,6 +42,9 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // API-04: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
 
+    // API-18: 当日受付の申込者一覧（申込日時の昇順、機能追加）
+    List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
+
     // API-09 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件（受付済・キャンセル済とも実績として出す）
     List<Application> findAllByOrderByEvent_StartAtAsc();
 }

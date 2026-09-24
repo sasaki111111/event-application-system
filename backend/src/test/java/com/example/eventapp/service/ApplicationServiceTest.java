@@ -14,6 +14,8 @@ import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.AttendeeResponse;
+import com.example.eventapp.dto.CheckInResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
@@ -390,5 +392,88 @@ class ApplicationServiceTest {
         assertThat(result.get(0).waitlistRank()).isNull();
         verify(applicationRepository, never())
                 .countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(anyLong(), any(), any());
+    }
+
+    // 正常系（機能追加：当日受付）: 申込者一覧が申込日時昇順で返り、区分名・チェックイン状況を含む
+    @Test
+    void listAttendees_正常系_申込者一覧を返す() {
+        Event event = mock(Event.class);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        User user = mock(User.class);
+        when(user.getName()).thenReturn("参加者A");
+        TicketType ticketType = mock(TicketType.class);
+        when(ticketType.getName()).thenReturn("一般枠");
+        Application application = mock(Application.class);
+        when(application.getUser()).thenReturn(user);
+        when(application.getTicketType()).thenReturn(ticketType);
+        when(application.getStatus()).thenReturn(ApplicationStatus.ACCEPTED);
+        when(applicationRepository.findByEvent_IdOrderByAppliedAtAsc(EVENT_ID)).thenReturn(List.of(application));
+
+        List<AttendeeResponse> result = applicationService.listAttendees(EVENT_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).userName()).isEqualTo("参加者A");
+        assertThat(result.get(0).ticketTypeName()).isEqualTo("一般枠");
+        assertThat(result.get(0).checkedInAt()).isNull();
+    }
+
+    // 正常系（機能追加：当日受付）: 区分の無いイベントの申込はticketTypeNameがNULL
+    @Test
+    void listAttendees_正常系_区分が無ければticketTypeNameはNULL() {
+        Event event = mock(Event.class);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        User user = mock(User.class);
+        Application application = new Application(user, event);
+        when(applicationRepository.findByEvent_IdOrderByAppliedAtAsc(EVENT_ID)).thenReturn(List.of(application));
+
+        List<AttendeeResponse> result = applicationService.listAttendees(EVENT_ID);
+
+        assertThat(result.get(0).ticketTypeName()).isNull();
+    }
+
+    // 異常系: 存在しないイベントの申込者一覧取得は404相当
+    @Test
+    void listAttendees_異常系_イベントが存在しなければNotFoundException() {
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> applicationService.listAttendees(EVENT_ID))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    // 正常系（機能追加：当日受付）: 受付済の申込はチェックインできる
+    @Test
+    void checkIn_正常系_受付済の申込はチェックインできる() {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        Application application = new Application(user, event);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        CheckInResponse response = applicationService.checkIn(100L);
+
+        assertThat(application.getCheckedInAt()).isNotNull();
+        assertThat(response.checkedInAt()).isEqualTo(application.getCheckedInAt());
+    }
+
+    // 異常系（要件定義書§8 E8）: 受付済以外（キャンセル待ち・キャンセル済）の申込はチェックインできない
+    @Test
+    void checkIn_異常系_受付済以外はチェックインできない() {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        Application application = new Application(user, event, ApplicationStatus.WAITLISTED);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> applicationService.checkIn(100L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("受付済の申込のみチェックインできます");
+        assertThat(application.getCheckedInAt()).isNull();
+    }
+
+    // 異常系: 存在しない申込のチェックインは404相当
+    @Test
+    void checkIn_異常系_申込が存在しなければNotFoundException() {
+        when(applicationRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> applicationService.checkIn(100L))
+                .isInstanceOf(NotFoundException.class);
     }
 }

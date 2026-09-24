@@ -4,6 +4,7 @@ import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.dto.ApplicationCreateRequest;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.CheckInResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.service.ApplicationService;
 import jakarta.validation.ConstraintViolation;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +61,13 @@ public class ApplicationController {
     public void cancel(@PathVariable Long id) {
         Long userId = authContext.getCurrentUser().userId();
         applicationService.cancel(userId, id);
+    }
+
+    // API-19 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
+    @PutMapping("/api/applications/{id}/check-in")
+    public CheckInResponse checkIn(@PathVariable Long id) {
+        authContext.requireAdmin();
+        return applicationService.checkIn(id);
     }
 
     private void requireGeneral() {
