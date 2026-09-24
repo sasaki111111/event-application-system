@@ -42,7 +42,6 @@ CREATE TABLE events (
     deleted_at            DATETIME     NULL,
     organizer_name        VARCHAR(100) NULL,
     image_url             VARCHAR(500) NULL,
-    category              VARCHAR(50)  NULL,
     -- 申込時アンケートの質問文言。NULL＝アンケート無し
     extra_question        VARCHAR(200) NULL,
     created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

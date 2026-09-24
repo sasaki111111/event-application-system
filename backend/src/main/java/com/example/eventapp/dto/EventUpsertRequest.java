@@ -30,8 +30,6 @@ public record EventUpsertRequest(
 
         @Size(max = 500, message = "500文字以内で入力してください") String imageUrl,
 
-        @Size(max = 50, message = "50文字以内で入力してください") String category,
-
         @Size(max = 200, message = "200文字以内で入力してください") String extraQuestion,
 
         // 0件または未指定＝区分なしイベント。未指定（null）の場合は既存の区分に手を加えない（EventService参照）

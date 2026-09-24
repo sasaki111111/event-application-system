@@ -15,7 +15,6 @@ public record FavoriteEventResponse(
         boolean open,
         String organizerName,
         String imageUrl,
-        String category,
         LocalDateTime favoritedAt
 ) {
 }

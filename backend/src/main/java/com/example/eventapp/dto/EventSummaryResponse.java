@@ -13,7 +13,6 @@ public record EventSummaryResponse(
         long acceptedCount,
         boolean open,
         String organizerName,
-        String imageUrl,
-        String category
+        String imageUrl
 ) {
 }

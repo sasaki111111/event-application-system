@@ -18,7 +18,6 @@ public record EventDetailResponse(
         long remaining,
         String organizerName,
         String imageUrl,
-        String category,
         String extraQuestion,
         List<TicketTypeResponse> ticketTypes
 ) {

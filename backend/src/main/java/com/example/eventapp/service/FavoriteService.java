@@ -79,7 +79,6 @@ public class FavoriteService {
                 event.isOpen(now),
                 event.getOrganizerName(),
                 event.getImageUrl(),
-                event.getCategory(),
                 favorite.getCreatedAt()
         );
     }

@@ -268,7 +268,6 @@ class EventServiceTest {
                 "主催者",
                 null,
                 null,
-                null,
                 ticketTypes == null ? null : List.of(ticketTypes));
     }
 }

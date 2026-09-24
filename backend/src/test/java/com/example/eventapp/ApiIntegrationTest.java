@@ -74,7 +74,7 @@ class ApiIntegrationTest {
                 5,
                 LocalDateTime.now().plusDays(5),
                 "G-2結合テスト用データ",
-                null, null, null, null));
+                null, null, null));
     }
 
     private HttpHeaders authHeaders(Long userId) {
@@ -120,7 +120,7 @@ class ApiIntegrationTest {
     void api06_管理者はイベントを登録できる() {
         EventUpsertRequest request = new EventUpsertRequest(
                 "新規登録テスト", LocalDateTime.now().plusDays(20), "会議室B", 10,
-                LocalDateTime.now().plusDays(15), null, null, null, null, null, null);
+                LocalDateTime.now().plusDays(15), null, null, null, null, null);
 
         ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
@@ -137,7 +137,7 @@ class ApiIntegrationTest {
     void api06_一般ユーザーはイベントを登録できない() {
         EventUpsertRequest request = new EventUpsertRequest(
                 "権限チェック用", LocalDateTime.now().plusDays(20), "会議室B", 10,
-                LocalDateTime.now().plusDays(15), null, null, null, null, null, null);
+                LocalDateTime.now().plusDays(15), null, null, null, null, null);
 
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),

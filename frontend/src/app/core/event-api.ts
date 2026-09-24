@@ -16,7 +16,6 @@ export interface EventSummary {
   // 機能追加（イベント情報の拡張）
   organizerName: string | null;
   imageUrl: string | null;
-  category: string | null;
 }
 
 // 機能追加（定員区分）: イベント詳細のticketTypes[]1件分（backendのTicketTypeResponseと対応）
@@ -53,7 +52,6 @@ export interface EventUpsertRequest {
   // 機能追加（イベント情報の拡張・定員区分）
   organizerName?: string;
   imageUrl?: string;
-  category?: string;
   extraQuestion?: string;
   ticketTypes?: TicketTypeRequest[];
 }

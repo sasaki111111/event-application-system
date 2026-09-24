@@ -91,7 +91,6 @@ v2.0（2026-09-18）
 | `open` | boolean | 申込受付中か |
 | `organizerName` | string \| null | 主催者名 |
 | `imageUrl` | string \| null | イベント画像URL |
-| `category` | string \| null | カテゴリ |
 
 **エラー**：業務エラーなし（認証切れ 401・形式不正 400 は §0 共通）
 
@@ -239,7 +238,6 @@ v2.0（2026-09-18）
 | body | `description` | string | 任意 | 0〜1000文字 |
 | body | `organizerName` | string | 任意 | 0〜100文字 |
 | body | `imageUrl` | string | 任意 | 0〜500文字 |
-| body | `category` | string | 任意 | 0〜50文字 |
 | body | `extraQuestion` | string | 任意 | 0〜200文字 |
 | body | `ticketTypes` | {name, capacity}[] | 任意 | 0件＝区分なし。各要素の`name`は1〜50文字必須、`capacity`は1以上必須 |
 

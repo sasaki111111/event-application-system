@@ -81,7 +81,6 @@ public class EventService {
                 request.description(),
                 request.organizerName(),
                 request.imageUrl(),
-                request.category(),
                 request.extraQuestion()
         );
         Event saved = eventRepository.save(event);
@@ -102,7 +101,6 @@ public class EventService {
                 request.description(),
                 request.organizerName(),
                 request.imageUrl(),
-                request.category(),
                 request.extraQuestion()
         );
         List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
@@ -182,8 +180,7 @@ public class EventService {
                 countAccepted(event.getId()),
                 event.isOpen(now),
                 event.getOrganizerName(),
-                event.getImageUrl(),
-                event.getCategory()
+                event.getImageUrl()
         );
     }
 
@@ -209,7 +206,6 @@ public class EventService {
                 event.getCapacity() - acceptedCount,
                 event.getOrganizerName(),
                 event.getImageUrl(),
-                event.getCategory(),
                 event.getExtraQuestion(),
                 ticketTypes
         );
