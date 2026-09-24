@@ -131,7 +131,7 @@ public class EventService {
 
     // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
     // 戻り値は更新後の区分一覧（呼び出し側がtoDetail()で再度クエリしなくて済むように）。
-    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（詳細設計書_v2.0.md§3.5参照）。
+    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（詳細設計書_v2.0.md§3.3.10参照）。
     private List<TicketType> saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
         if (requests == null) {
             // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
