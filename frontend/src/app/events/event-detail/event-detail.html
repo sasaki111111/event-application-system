@@ -12,12 +12,12 @@
     <button
       type="button"
       class="btn-favorite"
-      [class.active]="isFavorited()"
+      [class.active]="favoriteStore.isFavorited(e.id)"
       [disabled]="favoriteBusy()"
       (click)="toggleFavorite()"
-      [title]="isFavorited() ? 'お気に入り解除' : 'お気に入り登録'"
+      [title]="favoriteStore.isFavorited(e.id) ? 'お気に入り解除' : 'お気に入り登録'"
     >
-      {{ isFavorited() ? '★ お気に入り済み' : '☆ お気に入りに追加' }}
+      {{ favoriteStore.isFavorited(e.id) ? '★ お気に入り済み' : '☆ お気に入りに追加' }}
     </button>
   </div>
 

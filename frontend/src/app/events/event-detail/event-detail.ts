@@ -4,7 +4,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail as EventDetailModel } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
-import { FavoriteApiService } from '../../core/favorite-api';
+import { FavoriteStore } from '../../core/favorite-store';
 import { CommentApiService, EventComment } from '../../core/comment-api';
 import { DummyUserStore } from '../../core/dummy-user-store';
 
@@ -25,8 +25,7 @@ export class EventDetail implements OnInit {
   protected readonly selectedTicketTypeId = signal<number | null>(null);
   protected readonly extraAnswer = signal('');
 
-  // 機能追加（お気に入り）
-  protected readonly isFavorited = signal(false);
+  // 機能追加（お気に入り）: 登録済みかどうかはFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusy = signal(false);
 
   // 機能追加（イベントコメント）
@@ -46,7 +45,7 @@ export class EventDetail implements OnInit {
     private readonly router: Router,
     private readonly eventApi: EventApiService,
     private readonly applicationApi: ApplicationApiService,
-    private readonly favoriteApi: FavoriteApiService,
+    protected readonly favoriteStore: FavoriteStore,
     private readonly commentApi: CommentApiService,
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
@@ -75,13 +74,8 @@ export class EventDetail implements OnInit {
       },
     });
 
-    // 機能追加（お気に入り）: 一般ユーザー・管理者の両方が使える（要件定義書§4）
-    this.favoriteApi.myFavorites().subscribe({
-      next: (favorites) => this.isFavorited.set(favorites.some((f) => f.id === this.eventId)),
-      error: () => {
-        // 取得失敗時はボタンが未反映（お気に入り登録済みでも☆表示）のままになるだけ
-      },
-    });
+    // 機能追加（お気に入り）: 一般ユーザー・管理者の両方が使える（要件定義書§4）。取得失敗はボタン未反映のままになるだけ
+    this.favoriteStore.ensureLoaded().subscribe({ error: () => {} });
 
     this.loadComments();
   }
@@ -136,20 +130,13 @@ export class EventDetail implements OnInit {
   // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）
   protected toggleFavorite(): void {
     this.favoriteBusy.set(true);
-    const onSuccess = (favorited: boolean) => {
-      this.isFavorited.set(favorited);
-      this.favoriteBusy.set(false);
-    };
-    const onError = (err: { error?: { message?: string } }) => {
-      this.favoriteBusy.set(false);
-      alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
-    };
-
-    if (this.isFavorited()) {
-      this.favoriteApi.remove(this.eventId).subscribe({ next: () => onSuccess(false), error: onError });
-    } else {
-      this.favoriteApi.add(this.eventId).subscribe({ next: () => onSuccess(true), error: onError });
-    }
+    this.favoriteStore.toggle(this.eventId).subscribe({
+      next: () => this.favoriteBusy.set(false),
+      error: (err) => {
+        this.favoriteBusy.set(false);
+        alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
+      },
+    });
   }
 
   protected onTicketTypeChange(value: string): void {

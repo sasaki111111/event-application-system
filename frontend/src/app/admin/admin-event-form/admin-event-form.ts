@@ -154,11 +154,14 @@ export class AdminEventForm implements OnInit {
     this.saving.set(true);
 
     const value = this.form.getRawValue();
+    // 区分が1件以上ある場合、画面には合計値を表示しているが対応するinputにformControlNameを
+    // 付けていない（自動計算の見た目のみのため）ので、capacityフィールド自体もその合計値を送る
+    const capacity = this.hasTicketTypes ? this.ticketTypesCapacitySum : value.capacity;
     const request = {
       name: value.name,
       startAt: this.toIsoWithSeconds(value.startAt),
       place: value.place,
-      capacity: value.capacity,
+      capacity,
       applicationDeadline: this.toIsoWithSeconds(value.applicationDeadline),
       description: value.description || undefined,
       organizerName: value.organizerName || undefined,

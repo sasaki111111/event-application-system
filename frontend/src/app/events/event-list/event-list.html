@@ -52,12 +52,12 @@
           <button
             type="button"
             class="btn-favorite"
-            [class.active]="favoriteEventIds().has(event.id)"
+            [class.active]="favoriteStore.favoriteEventIds().has(event.id)"
             [disabled]="favoriteBusyId() === event.id"
             (click)="toggleFavorite(event.id)"
-            [title]="favoriteEventIds().has(event.id) ? 'お気に入り解除' : 'お気に入り登録'"
+            [title]="favoriteStore.favoriteEventIds().has(event.id) ? 'お気に入り解除' : 'お気に入り登録'"
           >
-            {{ favoriteEventIds().has(event.id) ? '★' : '☆' }}
+            {{ favoriteStore.favoriteEventIds().has(event.id) ? '★' : '☆' }}
           </button>
         </div>
 

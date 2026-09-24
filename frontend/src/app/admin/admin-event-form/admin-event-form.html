@@ -98,10 +98,20 @@
       <label>参加区分（任意、複数可）</label>
       <div formArrayName="ticketTypes" class="ticket-type-list">
         @for (group of ticketTypesArray.controls; track group; let i = $index) {
-          <div class="ticket-type-row" [formGroupName]="i">
-            <input type="text" formControlName="name" placeholder="区分名（例: 一般枠）" maxlength="50" />
-            <input type="number" formControlName="capacity" placeholder="定員" min="1" />
-            <button type="button" class="btn-danger btn-sm" (click)="removeTicketType(i)">削除</button>
+          <div class="ticket-type-row-wrapper">
+            <div class="ticket-type-row" [formGroupName]="i">
+              <input type="text" formControlName="name" placeholder="区分名（例: 一般枠）" maxlength="50"
+                [class.invalid]="group.controls.name.invalid && (group.controls.name.touched || group.controls.name.dirty)" />
+              <input type="number" formControlName="capacity" placeholder="定員" min="1"
+                [class.invalid]="group.controls.capacity.invalid && (group.controls.capacity.touched || group.controls.capacity.dirty)" />
+              <button type="button" class="btn-danger btn-sm" (click)="removeTicketType(i)">削除</button>
+            </div>
+            @if (group.controls.name.invalid && (group.controls.name.touched || group.controls.name.dirty)) {
+              <p class="field-error">区分名を入力してください</p>
+            }
+            @if (group.controls.capacity.invalid && (group.controls.capacity.touched || group.controls.capacity.dirty)) {
+              <p class="field-error">1以上で入力してください</p>
+            }
           </div>
         }
       </div>

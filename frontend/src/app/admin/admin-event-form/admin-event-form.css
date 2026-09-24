@@ -21,6 +21,12 @@ form {
   margin-bottom: 0.5em;
 }
 
+.ticket-type-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
 .ticket-type-row {
   display: flex;
   gap: 0.5em;

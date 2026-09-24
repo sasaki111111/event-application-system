@@ -5,6 +5,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApplicationApiService, MyApplication } from '../core/application-api';
 import { FavoriteApiService, FavoriteEvent } from '../core/favorite-api';
+import { FavoriteStore } from '../core/favorite-store';
 
 @Component({
   selector: 'app-my-applications',
@@ -28,6 +29,7 @@ export class MyApplications implements OnInit {
   constructor(
     private readonly applicationApi: ApplicationApiService,
     private readonly favoriteApi: FavoriteApiService,
+    private readonly favoriteStore: FavoriteStore,
   ) {}
 
   ngOnInit(): void {
@@ -39,11 +41,16 @@ export class MyApplications implements OnInit {
     this.activeTab.set(tab);
   }
 
-  // API-16: 未登録でもエラーにしない（冪等）。マイページからの解除は常に登録済みのものだけが対象
+  // API-16: 未登録でもエラーにしない（冪等）。マイページからの解除は常に登録済みのものだけが対象。
+  // このタブはFavoriteStoreを介さず直接APIで一覧を取得しているため、解除後はストアのキャッシュを
+  // 破棄し、event-list・event-detailに戻った時に最新状態を取り直させる
   protected unfavorite(favorite: FavoriteEvent): void {
     this.unfavoritingId.set(favorite.id);
     this.favoriteApi.remove(favorite.id).subscribe({
-      next: () => this.loadFavorites(),
+      next: () => {
+        this.favoriteStore.invalidate();
+        this.loadFavorites();
+      },
       error: (err) => {
         this.unfavoritingId.set(null);
         alert(err.error?.message ?? 'お気に入りの解除に失敗しました。');

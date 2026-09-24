@@ -6,7 +6,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail, EventSummary } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
-import { FavoriteApiService } from '../../core/favorite-api';
+import { FavoriteStore } from '../../core/favorite-store';
 import { DummyUserStore } from '../../core/dummy-user-store';
 
 // カレンダー1マス分（当月外の日も前後の穴埋めとして含む）
@@ -87,14 +87,13 @@ export class EventList implements OnInit {
     return weeks;
   });
 
-  // 機能追加（お気に入り）: お気に入り登録済みのイベントID一覧
-  protected readonly favoriteEventIds = signal<Set<number>>(new Set());
+  // 機能追加（お気に入り）: 登録済みのイベントID一覧はFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusyId = signal<number | null>(null);
 
   constructor(
     private readonly eventApi: EventApiService,
     private readonly applicationApi: ApplicationApiService,
-    private readonly favoriteApi: FavoriteApiService,
+    protected readonly favoriteStore: FavoriteStore,
     private readonly router: Router,
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
@@ -116,40 +115,20 @@ export class EventList implements OnInit {
       },
     });
 
-    // お気に入りは一般ユーザー・管理者の両方が使える（要件定義書§4）
-    this.favoriteApi.myFavorites().subscribe({
-      next: (favorites) => this.favoriteEventIds.set(new Set(favorites.map((f) => f.id))),
-      error: () => {
-        // お気に入り一覧の取得失敗は一覧表示自体をブロックしない（ボタンが未反映のままになるだけ）
-      },
-    });
+    // お気に入りは一般ユーザー・管理者の両方が使える（要件定義書§4）。取得失敗は一覧表示をブロックしない
+    this.favoriteStore.ensureLoaded().subscribe({ error: () => {} });
   }
 
-  // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）なので、現在の表示状態で単純に出し分ける
+  // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）
   protected toggleFavorite(eventId: number): void {
-    const wasFavorited = this.favoriteEventIds().has(eventId);
     this.favoriteBusyId.set(eventId);
-
-    const onSuccess = (favorited: boolean) => {
-      const next = new Set(this.favoriteEventIds());
-      if (favorited) {
-        next.add(eventId);
-      } else {
-        next.delete(eventId);
-      }
-      this.favoriteEventIds.set(next);
-      this.favoriteBusyId.set(null);
-    };
-    const onError = (err: { error?: { message?: string } }) => {
-      this.favoriteBusyId.set(null);
-      alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
-    };
-
-    if (wasFavorited) {
-      this.favoriteApi.remove(eventId).subscribe({ next: () => onSuccess(false), error: onError });
-    } else {
-      this.favoriteApi.add(eventId).subscribe({ next: () => onSuccess(true), error: onError });
-    }
+    this.favoriteStore.toggle(eventId).subscribe({
+      next: () => this.favoriteBusyId.set(null),
+      error: (err) => {
+        this.favoriteBusyId.set(null);
+        alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
+      },
+    });
   }
 
   // 行の「▼／▲」を押した時：もう一度押すと閉じる。開く時は詳細APIを呼んで取得する
