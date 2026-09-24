@@ -4,7 +4,9 @@ import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.dto.FavoriteCreateRequest;
 import com.example.eventapp.dto.FavoriteEventResponse;
 import com.example.eventapp.dto.FavoriteResponse;
+import com.example.eventapp.service.FavoriteAddResult;
 import com.example.eventapp.service.FavoriteService;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +33,11 @@ public class FavoriteController {
 
     // API-15 POST /api/favorites。既に登録済みなら200、新規なら201（冪等、要件定義書E9）
     @PostMapping("/api/favorites")
-    public ResponseEntity<FavoriteResponse> add(@RequestBody FavoriteCreateRequest request) {
+    public ResponseEntity<FavoriteResponse> add(@Valid @RequestBody FavoriteCreateRequest request) {
         Long userId = authContext.getCurrentUser().userId();
-        boolean alreadyFavorited = favoriteService.isFavorited(userId, request.eventId());
-        FavoriteResponse response = favoriteService.add(userId, request.eventId());
-        HttpStatus status = alreadyFavorited ? HttpStatus.OK : HttpStatus.CREATED;
-        return ResponseEntity.status(status).body(response);
+        FavoriteAddResult result = favoriteService.add(userId, request.eventId());
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(result.response());
     }
 
     // API-16 DELETE /api/favorites/{eventId}。未登録でも204（冪等）

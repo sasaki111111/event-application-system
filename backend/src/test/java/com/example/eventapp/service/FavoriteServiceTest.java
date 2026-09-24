@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.FavoriteEventResponse;
-import com.example.eventapp.dto.FavoriteResponse;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
 import com.example.eventapp.entity.Favorite;
@@ -59,10 +58,11 @@ class FavoriteServiceTest {
         Favorite saved = new Favorite(user, event);
         when(favoriteRepository.save(any(Favorite.class))).thenReturn(saved);
 
-        FavoriteResponse response = favoriteService.add(USER_ID, EVENT_ID);
+        FavoriteAddResult result = favoriteService.add(USER_ID, EVENT_ID);
 
-        assertThat(response.eventId()).isEqualTo(EVENT_ID);
-        assertThat(response.createdAt()).isEqualTo(saved.getCreatedAt());
+        assertThat(result.created()).isTrue();
+        assertThat(result.response().eventId()).isEqualTo(EVENT_ID);
+        assertThat(result.response().createdAt()).isEqualTo(saved.getCreatedAt());
         verify(favoriteRepository).save(any(Favorite.class));
     }
 
@@ -75,9 +75,10 @@ class FavoriteServiceTest {
         Favorite existing = new Favorite(user, event);
         when(favoriteRepository.findByUser_IdAndEvent_Id(USER_ID, EVENT_ID)).thenReturn(Optional.of(existing));
 
-        FavoriteResponse response = favoriteService.add(USER_ID, EVENT_ID);
+        FavoriteAddResult result = favoriteService.add(USER_ID, EVENT_ID);
 
-        assertThat(response.createdAt()).isEqualTo(existing.getCreatedAt());
+        assertThat(result.created()).isFalse();
+        assertThat(result.response().createdAt()).isEqualTo(existing.getCreatedAt());
         verify(favoriteRepository, never()).save(any());
     }
 
@@ -89,14 +90,6 @@ class FavoriteServiceTest {
         assertThatThrownBy(() -> favoriteService.add(USER_ID, EVENT_ID))
                 .isInstanceOf(NotFoundException.class);
         verify(favoriteRepository, never()).save(any());
-    }
-
-    // 正常系: isFavorited()はfavoriteRepositoryの存在確認をそのまま返す（Controllerの201/200出し分けに使用）
-    @Test
-    void isFavorited_正常系_登録済みならtrue() {
-        when(favoriteRepository.existsByUser_IdAndEvent_Id(USER_ID, EVENT_ID)).thenReturn(true);
-
-        assertThat(favoriteService.isFavorited(USER_ID, EVENT_ID)).isTrue();
     }
 
     // 機能（冪等）: 未登録のイベントを解除してもエラーにならない（要件定義書§8 E9）

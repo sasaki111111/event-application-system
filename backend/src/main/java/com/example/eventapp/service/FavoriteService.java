@@ -12,6 +12,7 @@ import com.example.eventapp.repository.FavoriteRepository;
 import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,22 +34,19 @@ public class FavoriteService {
         this.userRepository = userRepository;
     }
 
-    // API-15: 既に登録済みなら新規作成せず既存の1件をそのまま返す
+    // API-15: 既に登録済みなら新規作成せず既存の1件をそのまま返す。
+    // createdは新規作成か既存かを表し、ControllerがHTTPステータス（201／200）の出し分けに使う
     @Transactional
-    public FavoriteResponse add(Long userId, Long eventId) {
+    public FavoriteAddResult add(Long userId, Long eventId) {
         Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
 
-        Favorite favorite = favoriteRepository.findByUser_IdAndEvent_Id(userId, eventId)
-                .orElseGet(() -> favoriteRepository.save(new Favorite(userRepository.getReferenceById(userId), event)));
+        Optional<Favorite> existing = favoriteRepository.findByUser_IdAndEvent_Id(userId, eventId);
+        boolean created = existing.isEmpty();
+        Favorite favorite = existing.orElseGet(
+                () -> favoriteRepository.save(new Favorite(userRepository.getReferenceById(userId), event)));
 
-        return new FavoriteResponse(favorite.getId(), eventId, favorite.getCreatedAt());
-    }
-
-    // API-15: 新規登録（201）と既存返却（200）をControllerで出し分けるための事前判定
-    @Transactional(readOnly = true)
-    public boolean isFavorited(Long userId, Long eventId) {
-        return favoriteRepository.existsByUser_IdAndEvent_Id(userId, eventId);
+        return new FavoriteAddResult(new FavoriteResponse(favorite.getId(), eventId, favorite.getCreatedAt()), created);
     }
 
     // API-16: 未登録でもエラーにしない（冪等）
