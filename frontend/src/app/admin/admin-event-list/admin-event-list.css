@@ -1,1 +1,18 @@
 /* 実行環境: ブラウザ側。admin-event-list.ts専用のスタイル。カード一覧の見た目はstyles.css（.card-grid等、共通デザイン）を参照。 */
+
+/* 「新規登録」「削除済みイベント」ボタンの行。一般ユーザー側のイベント一覧（.view-toggle）と同様に、
+   ボタンの大きさを揃えつつ下にmargin-bottomを設け、カード一覧との間隔を空ける
+   （間隔がないとカードのホバー時の浮き上がり演出でボタンと被って見えてしまうため） */
+.page-actions {
+  display: flex;
+  gap: 0.4em;
+  margin-bottom: var(--spacing-3);
+}
+
+/* 一般ユーザー側イベント一覧の一覧表示・カレンダー表示ボタン（button.btn-toggle）と
+   同じ大きさに揃える（.btn-linkは<a>要素のためfont-sizeの既定値が異なり、
+   btn-smでは大きさが合わないため個別に指定する） */
+.page-actions a.btn-link {
+  padding: 0.2em 0.6em;
+  font-size: 0.95em;
+}
