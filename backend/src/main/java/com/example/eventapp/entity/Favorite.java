@@ -28,7 +28,7 @@ public class Favorite {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    // API-15のレスポンスに即値が必要なためDB任せにせずJava側で設定する
+    // AP-16のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Application.appliedAtと同じ考え方。favoritesにはcreated_at以外の業務用タイムスタンプが無いため
     // created_at自体をJava管理にしている）
     @Column(name = "created_at", nullable = false)
@@ -42,7 +42,7 @@ public class Favorite {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // API-15: お気に入り登録用
+    // AP-16: お気に入り登録用
     public Favorite(User user, Event event) {
         this.user = user;
         this.event = event;

@@ -101,9 +101,9 @@ class ApiIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    // API-01: 登録したイベントがDBから読み出されて一覧に含まれる
+    // AP-04: 登録したイベントがDBから読み出されて一覧に含まれる
     @Test
-    void api01_イベント一覧取得() {
+    void ap04_イベント一覧取得() {
         Event event = openEvent();
 
         ResponseEntity<EventSummaryResponse[]> response = restTemplate.exchange(
@@ -114,9 +114,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).extracting(EventSummaryResponse::id).contains(event.getId());
     }
 
-    // API-02: 指定したイベントの詳細がDBの内容通りに返る
+    // AP-05: 指定したイベントの詳細がDBの内容通りに返る
     @Test
-    void api02_イベント詳細取得() {
+    void ap05_イベント詳細取得() {
         Event event = openEvent();
 
         ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
@@ -128,9 +128,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody().remaining()).isEqualTo(5);
     }
 
-    // API-06: 管理者が登録したイベントが実際にDBへ保存される
+    // AP-07: 管理者が登録したイベントが実際にDBへ保存される
     @Test
-    void api06_管理者はイベントを登録できる() {
+    void ap07_管理者はイベントを登録できる() {
         EventUpsertRequest request = new EventUpsertRequest(
                 "新規登録テスト", LocalDateTime.now().plusDays(20), "会議室B", 10,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
@@ -145,9 +145,9 @@ class ApiIntegrationTest {
         assertThat(eventRepository.findById(createdId).get().getName()).isEqualTo("新規登録テスト");
     }
 
-    // API-06の権限チェック: 一般ユーザーは登録できず、DBにも作られない
+    // AP-07の権限チェック: 一般ユーザーは登録できず、DBにも作られない
     @Test
-    void api06_一般ユーザーはイベントを登録できない() {
+    void ap07_一般ユーザーはイベントを登録できない() {
         EventUpsertRequest request = new EventUpsertRequest(
                 "権限チェック用", LocalDateTime.now().plusDays(20), "会議室B", 10,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
@@ -160,9 +160,9 @@ class ApiIntegrationTest {
         assertThat(eventRepository.count()).isZero();
     }
 
-    // API-03: 申込がDBに実際に1件作成される
+    // AP-12: 申込がDBに実際に1件作成される
     @Test
-    void api03_一般ユーザーは申込できる() {
+    void ap12_一般ユーザーは申込できる() {
         Event event = openEvent();
         ApplicationCreateRequest request = new ApplicationCreateRequest(event.getId(), null, null);
 
@@ -174,9 +174,9 @@ class ApiIntegrationTest {
         assertThat(applicationRepository.count()).isEqualTo(1);
     }
 
-    // API-04: 自分が申し込んだ内容がDBから読み出されて一覧に反映される
+    // AP-13: 自分が申し込んだ内容がDBから読み出されて一覧に反映される
     @Test
-    void api04_自分の申込一覧取得() {
+    void ap13_自分の申込一覧取得() {
         Event event = openEvent();
         ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(event.getId(), null, null);
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
@@ -191,9 +191,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].eventId()).isEqualTo(event.getId());
     }
 
-    // API-05: キャンセル後、DB上のステータスが実際に更新される
+    // AP-14: キャンセル後、DB上のステータスが実際に更新される
     @Test
-    void api05_申込をキャンセルできる() {
+    void ap14_申込をキャンセルできる() {
         Event event = openEvent();
         ResponseEntity<ApplicationResponse> applyResponse = restTemplate.exchange(
                 url("/api/applications"), HttpMethod.POST,

@@ -41,7 +41,7 @@ public class Application {
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 API-03）
+    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 AP-12）
     @Column(name = "extra_answer", length = 500)
     private String extraAnswer;
 
@@ -64,7 +64,7 @@ public class Application {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // D-3: イベント申込（API-03）用。生成した瞬間は必ず「受付済」
+    // D-3: イベント申込（AP-12）用。生成した瞬間は必ず「受付済」
     public Application(User user, Event event) {
         this(user, event, ApplicationStatus.ACCEPTED);
     }
@@ -116,7 +116,7 @@ public class Application {
         return checkedInAt;
     }
 
-    // D-5: 申込キャンセル（API-05）用
+    // D-5: 申込キャンセル（AP-14）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
     }

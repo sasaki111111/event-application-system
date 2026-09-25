@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// D-3: イベント申込API（API-03）、D-4: 自分の申込一覧API（API-04）、D-5: 申込キャンセルAPI（API-05）。
+// D-3: イベント申込API（AP-12）、D-4: 自分の申込一覧API（AP-13）、D-5: 申込キャンセルAPI（AP-14）。
 @RestController
 public class ApplicationController {
 
@@ -37,7 +37,7 @@ public class ApplicationController {
         this.validator = validator;
     }
 
-    // API-03 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
+    // AP-12 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
     // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @PostMapping("/api/applications")
     @ResponseStatus(HttpStatus.CREATED)
@@ -48,14 +48,14 @@ public class ApplicationController {
         return applicationService.apply(userId, request.eventId(), request.ticketTypeId(), request.extraAnswer());
     }
 
-    // API-04 GET /api/my/applications（一般以上、本人分のみ）
+    // AP-13 GET /api/my/applications（一般以上、本人分のみ）
     @GetMapping("/api/my/applications")
     public List<MyApplicationResponse> myApplications() {
         Long userId = authContext.getCurrentUser().userId();
         return applicationService.myApplications(userId);
     }
 
-    // API-05 DELETE /api/applications/{id}（一般以上、本人の申込のみ）
+    // AP-14 DELETE /api/applications/{id}（一般以上、本人の申込のみ）
     @DeleteMapping("/api/applications/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancel(@PathVariable Long id) {
@@ -63,7 +63,7 @@ public class ApplicationController {
         applicationService.cancel(userId, id);
     }
 
-    // API-19 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
+    // AP-15 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
     @PutMapping("/api/applications/{id}/check-in")
     public CheckInResponse checkIn(@PathVariable Long id) {
         authContext.requireAdmin();

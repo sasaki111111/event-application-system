@@ -39,13 +39,13 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // 機能追加（キャンセル待ちの順位計算、区分単位）: 自分より申込日時が古いキャンセル待ちの件数
     long countByTicketType_IdAndStatusAndAppliedAtLessThan(Long ticketTypeId, String status, LocalDateTime appliedAt);
 
-    // API-04: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
+    // AP-13: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
 
-    // API-18: 当日受付の申込者一覧（申込日時の昇順、機能追加）
+    // AP-11: 当日受付の申込者一覧（申込日時の昇順、機能追加）
     List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
 
-    // API-09 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
+    // AP-22 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
     // 削除済みイベントに紐づく申込は対象外とする（D-06、集計一覧＝summarize()と対象範囲を揃える）
     List<Application> findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc();
 }

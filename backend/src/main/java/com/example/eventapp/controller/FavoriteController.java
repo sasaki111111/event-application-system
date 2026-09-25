@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// お気に入り登録（API-15）・解除（API-16）・一覧（API-17）。一般ユーザー・管理者の両方が使える（要件定義書§4）。
+// お気に入り登録（AP-16）・解除（AP-17）・一覧（AP-18）。一般ユーザー・管理者の両方が使える（要件定義書§4）。
 @RestController
 public class FavoriteController {
 
@@ -31,7 +31,7 @@ public class FavoriteController {
         this.authContext = authContext;
     }
 
-    // API-15 POST /api/favorites。既に登録済みなら200、新規なら201（冪等、要件定義書E9）
+    // AP-16 POST /api/favorites。既に登録済みなら200、新規なら201（冪等、要件定義書E9）
     @PostMapping("/api/favorites")
     public ResponseEntity<FavoriteResponse> add(@Valid @RequestBody FavoriteCreateRequest request) {
         Long userId = authContext.getCurrentUser().userId();
@@ -40,7 +40,7 @@ public class FavoriteController {
         return ResponseEntity.status(status).body(result.response());
     }
 
-    // API-16 DELETE /api/favorites/{eventId}。未登録でも204（冪等）
+    // AP-17 DELETE /api/favorites/{eventId}。未登録でも204（冪等）
     @DeleteMapping("/api/favorites/{eventId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(@PathVariable Long eventId) {
@@ -48,7 +48,7 @@ public class FavoriteController {
         favoriteService.remove(userId, eventId);
     }
 
-    // API-17 GET /api/my/favorites（本人分のみ）
+    // AP-18 GET /api/my/favorites（本人分のみ）
     @GetMapping("/api/my/favorites")
     public List<FavoriteEventResponse> myFavorites() {
         Long userId = authContext.getCurrentUser().userId();

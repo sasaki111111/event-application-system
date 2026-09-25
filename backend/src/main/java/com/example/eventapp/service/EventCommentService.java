@@ -12,7 +12,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベントコメント（機能18、API-20〜22）の業務ロジック。
+// 実行環境: サーバー側（JVM）。イベントコメント（機能18、AP-19〜21）の業務ロジック。
 // 開催前後を問わず投稿可能（要件定義書§4）。削除は投稿者本人または管理者のみ（要件定義書§8 E10）。
 @Service
 public class EventCommentService {
@@ -28,7 +28,7 @@ public class EventCommentService {
         this.userRepository = userRepository;
     }
 
-    // API-20: イベント詳細のコメント一覧（投稿日時昇順）
+    // AP-19: イベント詳細のコメント一覧（投稿日時昇順）
     @Transactional(readOnly = true)
     public List<EventCommentResponse> list(Long eventId, Long currentUserId) {
         requireEvent(eventId);
@@ -37,7 +37,7 @@ public class EventCommentService {
                 .toList();
     }
 
-    // API-21: コメント投稿。イベントが存在しなければ404
+    // AP-20: コメント投稿。イベントが存在しなければ404
     @Transactional
     public EventCommentResponse post(Long userId, Long eventId, String body) {
         Event event = requireEvent(eventId);
@@ -46,7 +46,7 @@ public class EventCommentService {
         return toResponse(saved, userId);
     }
 
-    // API-22: 削除可否チェック（要件定義書§8 E10）。投稿者本人または管理者のみ削除可能
+    // AP-21: 削除可否チェック（要件定義書§8 E10）。投稿者本人または管理者のみ削除可能
     @Transactional
     public void delete(Long userId, boolean isAdmin, Long commentId) {
         EventComment comment = eventCommentRepository.findById(commentId)

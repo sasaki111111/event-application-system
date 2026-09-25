@@ -8,12 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 // 実行環境: サーバー側（JVM）。favoritesテーブルへの問い合わせ口。
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
-    // API-15: 既に登録済みならそれをそのまま返す（冪等、要件定義書§8 E9）
+    // AP-16: 既に登録済みならそれをそのまま返す（冪等、要件定義書§8 E9）
     Optional<Favorite> findByUser_IdAndEvent_Id(Long userId, Long eventId);
 
-    // API-16: 解除。未登録でも0件削除で正常終了する（冪等）
+    // AP-17: 解除。未登録でも0件削除で正常終了する（冪等）
     void deleteByUser_IdAndEvent_Id(Long userId, Long eventId);
 
-    // API-17: 自分のお気に入り一覧（登録日時の降順）
+    // AP-18: 自分のお気に入り一覧（登録日時の降順）
     List<Favorite> findByUser_IdOrderByCreatedAtDesc(Long userId);
 }

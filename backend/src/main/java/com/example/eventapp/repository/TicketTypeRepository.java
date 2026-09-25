@@ -19,9 +19,6 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
     // findByEvent_Id()で全件取得してisEmpty()を見るより軽い
     boolean existsByEvent_Id(Long eventId);
 
-    // 申込時の区分存在チェック（対象イベントに属する区分か、要件定義書E11）
-    Optional<TicketType> findByIdAndEvent_Id(Long id, Long eventId);
-
     // イベント保存時の区分全置換ロジックで、既存の区分をまとめて削除するために使う
     void deleteByEvent_Id(Long eventId);
 

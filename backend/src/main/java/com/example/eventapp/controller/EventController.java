@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// D-1: イベント一覧・詳細API（API-01・API-02）、D-2: イベント登録・編集・削除API（API-06〜08、管理者のみ）。
+// D-1: イベント一覧・詳細API（AP-04・AP-05）、D-2: イベント登録・編集・削除API（AP-07〜09、管理者のみ）。
 @RestController
 public class EventController {
 
@@ -42,13 +42,13 @@ public class EventController {
         this.validator = validator;
     }
 
-    // API-01 GET /api/events?status=all|open（既定all）
+    // AP-04 GET /api/events?status=all|open（既定all）
     @GetMapping("/api/events")
     public List<EventSummaryResponse> list(@RequestParam(defaultValue = "all") String status) {
         return eventService.list(status);
     }
 
-    // API-02 GET /api/events/{id}
+    // AP-05 GET /api/events/{id}
     @GetMapping("/api/events/{id}")
     public EventDetailResponse detail(@PathVariable Long id) {
         return eventService.getDetail(id);
@@ -61,7 +61,7 @@ public class EventController {
         return eventService.listDeleted();
     }
 
-    // API-06 POST /api/events（管理者のみ）
+    // AP-07 POST /api/events（管理者のみ）
     // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.CREATED)
@@ -71,7 +71,7 @@ public class EventController {
         return eventService.create(request);
     }
 
-    // API-07 PUT /api/events/{id}（管理者のみ）
+    // AP-08 PUT /api/events/{id}（管理者のみ）
     @PutMapping("/api/events/{id}")
     public EventDetailResponse update(@PathVariable Long id, @RequestBody EventUpsertRequest request) {
         authContext.requireAdmin();
@@ -79,7 +79,7 @@ public class EventController {
         return eventService.update(id, request);
     }
 
-    // API-08 DELETE /api/events/{id}（管理者のみ）
+    // AP-09 DELETE /api/events/{id}（管理者のみ）
     @DeleteMapping("/api/events/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
@@ -94,7 +94,7 @@ public class EventController {
         return eventService.restore(id);
     }
 
-    // API-18 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
+    // AP-11 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
     @GetMapping("/api/events/{id}/attendees")
     public List<AttendeeResponse> attendees(@PathVariable Long id) {
         authContext.requireAdmin();

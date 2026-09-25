@@ -12,7 +12,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。申込実績レポート（D-6、API-09）の業務ロジック。
+// 実行環境: サーバー側（JVM）。申込実績レポート（D-6、AP-22）の業務ロジック。
 @Service
 public class ReportService {
 

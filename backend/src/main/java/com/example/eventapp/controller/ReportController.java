@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// 実行環境: サーバー側（JVM、localhost:8080）。D-6: 申込実績出力API（API-09、管理者のみ）。
+// 実行環境: サーバー側（JVM、localhost:8080）。D-6: 申込実績出力API（AP-22、管理者のみ）。
 @RestController
 public class ReportController {
 
@@ -23,7 +23,7 @@ public class ReportController {
         this.authContext = authContext;
     }
 
-    // API-09 GET /api/reports/applications?format=json|csv&sort=startAt|accepted_desc（管理者のみ）
+    // AP-22 GET /api/reports/applications?format=json|csv&sort=startAt|accepted_desc（管理者のみ）
     @GetMapping("/api/reports/applications")
     public ResponseEntity<Object> report(
             @RequestParam(defaultValue = "json") String format,

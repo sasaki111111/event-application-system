@@ -41,7 +41,7 @@ public class ApplicationService {
         this.ticketTypeRepository = ticketTypeRepository;
     }
 
-    // API-03: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
+    // AP-12: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
     // 定員（区分がある場合は区分単位、無い場合はイベント単位）に達している場合はキャンセル待ちとして登録する。
     // userIdは呼出元（Controller）がX-User-Idから渡す
     @Transactional
@@ -100,7 +100,7 @@ public class ApplicationService {
                 .orElseThrow(() -> new NotFoundException("指定された区分が見つかりません"));
     }
 
-    // API-04: 自分の申込一覧（申込日時降順）。本人分のみ返す＝userIdでの絞り込みそのもの
+    // AP-13: 自分の申込一覧（申込日時降順）。本人分のみ返す＝userIdでの絞り込みそのもの
     @Transactional(readOnly = true)
     public List<MyApplicationResponse> myApplications(Long userId) {
         return applicationRepository.findByUser_IdOrderByAppliedAtDesc(userId).stream()
@@ -108,7 +108,7 @@ public class ApplicationService {
                 .toList();
     }
 
-    // API-05: 取消可否チェック（要件定義書§8）。本人の申込以外は403。
+    // AP-14: 取消可否チェック（要件定義書§8）。本人の申込以外は403。
     // 受付済をキャンセルした場合、同一イベント（区分がある場合は同一区分）で最も古いキャンセル待ちを自動で繰り上げる。
     @Transactional
     public void cancel(Long userId, Long applicationId) {
@@ -147,7 +147,7 @@ public class ApplicationService {
         }
     }
 
-    // API-18: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
+    // AP-11: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
     @Transactional(readOnly = true)
     public List<AttendeeResponse> listAttendees(Long eventId) {
         eventRepository.findByIdAndDeletedAtIsNull(eventId)
@@ -158,7 +158,7 @@ public class ApplicationService {
                 .toList();
     }
 
-    // API-19: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
+    // AP-15: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
     @Transactional
     public CheckInResponse checkIn(Long applicationId) {
         Application application = applicationRepository.findById(applicationId)

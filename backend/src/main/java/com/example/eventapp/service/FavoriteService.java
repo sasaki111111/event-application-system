@@ -16,7 +16,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（機能17、API-15〜17）の業務ロジック。
+// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（機能17、AP-16〜18）の業務ロジック。
 // 登録・解除はどちらも冪等（要件定義書§8 E9）：同じ状態への操作を繰り返してもエラーにしない。
 @Service
 public class FavoriteService {
@@ -34,7 +34,7 @@ public class FavoriteService {
         this.userRepository = userRepository;
     }
 
-    // API-15: 既に登録済みなら新規作成せず既存の1件をそのまま返す。
+    // AP-16: 既に登録済みなら新規作成せず既存の1件をそのまま返す。
     // createdは新規作成か既存かを表し、ControllerがHTTPステータス（201／200）の出し分けに使う
     @Transactional
     public FavoriteAddResult add(Long userId, Long eventId) {
@@ -49,13 +49,13 @@ public class FavoriteService {
         return new FavoriteAddResult(new FavoriteResponse(favorite.getId(), eventId, favorite.getCreatedAt()), created);
     }
 
-    // API-16: 未登録でもエラーにしない（冪等）
+    // AP-17: 未登録でもエラーにしない（冪等）
     @Transactional
     public void remove(Long userId, Long eventId) {
         favoriteRepository.deleteByUser_IdAndEvent_Id(userId, eventId);
     }
 
-    // API-17: 自分のお気に入り一覧（登録日時の降順）。ソフトデリート済みイベントも
+    // AP-18: 自分のお気に入り一覧（登録日時の降順）。ソフトデリート済みイベントも
     // 履歴としてそのまま表示する（一覧・詳細系APIのようなdeleted_atでの絞り込みは行わない）
     @Transactional(readOnly = true)
     public List<FavoriteEventResponse> myFavorites(Long userId) {

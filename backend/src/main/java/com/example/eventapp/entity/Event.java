@@ -65,7 +65,7 @@ public class Event {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // D-2: イベント登録（API-06）用
+    // D-2: イベント登録（AP-07）用
     public Event(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
             String organizerName, String imageUrl, String extraQuestion) {
@@ -80,7 +80,7 @@ public class Event {
         this.extraQuestion = extraQuestion;
     }
 
-    // D-2: イベント編集（API-07）用
+    // D-2: イベント編集（AP-08）用
     public void applyChanges(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
             String organizerName, String imageUrl, String extraQuestion) {

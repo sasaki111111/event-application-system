@@ -10,8 +10,8 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// 実行環境: サーバー側（JVM）。イベント登録(API-06)・編集(API-07)のリクエストボディ。
-// バリデーション内容はAPI設計書 API-06/07の制約に対応。
+// 実行環境: サーバー側（JVM）。イベント登録(AP-07)・編集(AP-08)のリクエストボディ。
+// バリデーション内容はAPI設計書 AP-07/08の制約に対応。
 @ValidEventDates
 public record EventUpsertRequest(
         @NotBlank(message = "名前を入力してください") @Size(max = 100, message = "100文字以内で入力してください") String name,

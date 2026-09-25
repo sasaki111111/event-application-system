@@ -35,7 +35,7 @@ public class EventService {
         this.ticketTypeRepository = ticketTypeRepository;
     }
 
-    // API-01: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
+    // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
     @Transactional(readOnly = true)
     public List<EventSummaryResponse> list(String status) {
         LocalDateTime now = LocalDateTime.now();
@@ -47,7 +47,7 @@ public class EventService {
                 .toList();
     }
 
-    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（API-13）
+    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-06）
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
@@ -62,14 +62,14 @@ public class EventService {
                 .toList();
     }
 
-    // API-02: 指定IDのイベントが無ければ404（API設計書§2）
+    // AP-05: 指定IDのイベントが無ければ404（API設計書§2）
     @Transactional(readOnly = true)
     public EventDetailResponse getDetail(Long id) {
         Event event = findByIdOrThrow(id);
         return toDetail(event);
     }
 
-    // API-06: イベント登録（管理者のみ。権限チェックはController側）
+    // AP-07: イベント登録（管理者のみ。権限チェックはController側）
     @Transactional
     public EventDetailResponse create(EventUpsertRequest request) {
         Event event = new Event(
@@ -88,7 +88,7 @@ public class EventService {
         return toDetail(saved, ticketTypes);
     }
 
-    // API-07: イベント編集。指定IDが無ければ404
+    // AP-08: イベント編集。指定IDが無ければ404
     @Transactional
     public EventDetailResponse update(Long id, EventUpsertRequest request) {
         Event event = findByIdOrThrow(id);
@@ -107,7 +107,7 @@ public class EventService {
         return toDetail(event, ticketTypes);
     }
 
-    // API-08: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
+    // AP-09: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
     // 機能追加（ソフトデリート）: 物理削除ではなくdeleted_atを立てるのみ。「削除済みイベント」画面から復元できる。
     @Transactional
     public void delete(Long id) {

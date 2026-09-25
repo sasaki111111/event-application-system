@@ -31,7 +31,7 @@ public class EventComment {
     @Column(nullable = false, length = 500)
     private String body;
 
-    // API-20/21のレスポンスに即値が必要なためDB任せにせずJava側で設定する
+    // AP-19/20のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Favorite.createdAtと同じ考え方。コメントは編集不可のため業務上はこれが唯一のタイムスタンプ）
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -44,7 +44,7 @@ public class EventComment {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // API-21: コメント投稿用
+    // AP-20: コメント投稿用
     public EventComment(Event event, User user, String body) {
         this.event = event;
         this.user = user;

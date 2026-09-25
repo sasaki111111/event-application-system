@@ -7,7 +7,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-// 実行環境: サーバー側（JVM）。「申込締切はstartAt以前」（API設計書 API-06/07）を@Validと連携させるための
+// 実行環境: サーバー側（JVM）。「申込締切はstartAt以前」（API設計書 AP-07/08）を@Validと連携させるための
 // クラスレベルのBean Validation制約。EventUpsertRequestに付ける。
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

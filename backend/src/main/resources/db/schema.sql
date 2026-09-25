@@ -50,7 +50,7 @@ CREATE TABLE events (
     CONSTRAINT chk_events_capacity CHECK (capacity >= 1)
 ) ENGINE = InnoDB;
 
--- API-01（一覧の開催日時昇順ソート）用インデックス
+-- AP-04（一覧の開催日時昇順ソート）用インデックス
 CREATE INDEX idx_events_start_at ON events (start_at);
 
 -- 2.4 favorites（お気に入り）
@@ -144,7 +144,7 @@ CREATE TABLE applications (
 
 -- 定員超過チェック・充足率集計・二重申込チェック用（テーブル定義書§3）
 CREATE INDEX idx_app_event_status_user ON applications (event_id, status, user_id);
--- マイページの自分の申込一覧（API-04、申込日時順）用
+-- マイページの自分の申込一覧（AP-13、申込日時順）用
 CREATE INDEX idx_app_user_applied ON applications (user_id, applied_at);
 -- 区分単位の定員超過チェック・受付済数集計用
 CREATE INDEX idx_app_ticket_type_status ON applications (ticket_type_id, status);

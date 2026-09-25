@@ -30,7 +30,7 @@ public class UserService {
         return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getRole());
     }
 
-    // API-25: 管理者アカウント登録（管理者のみ。権限チェックはController側）。作成されるのは常に管理者
+    // AP-25: 管理者アカウント登録（管理者のみ。権限チェックはController側）。作成されるのは常に管理者
     @Transactional
     public UserResponse registerAdmin(String name, String email) {
         if (userRepository.existsByEmail(email)) {
