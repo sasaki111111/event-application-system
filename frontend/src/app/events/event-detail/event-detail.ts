@@ -50,9 +50,9 @@ export class EventDetail implements OnInit {
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない
+  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない。D-03: role基準で判定する
   protected get isAdmin(): boolean {
-    return this.dummyUserStore.currentUserId() === '2';
+    return this.dummyUserStore.isAdmin();
   }
 
   ngOnInit(): void {

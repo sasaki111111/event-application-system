@@ -29,8 +29,13 @@ export class AdminCheckin implements OnInit {
     this.loadAttendees();
   }
 
-  // API-19: 「受付済」以外はbackendが400で拒否する（要件定義書§8 E8）。ボタン自体も受付済のみ活性にする
+  // API-19: 「受付済」以外はbackendが400で拒否する（要件定義書§8 E8）。ボタン自体も受付済のみ活性にする。
+  // D-05: チェックイン済みの申込への再実行は、確認のうえ管理者が許可した場合にのみAPIを呼び出す
   protected checkIn(attendee: Attendee): void {
+    if (attendee.checkedInAt && !confirm(`「${attendee.userName}」は既にチェックイン済みです。再度チェックインしますか？`)) {
+      return;
+    }
+
     this.checkingInId.set(attendee.applicationId);
     this.checkInApi.checkIn(attendee.applicationId).subscribe({
       next: () => this.loadAttendees(),

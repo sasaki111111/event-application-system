@@ -8,11 +8,20 @@ import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
 import com.example.eventapp.dto.MyApplicationResponse;
+import com.example.eventapp.dto.UserRegisterRequest;
+import com.example.eventapp.dto.UserResponse;
 import com.example.eventapp.entity.Application;
+import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,11 +76,15 @@ class ApiIntegrationTest {
     }
 
     private Event openEvent() {
+        return openEvent(5);
+    }
+
+    private Event openEvent(int capacity) {
         return eventRepository.save(new Event(
                 "結合テスト用イベント",
                 LocalDateTime.now().plusDays(10),
                 "会議室",
-                5,
+                capacity,
                 LocalDateTime.now().plusDays(5),
                 "G-2結合テスト用データ",
                 null, null, null));
@@ -195,5 +208,101 @@ class ApiIntegrationTest {
         assertThat(cancelResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         Application cancelled = applicationRepository.findById(applicationId).orElseThrow();
         assertThat(cancelled.getStatus()).isEqualTo("キャンセル済");
+    }
+
+    // O-01: 同時申込時の排他制御（悲観ロック）。定員1のイベントに2人が同時に申込んでも、
+    // 「受付済」になるのは1件だけで、もう1件は「キャンセル待ち」になる（二重受付が起きない）ことを確認する。
+    @Test
+    void o01_同時に申し込んでも定員を超えて受付済にならない() throws Exception {
+        Event event = openEvent(1); // 定員1
+        jdbcTemplate.update(
+                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
+                3L, "利用者3", "user3@example.com", "general");
+        jdbcTemplate.update(
+                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
+                4L, "利用者4", "user4@example.com", "general");
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            List<Callable<ResponseEntity<ApplicationResponse>>> tasks = List.of(3L, 4L).stream()
+                    .map(userId -> (Callable<ResponseEntity<ApplicationResponse>>) () -> restTemplate.exchange(
+                            url("/api/applications"), HttpMethod.POST,
+                            new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(userId)),
+                            ApplicationResponse.class))
+                    .collect(Collectors.toList());
+
+            List<Future<ResponseEntity<ApplicationResponse>>> futures = pool.invokeAll(tasks);
+            List<String> statuses = futures.stream().map(f -> {
+                try {
+                    return f.get().getBody().status();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }).toList();
+
+            assertThat(statuses).containsExactlyInAnyOrder(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
+            assertThat(applicationRepository.countByEvent_IdAndStatus(event.getId(), ApplicationStatus.ACCEPTED))
+                    .isEqualTo(1);
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    // AP-23: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる（D-09）
+    @Test
+    void ap23_whoamiはadminフィールドを含む() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/whoami"), HttpMethod.GET, new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("\"admin\":true");
+    }
+
+    // AP-25: 既存の管理者は新たな管理者アカウントを登録でき、実際にDBへ管理者として保存される（D-04）
+    @Test
+    void ap25_管理者は管理者アカウントを登録できる() {
+        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin@example.com");
+
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/admins"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().role()).isEqualTo("admin");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT role FROM users WHERE email = ?", String.class, "new-admin@example.com"))
+                .isEqualTo("admin");
+    }
+
+    // AP-25の権限チェック: 一般ユーザーは管理者アカウントを登録できない
+    @Test
+    void ap25_一般ユーザーは管理者アカウントを登録できない() {
+        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin2@example.com");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/admins"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?",
+                Integer.class, "new-admin2@example.com")).isZero();
+    }
+
+    // AP-09 format=csv（D-06）: 削除済みイベントに紐づく申込明細はCSVに含まれない
+    @Test
+    void ap09_csv出力は削除済みイベントの申込を含まない() {
+        Event deletedEvent = openEvent();
+        ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(deletedEvent.getId(), null, null);
+        restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
+                new HttpEntity<>(applyRequest, authHeaders(GENERAL_USER_ID)), ApplicationResponse.class);
+        deletedEvent.softDelete();
+        eventRepository.save(deletedEvent);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/reports/applications?format=csv"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).doesNotContain(deletedEvent.getName());
     }
 }

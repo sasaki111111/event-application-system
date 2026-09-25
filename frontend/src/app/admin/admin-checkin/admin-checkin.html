@@ -42,10 +42,10 @@
             }
           </td>
           <td>
-            @if (attendee.status === '受付済' && !attendee.checkedInAt) {
+            @if (attendee.status === '受付済') {
               <button type="button" class="btn-accent btn-sm"
                 (click)="checkIn(attendee)" [disabled]="checkingInId() === attendee.applicationId">
-                {{ checkingInId() === attendee.applicationId ? '処理中...' : 'チェックイン' }}
+                {{ checkingInId() === attendee.applicationId ? '処理中...' : (attendee.checkedInAt ? '再チェックイン' : 'チェックイン') }}
               </button>
             }
           </td>

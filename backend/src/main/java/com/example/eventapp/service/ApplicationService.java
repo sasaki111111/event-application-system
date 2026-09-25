@@ -59,7 +59,13 @@ public class ApplicationService {
             throw new BusinessException("すでに申し込み済みです");
         }
 
+        // O-01: 同時申込時の排他制御（悲観ロック）。定員判定から申込登録までの間、対象行
+        // （区分があれば区分、無ければイベント）をロックし、同一対象への同時申込を直列化する。
+        // ロックはこのメソッドのトランザクション終了（コミット）までDBが保持する。
         TicketType ticketType = resolveTicketType(eventId, ticketTypeId);
+        if (ticketType == null) {
+            eventRepository.findByIdForUpdate(eventId);
+        }
         int capacity = ticketType != null ? ticketType.getCapacity() : event.getCapacity();
         long acceptedCount = ticketType != null
                 ? applicationRepository.countByTicketType_IdAndStatus(ticketType.getId(), ApplicationStatus.ACCEPTED)
@@ -82,6 +88,7 @@ public class ApplicationService {
     }
 
     // 区分存在・必須チェック（要件定義書§8 E11・E12）。区分の無いイベントはticketTypeIdを無視する（API設計書§0）。
+    // O-01: 区分ありイベントでは、対象区分の存在検証とあわせて悲観ロックを取得する（apply()参照）。
     private TicketType resolveTicketType(Long eventId, Long ticketTypeId) {
         if (!ticketTypeRepository.existsByEvent_Id(eventId)) {
             return null;
@@ -89,7 +96,7 @@ public class ApplicationService {
         if (ticketTypeId == null) {
             throw new BusinessException("区分を選択してください");
         }
-        return ticketTypeRepository.findByIdAndEvent_Id(ticketTypeId, eventId)
+        return ticketTypeRepository.findByIdAndEvent_IdForUpdate(ticketTypeId, eventId)
                 .orElseThrow(() -> new NotFoundException("指定された区分が見つかりません"));
     }
 
@@ -124,6 +131,13 @@ public class ApplicationService {
         application.cancel();
 
         if (wasAccepted) {
+            // O-01: 同時申込時の排他制御（悲観ロック）。繰り上げ対象を探す前に、apply()と同じ行
+            // （区分があれば区分、無ければイベント）をロックし、同時に走る申込・キャンセルと直列化する。
+            if (ticketType != null) {
+                ticketTypeRepository.findByIdForUpdate(ticketType.getId());
+            } else {
+                eventRepository.findByIdForUpdate(eventId);
+            }
             Optional<Application> nextInLine = ticketType != null
                     ? applicationRepository.findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(
                             ticketType.getId(), ApplicationStatus.WAITLISTED)

@@ -83,6 +83,8 @@ CREATE TABLE ticket_types (
     updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT chk_ticket_types_capacity CHECK (capacity >= 1),
+    -- 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3、D-07）
+    CONSTRAINT uk_ticket_types_event_name UNIQUE (event_id, name),
     CONSTRAINT fk_ticket_types_event
         FOREIGN KEY (event_id) REFERENCES events (id)
         ON DELETE CASCADE

@@ -45,6 +45,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // API-18: 当日受付の申込者一覧（申込日時の昇順、機能追加）
     List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
 
-    // API-09 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件（受付済・キャンセル済とも実績として出す）
-    List<Application> findAllByOrderByEvent_StartAtAsc();
+    // API-09 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
+    // 削除済みイベントに紐づく申込は対象外とする（D-06、集計一覧＝summarize()と対象範囲を揃える）
+    List<Application> findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc();
 }

@@ -257,6 +257,23 @@ class EventServiceTest {
         verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
     }
 
+    // 異常系（D-07）: 同一イベント内で区分名が重複していれば変更を拒否する
+    @Test
+    void update_異常系_区分名が重複していれば変更できない() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(applicationRepository.existsByEvent_IdAndStatusIn(
+                EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
+        EventUpsertRequest request = upsertRequestWithTicketTypes(
+                new TicketTypeRequest("一般枠", 20), new TicketTypeRequest("一般枠", 10));
+
+        assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("区分名が重複しています");
+        verify(ticketTypeRepository, never()).save(any(TicketType.class));
+    }
+
     private EventUpsertRequest upsertRequestWithTicketTypes(TicketTypeRequest... ticketTypes) {
         return new EventUpsertRequest(
                 "テストイベント",

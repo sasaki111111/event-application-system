@@ -267,7 +267,7 @@ class ApplicationServiceTest {
         TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
-        when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
+        when(ticketTypeRepository.findByIdAndEvent_IdForUpdate(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
         when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(1L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
@@ -288,7 +288,7 @@ class ApplicationServiceTest {
         TicketType ticketType = ticketType(1L, 2);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
-        when(ticketTypeRepository.findByIdAndEvent_Id(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
+        when(ticketTypeRepository.findByIdAndEvent_IdForUpdate(1L, EVENT_ID)).thenReturn(Optional.of(ticketType));
         when(applicationRepository.countByTicketType_IdAndStatus(1L, ApplicationStatus.ACCEPTED)).thenReturn(2L);
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
@@ -321,7 +321,7 @@ class ApplicationServiceTest {
         Event event = openEvent(999);
         when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
         when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(true);
-        when(ticketTypeRepository.findByIdAndEvent_Id(99L, EVENT_ID)).thenReturn(Optional.empty());
+        when(ticketTypeRepository.findByIdAndEvent_IdForUpdate(99L, EVENT_ID)).thenReturn(Optional.empty());
         when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
                 .thenReturn(false);
 

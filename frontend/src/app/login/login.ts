@@ -50,7 +50,7 @@ export class Login {
     this.loginApi.login(email).subscribe({
       next: (user) => {
         this.loading.set(false);
-        this.dummyUserStore.login(String(user.userId));
+        this.dummyUserStore.login(String(user.userId), user.role);
         this.router.navigateByUrl(user.role === 'admin' ? '/admin/dashboard' : '/events');
       },
       error: (err) => {
@@ -83,7 +83,7 @@ export class Login {
     this.loginApi.register(this.registerName(), this.registerEmail()).subscribe({
       next: (created) => {
         this.registering.set(false);
-        this.dummyUserStore.login(String(created.userId));
+        this.dummyUserStore.login(String(created.userId), created.role);
         this.router.navigateByUrl('/events');
       },
       error: (err) => {

@@ -53,14 +53,15 @@ public class ReportService {
         );
     }
 
-    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス）。技術仕様書§4.2 型7の必須部分
+    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス）。技術仕様書§4.2 型7の必須部分。
+    // D-06: 集計一覧（summarize()）と同様、削除済みイベントに紐づく申込は対象外とする
     @Transactional(readOnly = true)
     public String toCsv() {
         StringBuilder csv = new StringBuilder();
         csv.append(BOM); // ExcelでUTF-8を文字化けせずに開けるようにするため付与
         csv.append("イベント名,申込者名,申込日時,ステータス\r\n");
 
-        for (Application application : applicationRepository.findAllByOrderByEvent_StartAtAsc()) {
+        for (Application application : applicationRepository.findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc()) {
             csv.append(csvField(application.getEvent().getName())).append(',')
                     .append(csvField(application.getUser().getName())).append(',')
                     .append(csvField(application.getAppliedAt().toString())).append(',')

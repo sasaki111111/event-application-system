@@ -30,6 +30,17 @@ public class UserService {
         return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getRole());
     }
 
+    // API-25: 管理者アカウント登録（管理者のみ。権限チェックはController側）。作成されるのは常に管理者
+    @Transactional
+    public UserResponse registerAdmin(String name, String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new BusinessException("このメールアドレスは既に登録されています");
+        }
+
+        User saved = userRepository.save(new User(name, email, "admin"));
+        return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getRole());
+    }
+
     // POST /api/login: メールアドレスでユーザーを特定する（パスワード照合は無し＝ダミー認証のまま）
     @Transactional(readOnly = true)
     public UserResponse login(String email) {

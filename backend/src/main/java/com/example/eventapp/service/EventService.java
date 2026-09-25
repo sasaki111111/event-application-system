@@ -157,6 +157,11 @@ public class EventService {
         if (requests.isEmpty()) {
             return List.of();
         }
+        long distinctNames = requests.stream().map(TicketTypeRequest::name).distinct().count();
+        if (distinctNames < requests.size()) {
+            // 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3、D-07）
+            throw new BusinessException("区分名が重複しています");
+        }
         List<TicketType> saved = requests.stream()
                 .map(request -> ticketTypeRepository.save(new TicketType(event, request.name(), request.capacity())))
                 .toList();

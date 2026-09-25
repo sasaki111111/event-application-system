@@ -7,7 +7,7 @@ import { DummyUserStore } from './dummy-user-store';
 
 export const adminGuard: CanActivateFn = () => {
   const dummyUserStore = inject(DummyUserStore);
-  if (dummyUserStore.currentUserId() === '2') {
+  if (dummyUserStore.isAdmin()) {
     return true;
   }
   return inject(Router).createUrlTree(['/events']);

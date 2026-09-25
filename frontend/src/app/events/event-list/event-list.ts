@@ -98,9 +98,9 @@ export class EventList implements OnInit {
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）
+  // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）。D-03: role基準で判定する
   protected get isAdmin(): boolean {
-    return this.dummyUserStore.currentUserId() === '2';
+    return this.dummyUserStore.isAdmin();
   }
 
   ngOnInit(): void {
