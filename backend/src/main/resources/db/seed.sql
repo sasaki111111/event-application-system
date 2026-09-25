@@ -12,7 +12,7 @@ INSERT INTO users (id, name, email, role) VALUES
     (1, '一般ユーザー', 'general@example.com', 'general'),
     (2, '管理者',       'admin@example.com',   'admin');
 
--- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/design/要件定義書_v1.0.md §1・§3参照）。
+-- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/01_要件定義書.md「3. 想定利用者」「4. 利用シーン」参照）。
 -- 開催日時の異なる複数件。1件は申込締切・開催日時とも過去＝「受付終了」表示の確認用。
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
     ('ボードゲーム交流会', '2026-10-01 12:00:00', 'コミュニティスペースあおば', 20,

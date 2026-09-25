@@ -1,4 +1,4 @@
--- C-1: DDL適用（docs/design/テーブル定義書_v2.0.md 準拠）
+-- C-1: DDL適用（docs/02_テーブル定義書.md 準拠）
 -- 実行環境: MySQLサーバー（アプリのJVMプロセスとは別）。Spring Bootからは自動実行しない
 -- （application.ymlで ddl-auto: none にしているため、このファイルを手動で一度だけ流す）。
 --
