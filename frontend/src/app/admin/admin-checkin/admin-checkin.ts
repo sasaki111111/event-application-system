@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Attendee, CheckInApiService } from '../../core/checkin-api';
+import { EventApiService } from '../../core/event-api';
 
 @Component({
   selector: 'app-admin-checkin',
@@ -17,16 +18,26 @@ export class AdminCheckin implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly checkingInId = signal<number | null>(null);
 
+  // D-12（機能追加）: アンケートの質問文言はAP-05（イベント詳細）から取得する。未設定ならNULL
+  protected readonly extraQuestion = signal<string | null>(null);
+
   private eventId = 0;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly checkInApi: CheckInApiService,
+    private readonly eventApi: EventApiService,
   ) {}
 
   ngOnInit(): void {
     this.eventId = Number(this.route.snapshot.paramMap.get('id'));
     this.loadAttendees();
+
+    // アンケート質問文言の取得に失敗しても、申込者一覧の表示はブロックしない
+    this.eventApi.detail(this.eventId).subscribe({
+      next: (event) => this.extraQuestion.set(event.extraQuestion),
+      error: () => {},
+    });
   }
 
   // API-19: 「受付済」以外はbackendが400で拒否する（要件定義書§8 E8）。ボタン自体も受付済のみ活性にする。

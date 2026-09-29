@@ -4,17 +4,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.eventapp.dto.ApplicationCreateRequest;
 import com.example.eventapp.dto.ApplicationResponse;
+import com.example.eventapp.dto.CommentModerationResponse;
+import com.example.eventapp.dto.CountResponse;
+import com.example.eventapp.dto.EventCommentCreateRequest;
+import com.example.eventapp.dto.EventCommentResponse;
 import com.example.eventapp.dto.EventDetailResponse;
 import com.example.eventapp.dto.EventSummaryResponse;
 import com.example.eventapp.dto.EventUpsertRequest;
+import com.example.eventapp.dto.FavoriteCreateRequest;
+import com.example.eventapp.dto.FavoriteEventResponse;
+import com.example.eventapp.dto.FavoriteResponse;
 import com.example.eventapp.dto.MyApplicationResponse;
+import com.example.eventapp.dto.UserCommentResponse;
 import com.example.eventapp.dto.UserRegisterRequest;
 import com.example.eventapp.dto.UserResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
 import com.example.eventapp.repository.ApplicationRepository;
+import com.example.eventapp.repository.EventCommentRepository;
 import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.FavoriteRepository;
+import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -60,11 +71,25 @@ class ApiIntegrationTest {
     private ApplicationRepository applicationRepository;
 
     @Autowired
+    private FavoriteRepository favoriteRepository;
+
+    @Autowired
+    private EventCommentRepository eventCommentRepository;
+
+    @Autowired
+    private TicketTypeRepository ticketTypeRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setUp() {
+        // D-14／D-18／D-19で追加したお気に入り・コメント・参加区分関連テストがeventsを参照したまま残ると、
+        // 後続テストのイベント削除がFK制約違反になるため先に消す
+        favoriteRepository.deleteAll();
+        eventCommentRepository.deleteAll();
         applicationRepository.deleteAll();
+        ticketTypeRepository.deleteAll();
         eventRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM users");
         jdbcTemplate.update(
@@ -304,5 +329,246 @@ class ApiIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).doesNotContain(deletedEvent.getName());
+    }
+
+    // AP-04（D-14）: favoriteCountがお気に入り登録件数を反映する。全利用者に返す項目のため一般ユーザーで確認する
+    @Test
+    void ap04_favoriteCountはお気に入り登録件数を反映する() {
+        Event event = openEvent();
+        restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
+                new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
+                FavoriteResponse.class);
+
+        ResponseEntity<EventSummaryResponse[]> response = restTemplate.exchange(
+                url("/api/events"), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
+                EventSummaryResponse[].class);
+
+        assertThat(response.getBody())
+                .filteredOn(e -> e.id().equals(event.getId()))
+                .extracting(EventSummaryResponse::favoriteCount)
+                .containsExactly(1L);
+    }
+
+    // AP-22（D-12）: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
+    @Test
+    void ap22_csv出力にアンケート回答列が含まれる() {
+        Event event = eventRepository.save(new Event(
+                "アンケート付きイベント",
+                LocalDateTime.now().plusDays(10),
+                "会議室",
+                5,
+                LocalDateTime.now().plusDays(5),
+                "G-2結合テスト用データ",
+                null, null, "参加動機を教えてください"));
+        restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
+                new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, "業務で必要なため"),
+                        authHeaders(GENERAL_USER_ID)),
+                ApplicationResponse.class);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/reports/applications?format=csv"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("アンケート回答");
+        assertThat(response.getBody()).contains("業務で必要なため");
+    }
+
+    // AP-26（D-13）: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
+    @Test
+    void ap26_利用者情報取得は管理者のみ() {
+        ResponseEntity<UserResponse> adminResponse = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
+        assertThat(adminResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(adminResponse.getBody().name()).isEqualTo("一般ユーザー");
+
+        ResponseEntity<String> generalResponse = restTemplate.exchange(
+                url("/api/users/" + ADMIN_USER_ID), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+        assertThat(generalResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+        ResponseEntity<String> notFoundResponse = restTemplate.exchange(
+                url("/api/users/9999"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+        assertThat(notFoundResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // AP-27（D-13）: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
+    @Test
+    void ap27_利用者の申込一覧取得() {
+        Event event = openEvent();
+        restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
+                new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(GENERAL_USER_ID)),
+                ApplicationResponse.class);
+
+        ResponseEntity<MyApplicationResponse[]> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/applications"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), MyApplicationResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody()[0].eventId()).isEqualTo(event.getId());
+
+        ResponseEntity<String> forbidden = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/applications"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // AP-28（D-13）: 管理者は対象利用者のお気に入り一覧を取得できる
+    @Test
+    void ap28_利用者のお気に入り一覧取得() {
+        Event event = openEvent();
+        restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
+                new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
+                FavoriteResponse.class);
+
+        ResponseEntity<FavoriteEventResponse[]> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/favorites"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), FavoriteEventResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody()[0].id()).isEqualTo(event.getId());
+    }
+
+    // AP-22（D-19）: CSV明細に参加区分列が追加され、区分名がそのまま出力される
+    @Test
+    void ap22_csv出力に参加区分列が含まれる() {
+        Event event = eventRepository.save(new Event(
+                "区分付きイベント",
+                LocalDateTime.now().plusDays(10),
+                "会議室",
+                5,
+                LocalDateTime.now().plusDays(5),
+                "G-2結合テスト用データ",
+                null, null, null));
+        ResponseEntity<EventDetailResponse> updated = restTemplate.exchange(
+                url("/api/events/" + event.getId()), HttpMethod.PUT,
+                new HttpEntity<>(new EventUpsertRequest(
+                        event.getName(), event.getStartAt(), event.getPlace(), 5, event.getApplicationDeadline(),
+                        event.getDescription(), null, null, null,
+                        List.of(new com.example.eventapp.dto.TicketTypeRequest("一般枠", 5))),
+                        authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class);
+        Long ticketTypeId = updated.getBody().ticketTypes().get(0).id();
+
+        restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
+                new HttpEntity<>(new ApplicationCreateRequest(event.getId(), ticketTypeId, null),
+                        authHeaders(GENERAL_USER_ID)),
+                ApplicationResponse.class);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/reports/applications?format=csv"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("参加区分");
+        assertThat(response.getBody()).contains("一般枠");
+    }
+
+    // AP-29（D-20）: お気に入り総数取得は管理者のみ実行できる
+    @Test
+    void ap29_お気に入り総数取得は管理者のみ() {
+        Event event = openEvent();
+        restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
+                new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
+                FavoriteResponse.class);
+
+        ResponseEntity<CountResponse> response = restTemplate.exchange(
+                url("/api/favorites/count"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CountResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().count()).isEqualTo(1L);
+
+        ResponseEntity<String> forbidden = restTemplate.exchange(
+                url("/api/favorites/count"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // AP-30（D-20）: コメント総数は論理削除済みを除外し、管理者のみ実行できる
+    @Test
+    void ap30_コメント総数取得は論理削除済みを除外する() {
+        Event event = openEvent();
+        ResponseEntity<EventCommentResponse> commentResponse = restTemplate.exchange(
+                url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("有効なコメント", null), authHeaders(GENERAL_USER_ID)),
+                EventCommentResponse.class);
+        restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("削除予定のコメント", null), authHeaders(GENERAL_USER_ID)),
+                EventCommentResponse.class);
+        Long willBeDeletedId = commentResponse.getBody().id();
+        // 返信を付けたうえで削除すると論理削除になる（D-18）
+        restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("返信", willBeDeletedId), authHeaders(ADMIN_USER_ID)),
+                EventCommentResponse.class);
+        restTemplate.exchange(url("/api/comments/" + willBeDeletedId), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
+
+        ResponseEntity<CountResponse> response = restTemplate.exchange(
+                url("/api/comments/count"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CountResponse.class);
+
+        // 「削除予定のコメント」「返信」の2件が有効。論理削除された1件は含まない
+        assertThat(response.getBody().count()).isEqualTo(2L);
+    }
+
+    // AP-31（D-21）: 利用者のコメント履歴は、論理削除済みも含めイベント名付きで取得できる
+    @Test
+    void ap31_利用者のコメント履歴取得() {
+        Event event = openEvent();
+        restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("履歴確認用コメント", null), authHeaders(GENERAL_USER_ID)),
+                EventCommentResponse.class);
+
+        ResponseEntity<UserCommentResponse[]> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/comments"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserCommentResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody()[0].eventName()).isEqualTo(event.getName());
+        assertThat(response.getBody()[0].deleted()).isFalse();
+
+        ResponseEntity<String> forbidden = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/comments"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // AP-32（D-22）: 全コメント一覧は有効なコメントのみを対象とし、イベント名・投稿者名を含む
+    @Test
+    void ap32_全コメント一覧取得は有効なコメントのみ() {
+        Event event = openEvent();
+        ResponseEntity<EventCommentResponse> commentResponse = restTemplate.exchange(
+                url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("表示されるコメント", null), authHeaders(GENERAL_USER_ID)),
+                EventCommentResponse.class);
+        Long commentId = commentResponse.getBody().id();
+        restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
+                new HttpEntity<>(new EventCommentCreateRequest("返信", commentId), authHeaders(ADMIN_USER_ID)),
+                EventCommentResponse.class);
+        // 返信があるので論理削除される＝一覧には「削除されました」として残るが、本テストは有効なものだけ数える
+        restTemplate.exchange(url("/api/comments/" + commentId), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
+
+        ResponseEntity<CommentModerationResponse[]> response = restTemplate.exchange(
+                url("/api/comments"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CommentModerationResponse[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 「表示されるコメント」は論理削除済みのため対象外、「返信」のみが有効なコメントとして残る
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody()[0].body()).isEqualTo("返信");
+        assertThat(response.getBody()[0].eventName()).isEqualTo(event.getName());
+        assertThat(response.getBody()[0].userName()).isEqualTo("管理者");
+
+        ResponseEntity<String> forbidden = restTemplate.exchange(
+                url("/api/comments"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 }

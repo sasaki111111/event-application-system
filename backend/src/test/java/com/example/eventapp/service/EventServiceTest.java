@@ -20,6 +20,7 @@ import com.example.eventapp.entity.Event;
 import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.FavoriteRepository;
 import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +40,7 @@ class EventServiceTest {
     private EventRepository eventRepository;
     private ApplicationRepository applicationRepository;
     private TicketTypeRepository ticketTypeRepository;
+    private FavoriteRepository favoriteRepository;
     private EventService eventService;
 
     private static final Long EVENT_ID = 10L;
@@ -48,7 +50,8 @@ class EventServiceTest {
         eventRepository = mock(EventRepository.class);
         applicationRepository = mock(ApplicationRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
-        eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository);
+        favoriteRepository = mock(FavoriteRepository.class);
+        eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository, favoriteRepository);
         // toDetail()が呼ばれる大半のテストで空の区分一覧を返す既定値にしておく
         when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
         // saveTicketTypes()が戻り値の区分一覧をcapacity合計に使うため、保存した引数をそのまま返す既定値にしておく
@@ -109,6 +112,31 @@ class EventServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).id()).isEqualTo(EVENT_ID);
         assertThat(result.get(0).deletedAt()).isEqualTo(LocalDateTime.of(2026, 9, 16, 12, 0));
+    }
+
+    // 正常系（D-16）: 削除済み一覧のレスポンスに、複製に必要な項目（説明・主催者名・区分等）が含まれる
+    @Test
+    void listDeleted_正常系_複製に必要な項目を含む() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(event.getDescription()).thenReturn("説明文");
+        when(event.getOrganizerName()).thenReturn("主催団体");
+        when(event.getImageUrl()).thenReturn("https://example.com/image.png");
+        when(event.getExtraQuestion()).thenReturn("参加動機を教えてください");
+        when(eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc()).thenReturn(List.of(event));
+        TicketType ticketType = mock(TicketType.class);
+        when(ticketType.getName()).thenReturn("一般枠");
+        when(ticketType.getCapacity()).thenReturn(5);
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(ticketType));
+
+        var result = eventService.listDeleted();
+
+        assertThat(result.get(0).description()).isEqualTo("説明文");
+        assertThat(result.get(0).organizerName()).isEqualTo("主催団体");
+        assertThat(result.get(0).imageUrl()).isEqualTo("https://example.com/image.png");
+        assertThat(result.get(0).extraQuestion()).isEqualTo("参加動機を教えてください");
+        assertThat(result.get(0).ticketTypes()).hasSize(1);
+        assertThat(result.get(0).ticketTypes().get(0).name()).isEqualTo("一般枠");
     }
 
     // 正常系: 削除済みイベントは復元できる

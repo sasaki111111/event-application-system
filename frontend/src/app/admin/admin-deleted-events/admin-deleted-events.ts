@@ -1,7 +1,7 @@
 // 実行環境: ブラウザ側。機能追加（ソフトデリート）: 削除済みイベントの確認・復元画面（/admin/events/deleted）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DeletedEvent, EventApiService } from '../../core/event-api';
 
 @Component({
@@ -15,10 +15,18 @@ export class AdminDeletedEvents implements OnInit {
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
 
-  constructor(private readonly eventApi: EventApiService) {}
+  constructor(
+    private readonly eventApi: EventApiService,
+    private readonly router: Router,
+  ) {}
 
   ngOnInit(): void {
     this.loadDeletedEvents();
+  }
+
+  // D-16: 削除済み一覧（AP-06、複製に必要な項目を含む）はAPIを追加で呼ばずそのまま複製元にできる
+  protected duplicate(event: DeletedEvent): void {
+    this.router.navigate(['/admin/events/new'], { state: { duplicateFrom: event } });
   }
 
   protected restoreEvent(event: DeletedEvent): void {

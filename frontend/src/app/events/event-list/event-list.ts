@@ -44,6 +44,23 @@ export class EventList implements OnInit {
   protected readonly viewMode = signal<'list' | 'calendar'>('list');
   protected readonly calendarMonth = signal(this.startOfMonth(new Date()));
 
+  // D-14（機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
+  protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
+
+  protected readonly sortedEvents = computed(() => {
+    const events = [...this.events()];
+    switch (this.sortOrder()) {
+      case 'accepted_desc':
+        return events.sort((a, b) => b.acceptedCount - a.acceptedCount);
+      case 'favorite_desc':
+        return events.sort((a, b) => b.favoriteCount - a.favoriteCount);
+      case 'deadline_asc':
+        return events.sort((a, b) => a.applicationDeadline.localeCompare(b.applicationDeadline));
+      default:
+        return events.sort((a, b) => a.startAt.localeCompare(b.startAt));
+    }
+  });
+
   protected readonly calendarMonthLabel = computed(() => {
     const month = this.calendarMonth();
     return `${month.getFullYear()}年${month.getMonth() + 1}月`;
@@ -160,6 +177,10 @@ export class EventList implements OnInit {
 
   protected setViewMode(mode: 'list' | 'calendar'): void {
     this.viewMode.set(mode);
+  }
+
+  protected onSortOrderChange(value: string): void {
+    this.sortOrder.set(value as 'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc');
   }
 
   protected previousMonth(): void {

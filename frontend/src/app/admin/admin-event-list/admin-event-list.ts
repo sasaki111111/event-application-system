@@ -2,7 +2,7 @@
 // GET /api/eventsはSC-02と同じAPIを流用する（API設計書の備考の通り）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EventApiService, EventSummary } from '../../core/event-api';
 
 @Component({
@@ -15,8 +15,28 @@ export class AdminEventList implements OnInit {
   protected readonly events = signal<EventSummary[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly duplicatingId = signal<number | null>(null);
 
-  constructor(private readonly eventApi: EventApiService) {}
+  constructor(
+    private readonly eventApi: EventApiService,
+    private readonly router: Router,
+  ) {}
+
+  // D-16: 複製元イベントの詳細（AP-05）を取得し、新規登録フォームへ値を持って遷移する。
+  // バックエンドAPIは呼ばない（開催日時・申込締切は複製対象外のため、新規登録と同じ入力チェックを通す）
+  protected duplicate(event: EventSummary): void {
+    this.duplicatingId.set(event.id);
+    this.eventApi.detail(event.id).subscribe({
+      next: (detail) => {
+        this.duplicatingId.set(null);
+        this.router.navigate(['/admin/events/new'], { state: { duplicateFrom: detail } });
+      },
+      error: (err) => {
+        this.duplicatingId.set(null);
+        alert(err.error?.message ?? '複製に失敗しました。');
+      },
+    });
+  }
 
   ngOnInit(): void {
     this.loadEvents();

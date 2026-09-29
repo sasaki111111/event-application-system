@@ -1,0 +1,40 @@
+<!-- 実行環境: ブラウザ側。comment-item.tsのテンプレート。 -->
+<div class="comment-item" [class.deleted]="comment().comment.deleted">
+  <div class="comment-header">
+    <span class="comment-author">{{ comment().comment.userName }}</span>
+    <span class="comment-date">{{ comment().comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+    @if (!comment().comment.deleted) {
+      <button type="button" class="btn-link btn-sm" (click)="toggleReplyForm()">返信</button>
+    }
+    @if ((comment().comment.mine || isAdmin()) && !comment().comment.deleted) {
+      <button type="button" class="btn-link btn-sm" (click)="onDelete()">削除</button>
+    }
+  </div>
+  <p class="comment-body">{{ comment().comment.body }}</p>
+
+  @if (replyFormOpen()) {
+    <div class="field reply-form">
+      <textarea
+        rows="2"
+        maxlength="500"
+        placeholder="返信を入力"
+        [value]="replyBody()"
+        (input)="onReplyInput($any($event.target).value)"
+      ></textarea>
+      <button type="button" (click)="submitReply()" [disabled]="!replyBody().trim()">返信を投稿</button>
+    </div>
+  }
+
+  @if (comment().children.length > 0) {
+    <div class="comment-replies">
+      @for (child of comment().children; track child.comment.id) {
+        <app-comment-item
+          [comment]="child"
+          [isAdmin]="isAdmin()"
+          (reply)="onChildReply($event)"
+          (delete)="onChildDelete($event)"
+        />
+      }
+    </div>
+  }
+</div>

@@ -28,8 +28,17 @@ public class EventComment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // D-18: 返信先のコメント。通常の投稿（返信ではない）場合はNULL。階層数に制限は設けない
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private EventComment parentComment;
+
     @Column(nullable = false, length = 500)
     private String body;
+
+    // D-18: 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     // AP-19/20のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Favorite.createdAtと同じ考え方。コメントは編集不可のため業務上はこれが唯一のタイムスタンプ）
@@ -44,11 +53,17 @@ public class EventComment {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // AP-20: コメント投稿用
+    // AP-20: コメント投稿用（通常の投稿）
     public EventComment(Event event, User user, String body) {
+        this(event, user, body, null);
+    }
+
+    // AP-20: コメント投稿用（D-18: parentCommentを指定すると返信になる）
+    public EventComment(Event event, User user, String body, EventComment parentComment) {
         this.event = event;
         this.user = user;
         this.body = body;
+        this.parentComment = parentComment;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -64,8 +79,20 @@ public class EventComment {
         return user;
     }
 
+    public EventComment getParentComment() {
+        return parentComment;
+    }
+
     public String getBody() {
         return body;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -75,5 +102,10 @@ public class EventComment {
     // 削除可否チェック（要件定義書§8 E10）で使う本人判定
     public boolean isOwnedBy(Long userId) {
         return user.getId().equals(userId);
+    }
+
+    // D-18: 返信が残っているコメントの削除（論理削除）。物理削除できる場合はService側がrepository.delete()を使う
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
     }
 }

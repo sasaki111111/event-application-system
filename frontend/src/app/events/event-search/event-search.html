@@ -25,6 +25,15 @@
       <label for="dateTo">開催日（まで）</label>
       <input id="dateTo" type="date" [value]="dateTo()" (input)="onDateToInput($any($event.target).value)" />
     </div>
+    <div class="field">
+      <label for="sortOrder">並び替え</label>
+      <select id="sortOrder" [value]="sortOrder()" (change)="onSortOrderChange($any($event.target).value)">
+        <option value="startAt">開催日時順</option>
+        <option value="accepted_desc">申込数の多い順</option>
+        <option value="favorite_desc">お気に入り数の多い順</option>
+        <option value="deadline_asc">申込締切が近い順</option>
+      </select>
+    </div>
     <button type="button" class="btn-link" (click)="clearFilters()">条件をクリア</button>
   </div>
 
@@ -51,6 +60,8 @@
           <dd>{{ event.place }}</dd>
           <dt>申込状況</dt>
           <dd>{{ event.acceptedCount }} / {{ event.capacity }}</dd>
+          <dt>お気に入り数</dt>
+          <dd>{{ event.favoriteCount }}</dd>
         </dl>
       </div>
     }

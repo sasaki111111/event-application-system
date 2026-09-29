@@ -16,6 +16,8 @@ export interface EventSummary {
   // 機能追加（イベント情報の拡張）
   organizerName: string | null;
   imageUrl: string | null;
+  // D-14（機能追加）: イベントのお気に入り登録件数。全利用者に返る
+  favoriteCount: number;
 }
 
 // 機能追加（定員区分）: イベント詳細のticketTypes[]1件分（backendのTicketTypeResponseと対応）
@@ -57,6 +59,7 @@ export interface EventUpsertRequest {
 }
 
 // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧1件分（backendのDeletedEventResponseと対応）
+// D-16: description〜ticketTypesは、この画面からのイベント複製に必要な項目として追加（表示は必須としない）
 export interface DeletedEvent {
   id: number;
   name: string;
@@ -64,6 +67,24 @@ export interface DeletedEvent {
   place: string;
   capacity: number;
   deletedAt: string;
+  description: string | null;
+  organizerName: string | null;
+  imageUrl: string | null;
+  extraQuestion: string | null;
+  ticketTypes: TicketType[];
+}
+
+// D-16（機能追加）: イベント複製時に新規登録フォームへ複写する項目。EventDetail・DeletedEventの
+// いずれも構造的にこの形を満たす（開催日時・申込締切は複製対象から除く）
+export interface EventDuplicateSource {
+  name: string;
+  place: string;
+  capacity: number;
+  description: string | null;
+  organizerName: string | null;
+  imageUrl: string | null;
+  extraQuestion: string | null;
+  ticketTypes: TicketType[];
 }
 
 const API_BASE_URL = 'http://localhost:8080/api';

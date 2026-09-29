@@ -53,19 +53,24 @@ public class ReportService {
         );
     }
 
-    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス）。技術仕様書§4.2 型7の必須部分。
+    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス／アンケート回答／参加区分）。技術仕様書§4.2 型7の必須部分。
     // D-06: 集計一覧（summarize()）と同様、削除済みイベントに紐づく申込は対象外とする
+    // D-12: アンケート回答列を追加（アンケート未設定・未回答の申込は空欄）
+    // D-19: 参加区分列を末尾に追加（区分の無いイベントへの申込は空欄）
     @Transactional(readOnly = true)
     public String toCsv() {
         StringBuilder csv = new StringBuilder();
         csv.append(BOM); // ExcelでUTF-8を文字化けせずに開けるようにするため付与
-        csv.append("イベント名,申込者名,申込日時,ステータス\r\n");
+        csv.append("イベント名,申込者名,申込日時,ステータス,アンケート回答,参加区分\r\n");
 
         for (Application application : applicationRepository.findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc()) {
+            String ticketTypeName = application.getTicketType() != null ? application.getTicketType().getName() : null;
             csv.append(csvField(application.getEvent().getName())).append(',')
                     .append(csvField(application.getUser().getName())).append(',')
                     .append(csvField(application.getAppliedAt().toString())).append(',')
-                    .append(csvField(application.getStatus())).append("\r\n");
+                    .append(csvField(application.getStatus())).append(',')
+                    .append(csvField(application.getExtraAnswer())).append(',')
+                    .append(csvField(ticketTypeName)).append("\r\n");
         }
 
         return csv.toString();

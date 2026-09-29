@@ -5,12 +5,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail as EventDetailModel } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
 import { FavoriteStore } from '../../core/favorite-store';
-import { CommentApiService, EventComment } from '../../core/comment-api';
+import { CommentApiService, CommentNode, buildCommentTree } from '../../core/comment-api';
 import { DummyUserStore } from '../../core/dummy-user-store';
+import { CommentItem, CommentReplyEvent } from '../comment-item/comment-item';
 
 @Component({
   selector: 'app-event-detail',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, CommentItem],
   templateUrl: './event-detail.html',
   styleUrl: './event-detail.css',
 })
@@ -28,8 +29,8 @@ export class EventDetail implements OnInit {
   // 機能追加（お気に入り）: 登録済みかどうかはFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusy = signal(false);
 
-  // 機能追加（イベントコメント）
-  protected readonly comments = signal<EventComment[]>([]);
+  // 機能追加（イベントコメント）。D-18: commentTreeは返信を親子構造に組み立てたもの（表示用）
+  protected readonly commentTree = signal<CommentNode[]>([]);
   protected readonly commentBody = signal('');
   protected readonly postingComment = signal(false);
   protected readonly commentErrorMessage = signal<string | null>(null);
@@ -80,10 +81,11 @@ export class EventDetail implements OnInit {
     this.loadComments();
   }
 
-  // 機能追加（イベントコメント）: 開催前後を問わず投稿可能（要件定義書§4）
+  // 機能追加（イベントコメント）: 開催前後を問わず投稿可能（要件定義書§4）。
+  // D-18: APIはフラットな配列で返すため、表示用に親子構造（commentTree）へ組み立てる
   private loadComments(): void {
     this.commentApi.list(this.eventId).subscribe({
-      next: (comments) => this.comments.set(comments),
+      next: (comments) => this.commentTree.set(buildCommentTree(comments)),
       error: () => {
         // コメント取得失敗はイベント詳細本体の表示をブロックしない
       },
@@ -116,12 +118,21 @@ export class EventDetail implements OnInit {
     });
   }
 
-  // API-22: 投稿者本人または管理者のみ削除可能（要件定義書§8 E10）。ボタン自体はmineがtrueの時のみ表示
-  protected deleteComment(comment: EventComment): void {
+  // D-18: comment-itemコンポーネントからバブルしてきた返信イベント（何階層目の返信でも同じハンドラで受ける）
+  protected onReply(event: CommentReplyEvent): void {
+    this.commentApi.post(this.eventId, event.body, event.parentCommentId).subscribe({
+      next: () => this.loadComments(),
+      error: (err) => alert(err.error?.message ?? '返信の投稿に失敗しました。'),
+    });
+  }
+
+  // API-22: 投稿者本人または管理者のみ削除可能（要件定義書§8 E10）。ボタン自体はmineがtrueの時のみ表示。
+  // 返信が残っている場合はサーバー側で論理削除される（一覧には残り、本文が削除済み表示に置き換わる、D-18）
+  protected onDeleteComment(commentId: number): void {
     if (!confirm('このコメントを削除しますか？')) {
       return;
     }
-    this.commentApi.remove(comment.id).subscribe({
+    this.commentApi.remove(commentId).subscribe({
       next: () => this.loadComments(),
       error: (err) => alert(err.error?.message ?? 'コメントの削除に失敗しました。'),
     });

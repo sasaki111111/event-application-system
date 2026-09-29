@@ -133,4 +133,14 @@ class FavoriteServiceTest {
         assertThat(result).isEmpty();
         verify(applicationRepository, never()).countByEvent_IdAndStatus(anyLong(), any());
     }
+
+    // 正常系（D-20）: お気に入り総数はRepositoryのcount()をそのまま返す
+    @Test
+    void countAll_正常系_リポジトリの件数を返す() {
+        when(favoriteRepository.count()).thenReturn(42L);
+
+        long result = favoriteService.countAll();
+
+        assertThat(result).isEqualTo(42L);
+    }
 }

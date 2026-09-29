@@ -16,4 +16,7 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     // AP-18: 自分のお気に入り一覧（登録日時の降順）
     List<Favorite> findByUser_IdOrderByCreatedAtDesc(Long userId);
+
+    // D-14（機能追加）: イベント一覧・詳細のfavoriteCount集計に使う
+    long countByEvent_Id(Long eventId);
 }

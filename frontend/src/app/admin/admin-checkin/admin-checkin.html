@@ -17,6 +17,10 @@
         <th>区分</th>
         <th>ステータス</th>
         <th>チェックイン</th>
+        <!-- D-12（機能追加）: アンケート設定があるイベントのみ列を表示し、見出しに質問文言を出す -->
+        @if (extraQuestion()) {
+          <th>{{ extraQuestion() }}</th>
+        }
         <th></th>
       </tr>
     </thead>
@@ -41,6 +45,9 @@
               未チェックイン
             }
           </td>
+          @if (extraQuestion()) {
+            <td>{{ attendee.extraAnswer ?? '-' }}</td>
+          }
           <td>
             @if (attendee.status === '受付済') {
               <button type="button" class="btn-accent btn-sm"

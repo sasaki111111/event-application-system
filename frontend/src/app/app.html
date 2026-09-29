@@ -3,11 +3,12 @@
   <span class="brand">イベント申込システム</span>
   @if (dummyUserStore.currentUserId()) {
     @if (dummyUserStore.isAdmin()) {
-      <!-- 画面設計書§2 共通仕様: 管理者＝［ダッシュボード／イベント管理／申込状況・実績／利用者管理／ログアウト］ -->
+      <!-- 画面設計書§2 共通仕様: 管理者＝［ダッシュボード／イベント管理／申込状況・実績／利用者管理／コメント管理／ログアウト］ -->
       <a routerLink="/admin/dashboard">ダッシュボード</a>
       <a routerLink="/admin/events">イベント管理</a>
       <a routerLink="/admin/reports">申込状況・実績</a>
       <a routerLink="/admin/users">利用者管理</a>
+      <a routerLink="/admin/comments">コメント管理</a>
     } @else {
       <!-- 一般＝［イベント一覧／イベント検索／マイページ／ログアウト］ -->
       <a routerLink="/events">イベント一覧</a>

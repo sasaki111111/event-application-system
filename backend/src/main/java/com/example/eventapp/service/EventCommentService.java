@@ -2,7 +2,9 @@ package com.example.eventapp.service;
 
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
+import com.example.eventapp.dto.CommentModerationResponse;
 import com.example.eventapp.dto.EventCommentResponse;
+import com.example.eventapp.dto.UserCommentResponse;
 import com.example.eventapp.entity.Event;
 import com.example.eventapp.entity.EventComment;
 import com.example.eventapp.repository.EventCommentRepository;
@@ -37,16 +39,23 @@ public class EventCommentService {
                 .toList();
     }
 
-    // AP-20: コメント投稿。イベントが存在しなければ404
+    // AP-20: コメント投稿。イベントが存在しなければ404（D-18: parentCommentIdを指定すると返信になる）
     @Transactional
-    public EventCommentResponse post(Long userId, Long eventId, String body) {
+    public EventCommentResponse post(Long userId, Long eventId, String body, Long parentCommentId) {
         Event event = requireEvent(eventId);
+        EventComment parentComment = null;
+        if (parentCommentId != null) {
+            // 返信先は同一イベントのコメントであることを要する。削除済み（論理削除）のコメントへの返信は許可する（D-18）
+            parentComment = eventCommentRepository.findByIdAndEvent_Id(parentCommentId, eventId)
+                    .orElseThrow(() -> new NotFoundException("返信先のコメントが見つかりません"));
+        }
         EventComment saved = eventCommentRepository.save(
-                new EventComment(event, userRepository.getReferenceById(userId), body));
+                new EventComment(event, userRepository.getReferenceById(userId), body, parentComment));
         return toResponse(saved, userId);
     }
 
-    // AP-21: 削除可否チェック（要件定義書§8 E10）。投稿者本人または管理者のみ削除可能
+    // AP-21: 削除可否チェック（要件定義書§8 E10）。投稿者本人または管理者のみ削除可能。
+    // D-18: 返信が1件も無ければ物理削除、1件以上あれば返信との参照関係を保つため論理削除する
     @Transactional
     public void delete(Long userId, boolean isAdmin, Long commentId) {
         EventComment comment = eventCommentRepository.findById(commentId)
@@ -56,7 +65,48 @@ public class EventCommentService {
         if (!allowed) {
             throw new ForbiddenException("削除できません");
         }
-        eventCommentRepository.delete(comment);
+
+        if (eventCommentRepository.existsByParentComment_Id(commentId)) {
+            comment.softDelete();
+        } else {
+            eventCommentRepository.delete(comment);
+        }
+    }
+
+    // D-20: 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
+    @Transactional(readOnly = true)
+    public long countActive() {
+        return eventCommentRepository.countByDeletedAtIsNull();
+    }
+
+    // D-21: 利用者詳細（SC-15）のコメント履歴（AP-31）。論理削除済みのコメントも含める
+    @Transactional(readOnly = true)
+    public List<UserCommentResponse> listByUser(Long userId) {
+        return eventCommentRepository.findByUser_IdOrderByCreatedAtDescIdDesc(userId).stream()
+                .map(comment -> new UserCommentResponse(
+                        comment.getId(),
+                        comment.getEvent().getId(),
+                        comment.getEvent().getName(),
+                        comment.isDeleted() ? DELETED_BODY_PLACEHOLDER : comment.getBody(),
+                        comment.getCreatedAt(),
+                        comment.isDeleted()
+                ))
+                .toList();
+    }
+
+    // D-22: 全コメント一覧（SC-16コメントモデレーション、AP-32）。有効なコメントのみを対象とする
+    @Transactional(readOnly = true)
+    public List<CommentModerationResponse> listAllActive() {
+        return eventCommentRepository.findByDeletedAtIsNullOrderByCreatedAtDesc().stream()
+                .map(comment -> new CommentModerationResponse(
+                        comment.getId(),
+                        comment.getEvent().getId(),
+                        comment.getEvent().getName(),
+                        comment.getUser().getName(),
+                        comment.getBody(),
+                        comment.getCreatedAt()
+                ))
+                .toList();
     }
 
     private Event requireEvent(Long eventId) {
@@ -64,13 +114,19 @@ public class EventCommentService {
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
     }
 
+    private static final String DELETED_BODY_PLACEHOLDER = "このコメントは削除されました";
+
     private EventCommentResponse toResponse(EventComment comment, Long currentUserId) {
+        Long parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+        String body = comment.isDeleted() ? DELETED_BODY_PLACEHOLDER : comment.getBody();
         return new EventCommentResponse(
                 comment.getId(),
                 comment.getUser().getName(),
-                comment.getBody(),
+                body,
                 comment.getCreatedAt(),
-                comment.isOwnedBy(currentUserId)
+                comment.isOwnedBy(currentUserId),
+                parentCommentId,
+                comment.isDeleted()
         );
     }
 }

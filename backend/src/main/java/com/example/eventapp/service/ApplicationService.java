@@ -178,7 +178,8 @@ public class ApplicationService {
                 application.getUser().getName(),
                 application.getTicketType() != null ? application.getTicketType().getName() : null,
                 application.getStatus(),
-                application.getCheckedInAt()
+                application.getCheckedInAt(),
+                application.getExtraAnswer()
         );
     }
 

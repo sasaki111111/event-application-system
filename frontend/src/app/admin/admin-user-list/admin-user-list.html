@@ -57,7 +57,7 @@
       @for (user of users(); track user.userId) {
         <tr>
           <td>{{ user.userId }}</td>
-          <td>{{ user.name }}</td>
+          <td><a [routerLink]="['/admin/users', user.userId]">{{ user.name }}</a></td>
           <td>{{ user.email }}</td>
           <td>
             @if (user.role === 'admin') {

@@ -19,6 +19,8 @@
     >
       {{ favoriteStore.isFavorited(e.id) ? '★ お気に入り済み' : '☆ お気に入りに追加' }}
     </button>
+    <!-- D-14（機能追加）: お気に入り登録件数 -->
+    <span class="note">お気に入り {{ e.favoriteCount }}件</span>
   </div>
 
   @if (e.imageUrl) {
@@ -122,23 +124,19 @@
       }
     </div>
 
-    @if (comments().length === 0) {
+    @if (commentTree().length === 0) {
       <p class="note">まだコメントはありません。</p>
     } @else {
-      <ul class="comment-list">
-        @for (comment of comments(); track comment.id) {
-          <li class="comment-item">
-            <div class="comment-header">
-              <span class="comment-author">{{ comment.userName }}</span>
-              <span class="comment-date">{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</span>
-              @if (comment.mine || isAdmin) {
-                <button type="button" class="btn-link btn-sm" (click)="deleteComment(comment)">削除</button>
-              }
-            </div>
-            <p class="comment-body">{{ comment.body }}</p>
-          </li>
+      <div class="comment-list">
+        @for (node of commentTree(); track node.comment.id) {
+          <app-comment-item
+            [comment]="node"
+            [isAdmin]="isAdmin"
+            (reply)="onReply($event)"
+            (delete)="onDeleteComment($event)"
+          />
         }
-      </ul>
+      </div>
     }
   </section>
 }

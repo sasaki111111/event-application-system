@@ -2,6 +2,7 @@
 // 登録済み利用者の一覧（AP-03）と、管理者アカウント登録フォーム（AP-25、D-04）を提供する。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { UserApiService, UserSummary } from '../../core/user-api';
 
 interface FieldError {
@@ -11,7 +12,7 @@ interface FieldError {
 
 @Component({
   selector: 'app-admin-user-list',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './admin-user-list.html',
   styleUrl: './admin-user-list.css',
 })

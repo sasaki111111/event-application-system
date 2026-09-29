@@ -9,6 +9,11 @@ public record EventCommentResponse(
         String body,
         LocalDateTime createdAt,
         // ログイン中ユーザー本人の投稿か（削除ボタンの表示可否に画面側が使う）
-        boolean mine
+        boolean mine,
+        // D-18: 返信先のコメントID（返信でない場合はNULL）。木構造への組み立てはフロントエンド側が行う
+        Long parentCommentId,
+        // D-18: 返信が残っているため論理削除された（物理削除できなかった）コメントかどうか。
+        // trueの場合、bodyは実際の投稿内容ではなく固定の削除済み表示文言になる
+        boolean deleted
 ) {
 }

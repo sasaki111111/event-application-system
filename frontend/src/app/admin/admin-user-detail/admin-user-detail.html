@@ -1,0 +1,117 @@
+<!-- 実行環境: ブラウザ側。admin-user-detail.tsのテンプレート。 -->
+<a class="btn-link" routerLink="/admin/users">← 利用者管理に戻る</a>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (user(); as u) {
+  <h1>{{ u.name }}</h1>
+  <dl class="card-meta">
+    <dt>メールアドレス</dt>
+    <dd>{{ u.email }}</dd>
+    <dt>利用者区分</dt>
+    <dd>
+      @if (u.role === 'admin') {
+        <span class="badge badge-neutral">管理者</span>
+      } @else {
+        <span class="badge badge-positive">一般</span>
+      }
+    </dd>
+  </dl>
+
+  <h2>申込一覧</h2>
+  @if (applications().length === 0) {
+    <p>申込しているイベントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>状況</th>
+          <th>開催日時</th>
+          <th>申込日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (application of applications(); track application.id) {
+          <tr>
+            <td>{{ application.eventName }}</td>
+            <td>
+              @if (application.status === '受付済') {
+                <span class="badge badge-positive">受付済</span>
+              } @else if (application.status === 'キャンセル待ち') {
+                <span class="badge badge-waiting">
+                  キャンセル待ち @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
+                </span>
+              } @else {
+                <span class="badge badge-neutral">キャンセル済</span>
+              }
+            </td>
+            <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+            <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <h2>お気に入り一覧</h2>
+  @if (favorites().length === 0) {
+    <p>お気に入り登録しているイベントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>受付状況</th>
+          <th>開催日時</th>
+          <th>場所</th>
+          <th>登録日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (favorite of favorites(); track favorite.id) {
+          <tr>
+            <td>{{ favorite.name }}</td>
+            <td>
+              @if (favorite.open) {
+                <span class="badge badge-positive">受付中</span>
+              } @else {
+                <span class="badge badge-neutral">受付終了</span>
+              }
+            </td>
+            <td>{{ favorite.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+            <td>{{ favorite.place }}</td>
+            <td>{{ favorite.favoritedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <!-- D-21（機能追加）: コメント履歴。論理削除済み（D-18）のコメントも含む -->
+  <h2>コメント履歴</h2>
+  @if (comments().length === 0) {
+    <p>投稿したコメントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>本文</th>
+          <th>投稿日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (comment of comments(); track comment.id) {
+          <tr [class.deleted]="comment.deleted">
+            <td>{{ comment.eventName }}</td>
+            <td>{{ comment.body }}</td>
+            <td>{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

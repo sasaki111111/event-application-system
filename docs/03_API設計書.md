@@ -8,6 +8,19 @@
 - データ形式：リクエスト・レスポンスともにJSON形式とする（CSV出力を除く）。
 - 通信方式：HTTPS/HTTPによるREST形式のAPIとする。
 
+### 1.1 Swagger UI（自動生成）との役割分担（D-15）
+
+本システムは、springdoc-openapiにより実装から自動生成されるAPI仕様（Swagger UI：`/swagger-ui/index.html`、OpenAPI JSON：`/v3/api-docs`）も提供する。本書とSwagger UIは、以下のとおり役割を分担する。
+
+| 資料 | 役割 |
+|---|---|
+| 本書（`docs/03_API設計書.md`） | 業務的な意図・業務ルール（なぜその仕様か）を説明する |
+| Swagger UI | 実装（Controller）から自動生成される、常に実装と一致したリファレンス（エンドポイント・型・必須項目等）を提供する |
+
+両者の内容に食い違いが生じた場合は、実装から自動生成されるSwagger UIを正とし、本書側を見直す。Swagger UIのパス（`/v3/api-docs`、`/swagger-ui/**`）は`/api/**`に含まれないため、2.1の認証の対象外である（学内利用限定の前提のもと、認証無しでのアクセスを許容する。`docs/01_要件定義書.md`10.1参照）。
+
+Swagger UIから直接APIを試せるよう、認証不要な3 API（AP-01・AP-02・AP-24）を除く全APIに、`X-User-Id`ヘッダの入力欄をSwagger UI上に自動で追加している（D-23）。動作確認時は、一般利用者を試す場合は`1`、管理者を試す場合は`2`を指定する（`db/seed.sql`の初期データに対応）。
+
 ## 2. 共通仕様
 
 ### 2.1 認証
@@ -91,8 +104,15 @@
 | AP-23 | GET | `/api/whoami` | ログイン中利用者情報取得 | 必要 | - |
 | AP-24 | GET | `/api/ping` | 稼働確認 | 不要 | - |
 | AP-25 | POST | `/api/admins` | 管理者アカウント登録 | 必要 | 管理者のみ |
+| AP-26 | GET | `/api/users/{id}` | 利用者情報取得（管理者用） | 必要 | 管理者のみ |
+| AP-27 | GET | `/api/users/{id}/applications` | 利用者の申込一覧取得（管理者用） | 必要 | 管理者のみ |
+| AP-28 | GET | `/api/users/{id}/favorites` | 利用者のお気に入り一覧取得（管理者用） | 必要 | 管理者のみ |
+| AP-29 | GET | `/api/favorites/count` | お気に入り総数取得（管理者用） | 必要 | 管理者のみ |
+| AP-30 | GET | `/api/comments/count` | コメント総数取得（管理者用） | 必要 | 管理者のみ |
+| AP-31 | GET | `/api/users/{id}/comments` | 利用者のコメント履歴取得（管理者用） | 必要 | 管理者のみ |
+| AP-32 | GET | `/api/comments` | 全コメント一覧取得（管理者用） | 必要 | 管理者のみ |
 
-計25 API。各機能との対応は`docs/01_要件定義書.md`「5. システム機能」を参照。
+計32 API。各機能との対応は`docs/01_要件定義書.md`「5. システム機能」を参照。
 
 ## 4. API個別仕様
 
@@ -115,19 +135,22 @@
 ### AP-04 イベント一覧取得 `GET /api/events`
 
 - Query：`status`（`all`｜`open`、省略時`all`）
-- Response（200）：イベント概要（`id, name, startAt, place, capacity, applicationDeadline, acceptedCount, open, organizerName, imageUrl`）の配列（開催日時昇順）。
+- Response（200）：イベント概要（`id, name, startAt, place, capacity, applicationDeadline, acceptedCount, open, organizerName, imageUrl, favoriteCount`）の配列（開催日時昇順）。
 - `status=open`指定時は受付中のイベントのみを返す。
 - `acceptedCount`は受付済申込件数を集計した値とする。
+- `favoriteCount`は対象イベントのお気に入り登録件数を集計した値とする（利用者区分を問わず全利用者に返す。D-14）。
+- 開催日時以外の順序（申込数順・お気に入り数順・申込締切が近い順等）での並び替えは、本APIでは提供しない。フロントエンドが本APIの取得結果を並び替えて表示する（`docs/04_画面設計書.md`SC-02・SC-03参照）。
 - 削除済みのイベントは、`status`の指定によらず常に対象外とする。
 
 ### AP-05 イベント詳細取得 `GET /api/events/{id}`
 
-- Response（200）：一覧の項目に加え、`description, remaining, extraQuestion, ticketTypes[]`を含む。`remaining`は定員から受付済件数を差し引いた残り枠を表す。`ticketTypes`各要素は`{ id, name, capacity, acceptedCount, remaining }`。
+- Response（200）：一覧の項目（`favoriteCount`を含む）に加え、`description, remaining, extraQuestion, ticketTypes[]`を含む。`remaining`は定員から受付済件数を差し引いた残り枠を表す。`ticketTypes`各要素は`{ id, name, capacity, acceptedCount, remaining }`。
 - 異常時：対象が存在しない、または削除済みの場合は404。
 
 ### AP-06 削除済みイベント一覧取得 `GET /api/events/deleted`
 
-- Response（200）：`{ id, name, startAt, place, capacity, deletedAt }`の配列。削除済みのイベントのみを対象とする。
+- Response（200）：`{ id, name, startAt, place, capacity, deletedAt, description, organizerName, imageUrl, extraQuestion, ticketTypes }`の配列。削除済みのイベントのみを対象とする。
+- `description, organizerName, imageUrl, extraQuestion, ticketTypes`は、削除済みイベント一覧画面（SC-10）からの複製（D-16）に必要な項目として追加したものであり、画面上への表示は必須としない。`ticketTypes`の形式はAP-05と同一（`{ id, name, capacity, acceptedCount, remaining }`の配列）。
 
 ### AP-07 イベント登録 `POST /api/events`
 
@@ -168,7 +191,8 @@
 
 ### AP-11 申込者一覧取得（当日受付用） `GET /api/events/{id}/attendees`
 
-- Response（200）：`{ applicationId, userName, ticketTypeName, status, checkedInAt }`の配列（申込日時昇順）。状況を問わず全ての申込を対象とする。
+- Response（200）：`{ applicationId, userName, ticketTypeName, status, checkedInAt, extraAnswer }`の配列（申込日時昇順）。状況を問わず全ての申込を対象とする。
+- `extraAnswer`は申込時アンケートへの回答とする。対象イベントにアンケート設定（`extraQuestion`）が無い場合、または回答が未入力の場合はNULLとする。アンケートの質問文言自体はAP-05（イベント詳細取得）の`extraQuestion`から取得する（D-12）。
 - 異常時：対象イベントが存在しない場合は404。
 
 ### AP-12 イベント申込 `POST /api/applications`
@@ -210,27 +234,34 @@
 
 ### AP-19 コメント一覧取得 `GET /api/events/{id}/comments`
 
-- Response（200）：`{ id, userName, body, createdAt, mine }`の配列（投稿日時昇順）。`mine`は要求元利用者本人の投稿かどうかを表す。
+- Response（200）：`{ id, userName, body, createdAt, mine, parentCommentId, deleted }`の配列（投稿日時昇順）。`mine`は要求元利用者本人の投稿かどうかを表す。`parentCommentId`は返信先のコメントID（返信でない場合はNULL）。`deleted`は削除済み（返信が残っているための論理削除、D-18）かどうかを表す。
+- `deleted`がtrueの場合、`body`は実際の投稿内容ではなく「このコメントは削除されました」等の固定文言を返す（投稿者名はそのまま返す）。
+- フラットな配列で返す（木構造への組み立てはフロントエンド側が`parentCommentId`を使って行う、D-18）。
 - 異常時：対象イベントが存在しない場合は404。
 
 ### AP-20 コメント投稿 `POST /api/events/{id}/comments`
 
-- Request：`{ body: string }`（必須、最大500文字）
-- Response（201）：投稿されたコメント。
-- 受付期間の内外を問わず投稿できる。
-- 異常時：対象イベントが存在しない場合は404。
+- Request：`{ body: string, parentCommentId: number }`（body：必須、最大500文字／parentCommentId：任意。指定した場合は返信として登録する）
+- Response（201）：投稿されたコメント（AP-19と同形式）。
+- 受付期間の内外を問わず投稿できる。削除済み（`deleted`がtrue）のコメントに対しても返信できる。返信できる階層数に制限は無い（D-18）。
+- 異常時：対象イベントが存在しない場合は404。`parentCommentId`を指定したが、対象のコメントが存在しない、または対象イベントのものでない場合も404。
 
 ### AP-21 コメント削除 `DELETE /api/comments/{id}`
 
 - 投稿者本人、または管理者のみが実行できる。
-- 正常時：204。
+- 対象コメントに返信が1件も無い場合：物理削除する（一覧から除去される）。
+- 対象コメントに返信が1件以上ある場合：物理削除せず論理削除する（`deleted_at`を設定。一覧には残るが本文が固定文言に置き換わる、D-18）。
+- 正常時：204（物理削除・論理削除のいずれの場合も同じレスポンス）。
 - 異常時：権限がない場合は403。対象が存在しない場合は404。
 
 ### AP-22 申込実績取得 `GET /api/reports/applications`
 
 - Query：`format`（`json`｜`csv`、省略時`json`）、`sort`（`startAt`｜`accepted_desc`、省略時`startAt`。`format=csv`の場合は開催日時順に固定する）
 - `format=json`のResponse（200）：`{ eventId, eventName, startAt, capacity, acceptedCount, fillRate }`の配列。`fillRate`は受付済件数を定員で除した充足率（小数第2位まで）。削除済みのイベントは対象外とする。
-- `format=csv`のResponse（200）：`Content-Type: text/csv;charset=UTF-8`、ヘッダ行「イベント名,申込者名,申込日時,ステータス」。状況（受付済・キャンセル待ち・キャンセル済）を問わず全ての申込明細を開催日時順に出力するが、削除済みのイベントに紐づく申込は対象外とする。文字コードはUTF-8（BOM付き）とする。
+- `format=csv`のResponse（200）：`Content-Type: text/csv;charset=UTF-8`、ヘッダ行「イベント名,申込者名,申込日時,ステータス,アンケート回答,参加区分」。状況（受付済・キャンセル待ち・キャンセル済）を問わず全ての申込明細を開催日時順に出力するが、削除済みのイベントに紐づく申込は対象外とする。文字コードはUTF-8（BOM付き）とする。
+- 「アンケート回答」列は、対象申込の`extraAnswer`をそのまま出力する（アンケート未設定のイベント、または回答が無い申込では空欄とする。D-12）。
+- 「参加区分」列は、対象申込の参加区分名を出力する（区分が設定されていないイベントへの申込では空欄とする。D-19）。
+- 値にカンマ・改行・ダブルクォートを含む場合は、CSVとして正しく解釈されるよう引用符で囲んで出力する。
 
 ### AP-23 ログイン中利用者情報取得 `GET /api/whoami`
 
@@ -248,3 +279,52 @@
 - Request：`{ "name": string, "email": string }`（name：必須・最大100文字／email：必須・メール形式・最大255文字）
 - Response（201）：`{ userId, name, email, role }`。`role`は常に`admin`とする。
 - 異常時：メールアドレスが登録済みの場合は400。一般利用者によるアクセスは403。
+
+### AP-26 利用者情報取得（管理者用） `GET /api/users/{id}`
+
+- 認可：管理者のみ。
+- Response（200）：`{ userId, name, email, role }`（AP-01・AP-02と同形式）。
+- 用途：SC-15（利用者詳細）の表示対象となる利用者の基本情報を取得する（D-13）。
+- 異常時：`id`に該当する利用者が存在しない場合は404。一般利用者によるアクセスは403。
+
+### AP-27 利用者の申込一覧取得（管理者用） `GET /api/users/{id}/applications`
+
+- 認可：管理者のみ。
+- Response（200）：AP-13と同一形式（`{ id, eventId, eventName, startAt, status, appliedAt, waitlistRank }`の配列、申込日時降順）。`id`で指定した利用者の申込を対象とする（キャンセル済みを含む全件）。
+- 用途：SC-15（利用者詳細）の申込一覧表示（D-13）。
+- 異常時：`id`に該当する利用者が存在しない場合は404。一般利用者によるアクセスは403。
+
+### AP-28 利用者のお気に入り一覧取得（管理者用） `GET /api/users/{id}/favorites`
+
+- 認可：管理者のみ。
+- Response（200）：AP-18と同一形式（イベント概要＋`favoritedAt`の配列、登録日時降順）。`id`で指定した利用者のお気に入りを対象とする。削除済みのイベントに対する登録も対象に含める。
+- 用途：SC-15（利用者詳細）のお気に入り一覧表示（D-13）。
+- 異常時：`id`に該当する利用者が存在しない場合は404。一般利用者によるアクセスは403。
+
+### AP-29 お気に入り総数取得（管理者用） `GET /api/favorites/count`
+
+- 認可：管理者のみ。
+- Response（200）：`{ count: number }`。全利用者・全イベントのお気に入り登録件数（削除済みイベントに対する登録も含む）。
+- 用途：SC-07（管理者ダッシュボード）の指標表示（D-20）。
+- 異常時：一般利用者によるアクセスは403。
+
+### AP-30 コメント総数取得（管理者用） `GET /api/comments/count`
+
+- 認可：管理者のみ。
+- Response（200）：`{ count: number }`。全イベントの有効なコメント数（返信が残っているため論理削除されたコメント（D-18）は対象外）。
+- 用途：SC-07（管理者ダッシュボード）の指標表示（D-20）。
+- 異常時：一般利用者によるアクセスは403。
+
+### AP-31 利用者のコメント履歴取得（管理者用） `GET /api/users/{id}/comments`
+
+- 認可：管理者のみ。
+- Response（200）：`{ id, eventId, eventName, body, createdAt, deleted }`の配列（投稿日時降順）。`id`で指定した利用者が投稿したコメントを対象とする（返信を含む）。`deleted`は論理削除済み（D-18）かどうかを表し、trueの場合`body`は固定の削除済み表示文言になる（AP-19と同様）。論理削除済みのコメントも履歴として含める（D-21）。
+- 用途：SC-15（利用者詳細）のコメント履歴表示。
+- 異常時：`id`に該当する利用者が存在しない場合は404。一般利用者によるアクセスは403。
+
+### AP-32 全コメント一覧取得（管理者用） `GET /api/comments`
+
+- 認可：管理者のみ。
+- Response（200）：`{ id, eventId, eventName, userName, body, createdAt }`の配列（投稿日時降順）。全イベントを横断した、有効な（論理削除されていない）コメントのみを対象とする。イベント別・投稿者別の絞り込みは提供しない（D-22）。
+- 用途：SC-16（コメントモデレーション）の一覧表示。削除は既存のAP-21（`DELETE /api/comments/{id}`）を使う。
+- 異常時：一般利用者によるアクセスは403。

@@ -34,6 +34,9 @@
 
         <div class="card-actions">
           <a class="btn-link btn-sm" [routerLink]="['/admin/events', event.id, 'checkin']">受付</a>
+          <button type="button" class="btn-sm" (click)="duplicate(event)" [disabled]="duplicatingId() === event.id">
+            {{ duplicatingId() === event.id ? '複製準備中...' : '複製' }}
+          </button>
           <button type="button" class="btn-danger btn-sm" (click)="deleteEvent(event)">削除</button>
         </div>
       </div>

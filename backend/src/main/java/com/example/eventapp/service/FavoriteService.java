@@ -65,6 +65,12 @@ public class FavoriteService {
                 .toList();
     }
 
+    // D-20: 管理者ダッシュボードのお気に入り総数（AP-29）
+    @Transactional(readOnly = true)
+    public long countAll() {
+        return favoriteRepository.count();
+    }
+
     private FavoriteEventResponse toFavoriteEventResponse(Favorite favorite, LocalDateTime now) {
         Event event = favorite.getEvent();
         long acceptedCount = applicationRepository.countByEvent_IdAndStatus(event.getId(), ApplicationStatus.ACCEPTED);

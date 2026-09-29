@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { EventApiService } from '../../core/event-api';
+import { EventApiService, EventDuplicateSource } from '../../core/event-api';
 
 interface FieldError {
   field: string;
@@ -39,6 +39,17 @@ export class AdminEventForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly eventApi = inject(EventApiService);
+
+  // D-16: イベント一覧・削除済みイベント一覧の「複製」から遷移した場合、Routerのnavigation stateで
+  // 複製元の内容を受け取る（apply-doneと同じ方式）。getCurrentNavigation()は遷移中しか取得できないため
+  // フィールド初期化の時点（コンストラクタ相当）で読み取っておく
+  private readonly duplicateSource: EventDuplicateSource | null =
+    (this.router.getCurrentNavigation()?.extras?.state as { duplicateFrom?: EventDuplicateSource } | undefined)
+      ?.duplicateFrom ?? null;
+
+  protected get duplicatedFromName(): string | null {
+    return this.duplicateSource?.name ?? null;
+  }
 
   protected readonly form = this.fb.nonNullable.group({
     name: ['', Validators.required],
@@ -110,7 +121,8 @@ export class AdminEventForm implements OnInit {
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam === null) {
-      return; // 新規登録モード
+      this.applyDuplicateSource(); // 新規登録モード（複製元があればあらかじめ入力する）
+      return;
     }
 
     const id = Number(idParam);
@@ -187,6 +199,27 @@ export class AdminEventForm implements OnInit {
         }
       },
     });
+  }
+
+  // D-16: 複製元の内容を新規登録フォームに複写する。開催日時・申込締切は複写対象外（未来日時必須のバリデーションに
+  // 抵触しうるため空欄のまま管理者に入力させる）。イベント名は複製元と全く同じ値をそのまま複写する。
+  private applyDuplicateSource(): void {
+    const source = this.duplicateSource;
+    if (!source) {
+      return;
+    }
+    this.form.patchValue({
+      name: source.name,
+      place: source.place,
+      capacity: source.capacity,
+      description: source.description ?? '',
+      organizerName: source.organizerName ?? '',
+      imageUrl: source.imageUrl ?? '',
+      extraQuestion: source.extraQuestion ?? '',
+    });
+    for (const ticketType of source.ticketTypes) {
+      this.ticketTypesArray.push(this.newTicketTypeGroup(ticketType.name, ticketType.capacity));
+    }
   }
 
   // "2027-03-01T10:00:00" → datetime-local入力欄向けの"2027-03-01T10:00"

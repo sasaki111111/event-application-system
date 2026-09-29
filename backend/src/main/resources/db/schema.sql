@@ -92,22 +92,30 @@ CREATE TABLE ticket_types (
 
 -- 2.6 event_comments（イベントコメント）
 CREATE TABLE event_comments (
-    id         BIGINT       NOT NULL AUTO_INCREMENT,
-    event_id   BIGINT       NOT NULL,
-    user_id    BIGINT       NOT NULL,
-    body       VARCHAR(500) NOT NULL,
-    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id                 BIGINT       NOT NULL AUTO_INCREMENT,
+    event_id           BIGINT       NOT NULL,
+    user_id            BIGINT       NOT NULL,
+    -- D-18: 返信先のコメント。通常の投稿（返信ではない）場合はNULL
+    parent_comment_id  BIGINT       NULL,
+    body               VARCHAR(500) NOT NULL,
+    -- D-18: 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
+    deleted_at         DATETIME     NULL,
+    created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_event_comments_event
         FOREIGN KEY (event_id) REFERENCES events (id)
         ON DELETE CASCADE,
     CONSTRAINT fk_event_comments_user
         FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_event_comments_parent
+        FOREIGN KEY (parent_comment_id) REFERENCES event_comments (id)
         ON DELETE RESTRICT
 ) ENGINE = InnoDB;
 
 CREATE INDEX idx_event_comments_event_created ON event_comments (event_id, created_at);
+CREATE INDEX idx_event_comments_parent ON event_comments (parent_comment_id);
 
 -- 2.3 applications（申込）
 -- (user_id, event_id)にUNIQUE制約は付けない：キャンセル後の再申込を許すため

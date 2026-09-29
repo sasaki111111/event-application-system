@@ -13,6 +13,7 @@ import com.example.eventapp.entity.Event;
 import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
+import com.example.eventapp.repository.FavoriteRepository;
 import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,12 +28,14 @@ public class EventService {
     private final EventRepository eventRepository;
     private final ApplicationRepository applicationRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final FavoriteRepository favoriteRepository;
 
     public EventService(EventRepository eventRepository, ApplicationRepository applicationRepository,
-            TicketTypeRepository ticketTypeRepository) {
+            TicketTypeRepository ticketTypeRepository, FavoriteRepository favoriteRepository) {
         this.eventRepository = eventRepository;
         this.applicationRepository = applicationRepository;
         this.ticketTypeRepository = ticketTypeRepository;
+        this.favoriteRepository = favoriteRepository;
     }
 
     // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
@@ -48,6 +51,7 @@ public class EventService {
     }
 
     // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-06）
+    // D-16: description〜ticketTypesは、SC-10からのイベント複製に必要な項目として追加
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
@@ -57,7 +61,14 @@ public class EventService {
                         event.getStartAt(),
                         event.getPlace(),
                         event.getCapacity(),
-                        event.getDeletedAt()
+                        event.getDeletedAt(),
+                        event.getDescription(),
+                        event.getOrganizerName(),
+                        event.getImageUrl(),
+                        event.getExtraQuestion(),
+                        ticketTypeRepository.findByEvent_Id(event.getId()).stream()
+                                .map(this::toTicketTypeResponse)
+                                .toList()
                 ))
                 .toList();
     }
@@ -185,7 +196,8 @@ public class EventService {
                 countAccepted(event.getId()),
                 event.isOpen(now),
                 event.getOrganizerName(),
-                event.getImageUrl()
+                event.getImageUrl(),
+                countFavorites(event.getId())
         );
     }
 
@@ -212,7 +224,8 @@ public class EventService {
                 event.getOrganizerName(),
                 event.getImageUrl(),
                 event.getExtraQuestion(),
-                ticketTypes
+                ticketTypes,
+                countFavorites(event.getId())
         );
     }
 
@@ -230,5 +243,10 @@ public class EventService {
     private long countAccepted(Long eventId) {
         // 対象件数が小さい前提（要件定義書§2）のため、イベントごとに1クエリで数える簡潔な実装にしている
         return applicationRepository.countByEvent_IdAndStatus(eventId, ApplicationStatus.ACCEPTED);
+    }
+
+    // D-14（機能追加）: お気に入り登録件数。countAccepted()と同様、イベントごとに1クエリで数える
+    private long countFavorites(Long eventId) {
+        return favoriteRepository.countByEvent_Id(eventId);
     }
 }

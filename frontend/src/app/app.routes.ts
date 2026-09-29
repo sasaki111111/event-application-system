@@ -12,6 +12,8 @@ import { AdminEventList } from './admin/admin-event-list/admin-event-list';
 import { AdminEventForm } from './admin/admin-event-form/admin-event-form';
 import { AdminReport } from './admin/admin-report/admin-report';
 import { AdminUserList } from './admin/admin-user-list/admin-user-list';
+import { AdminUserDetail } from './admin/admin-user-detail/admin-user-detail';
+import { AdminCommentList } from './admin/admin-comment-list/admin-comment-list';
 import { AdminDeletedEvents } from './admin/admin-deleted-events/admin-deleted-events';
 import { AdminCheckin } from './admin/admin-checkin/admin-checkin';
 import { NotFound } from './not-found/not-found';
@@ -38,6 +40,10 @@ export const routes: Routes = [
   { path: 'admin/events/:id/checkin', component: AdminCheckin, canActivate: [authGuard, adminGuard] },
   { path: 'admin/reports', component: AdminReport, canActivate: [authGuard, adminGuard] },
   { path: 'admin/users', component: AdminUserList, canActivate: [authGuard, adminGuard] },
+  // D-13（機能追加）: 利用者詳細（SC-15）
+  { path: 'admin/users/:id', component: AdminUserDetail, canActivate: [authGuard, adminGuard] },
+  // D-22（機能追加）: コメントモデレーション（SC-16）
+  { path: 'admin/comments', component: AdminCommentList, canActivate: [authGuard, adminGuard] },
   // 画面遷移図§3「未定義URLにアクセス→404」（機能追加）。ワイルドカードは必ず配列の最後に置く
   { path: '**', component: NotFound },
 ];

@@ -1,0 +1,43 @@
+<!-- 実行環境: ブラウザ側。admin-comment-list.tsのテンプレート。 -->
+<h1>コメント管理</h1>
+<p class="note">全イベントのコメントを新しい順に表示します。削除済み（論理削除）のコメントは対象外です。</p>
+
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (comments().length === 0) {
+  <p>コメントはありません。</p>
+} @else {
+  <table>
+    <thead>
+      <tr>
+        <th>イベント名</th>
+        <th>投稿者</th>
+        <th>本文</th>
+        <th>投稿日時</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (comment of comments(); track comment.id) {
+        <tr>
+          <td>{{ comment.eventName }}</td>
+          <td>{{ comment.userName }}</td>
+          <td>{{ comment.body }}</td>
+          <td>{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <td>
+            <button
+              type="button"
+              class="btn-danger btn-sm"
+              (click)="deleteComment(comment)"
+              [disabled]="deletingId() === comment.id"
+            >
+              {{ deletingId() === comment.id ? '削除中...' : '削除' }}
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

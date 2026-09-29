@@ -1,6 +1,7 @@
 package com.example.eventapp.service;
 
 import com.example.eventapp.common.exception.BusinessException;
+import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.common.exception.UnauthorizedException;
 import com.example.eventapp.dto.UserResponse;
 import com.example.eventapp.entity.User;
@@ -55,5 +56,13 @@ public class UserService {
         return userRepository.findAllByOrderByIdAsc().stream()
                 .map(user -> new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole()))
                 .toList();
+    }
+
+    // AP-26（D-13）: 利用者詳細（SC-15）の表示対象利用者の基本情報。管理者専用、権限チェックはController側
+    @Transactional(readOnly = true)
+    public UserResponse getById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("利用者が見つかりません"));
+        return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole());
     }
 }

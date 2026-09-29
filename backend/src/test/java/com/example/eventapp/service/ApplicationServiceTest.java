@@ -407,6 +407,7 @@ class ApplicationServiceTest {
         when(application.getUser()).thenReturn(user);
         when(application.getTicketType()).thenReturn(ticketType);
         when(application.getStatus()).thenReturn(ApplicationStatus.ACCEPTED);
+        when(application.getExtraAnswer()).thenReturn("会場までは電車で向かいます");
         when(applicationRepository.findByEvent_IdOrderByAppliedAtAsc(EVENT_ID)).thenReturn(List.of(application));
 
         List<AttendeeResponse> result = applicationService.listAttendees(EVENT_ID);
@@ -415,6 +416,8 @@ class ApplicationServiceTest {
         assertThat(result.get(0).userName()).isEqualTo("参加者A");
         assertThat(result.get(0).ticketTypeName()).isEqualTo("一般枠");
         assertThat(result.get(0).checkedInAt()).isNull();
+        // D-12（機能追加）: 申込時アンケートへの回答が当日受付一覧にも含まれる
+        assertThat(result.get(0).extraAnswer()).isEqualTo("会場までは電車で向かいます");
     }
 
     // 正常系（機能追加：当日受付）: 区分の無いイベントの申込はticketTypeNameがNULL
@@ -429,6 +432,8 @@ class ApplicationServiceTest {
         List<AttendeeResponse> result = applicationService.listAttendees(EVENT_ID);
 
         assertThat(result.get(0).ticketTypeName()).isNull();
+        // D-12（機能追加）: アンケート未回答（コンストラクタ既定値NULL）の場合はextraAnswerもNULL
+        assertThat(result.get(0).extraAnswer()).isNull();
     }
 
     // 異常系: 存在しないイベントの申込者一覧取得は404相当
