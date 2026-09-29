@@ -20,7 +20,9 @@ public record EventUpsertRequest(
 
         @NotBlank(message = "場所を入力してください") @Size(max = 100, message = "100文字以内で入力してください") String place,
 
-        @NotNull(message = "定員を入力してください") @Min(value = 1, message = "1以上で入力してください") Integer capacity,
+        // 要件定義書§8: 参加区分が1件以上ある場合は必須ではない（区分の定員合計で自動算出。EventService.resolveCapacity()参照）。
+        // 区分が無い場合は必須（Bean ValidationではなくService層で判定する。ticketTypeIdの要否判定と同じ考え方）
+        @Min(value = 1, message = "1以上で入力してください") Integer capacity,
 
         @NotNull(message = "申込締切を入力してください") LocalDateTime applicationDeadline,
 

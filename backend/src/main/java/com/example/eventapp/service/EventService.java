@@ -87,7 +87,7 @@ public class EventService {
                 request.name(),
                 request.startAt(),
                 request.place(),
-                request.capacity(),
+                resolveCapacity(request, null),
                 request.applicationDeadline(),
                 request.description(),
                 request.organizerName(),
@@ -107,7 +107,7 @@ public class EventService {
                 request.name(),
                 request.startAt(),
                 request.place(),
-                request.capacity(),
+                resolveCapacity(request, event),
                 request.applicationDeadline(),
                 request.description(),
                 request.organizerName(),
@@ -116,6 +116,26 @@ public class EventService {
         );
         List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
         return toDetail(event, ticketTypes);
+    }
+
+    // 要件定義書§8: 定員は「参加区分が1件も無い場合のみ」必須。区分がある場合は区分の定員合計を用いる
+    // （最終的な値はこの後saveTicketTypes()が区分の定員合計で再同期するため、ここでの計算は暫定値でよい。
+    // 区分もcapacityも無ければ、ticketTypeIdの要否判定（ApplicationService.resolveTicketType）と同じ考え方でエラーとする）
+    private Integer resolveCapacity(EventUpsertRequest request, Event existingEvent) {
+        if (request.capacity() != null) {
+            return request.capacity();
+        }
+        if (request.ticketTypes() != null && !request.ticketTypes().isEmpty()) {
+            return request.ticketTypes().stream().mapToInt(TicketTypeRequest::capacity).sum();
+        }
+        // 更新時、リクエストに区分の指定が無い（＝既存の区分を維持する）場合は、既存の区分の定員合計を暫定値とする
+        if (request.ticketTypes() == null && existingEvent != null) {
+            List<TicketType> existing = ticketTypeRepository.findByEvent_Id(existingEvent.getId());
+            if (!existing.isEmpty()) {
+                return existing.stream().mapToInt(TicketType::getCapacity).sum();
+            }
+        }
+        throw new BusinessException("定員を入力してください");
     }
 
     // AP-09: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404

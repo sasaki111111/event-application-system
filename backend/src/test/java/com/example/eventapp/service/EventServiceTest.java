@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 
 // 実行環境: サーバー側（JVM）。G-1: EventService.delete()の業務ロジック（要件定義書§8）のユニットテスト。
@@ -180,6 +181,37 @@ class EventServiceTest {
         verify(savedEvent).syncCapacityFromTicketTypes(40);
     }
 
+    // 正常系（要件定義書§8）: capacity未指定でも、区分を指定していれば区分の定員合計を暫定capacityとして登録できる
+    @Test
+    void create_正常系_capacity未指定でも区分の定員合計を使う() {
+        EventUpsertRequest request = new EventUpsertRequest(
+                "テストイベント", LocalDateTime.now().plusDays(10), "会場", null,
+                LocalDateTime.now().plusDays(5), "説明", "主催者", null, null,
+                List.of(new TicketTypeRequest("一般枠", 30), new TicketTypeRequest("会員枠", 10)));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
+        ArgumentCaptor<Event> eventCaptor = ArgumentCaptor.forClass(Event.class);
+        Event savedEvent = mock(Event.class);
+        when(savedEvent.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.save(eventCaptor.capture())).thenReturn(savedEvent);
+
+        eventService.create(request);
+
+        assertThat(eventCaptor.getValue().getCapacity()).isEqualTo(40);
+    }
+
+    // 異常系（要件定義書§8）: capacityも区分も指定が無ければ登録できない（区分未選択時のApplicationServiceと同じ考え方）
+    @Test
+    void create_異常系_capacityも区分も未指定なら登録できない() {
+        EventUpsertRequest request = new EventUpsertRequest(
+                "テストイベント", LocalDateTime.now().plusDays(10), "会場", null,
+                LocalDateTime.now().plusDays(5), "説明", "主催者", null, null, null);
+
+        assertThatThrownBy(() -> eventService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("定員を入力してください");
+        verify(eventRepository, never()).save(any());
+    }
+
     // 正常系（機能追加：定員区分）: ticketTypesを指定しない（null）場合は既存の区分に手を加えない
     @Test
     void update_正常系_区分未指定なら既存の区分は変更しない() {
@@ -212,6 +244,60 @@ class EventServiceTest {
 
         verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
         verify(event).syncCapacityFromTicketTypes(5);
+    }
+
+    // 正常系（要件定義書§8）: 更新時、capacity未指定・区分未指定（変更なし）でも既存区分があればそれを暫定capacityにする
+    @Test
+    void update_正常系_capacity未指定かつ区分未指定でも既存区分があれば維持される() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of(
+                new TicketType(event, "一般枠", 3),
+                new TicketType(event, "会員枠", 2)));
+        EventUpsertRequest request = new EventUpsertRequest(
+                "テストイベント", LocalDateTime.now().plusDays(10), "会場", null,
+                LocalDateTime.now().plusDays(5), "説明", "主催者", null, null, null);
+
+        eventService.update(EVENT_ID, request);
+
+        ArgumentCaptor<Integer> capacityCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(event).applyChanges(any(), any(), any(), capacityCaptor.capture(), any(), any(), any(), any(), any());
+        assertThat(capacityCaptor.getValue()).isEqualTo(5);
+        // saveTicketTypes()側でも改めて合計値に同期される（既存の挙動どおり）
+        verify(event).syncCapacityFromTicketTypes(5);
+    }
+
+    // 異常系（要件定義書§8）: capacity未指定・区分未指定（変更なし）で、既存区分も無ければ更新できない
+    @Test
+    void update_異常系_capacity未指定かつ既存区分も無ければ更新できない() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
+        EventUpsertRequest request = new EventUpsertRequest(
+                "テストイベント", LocalDateTime.now().plusDays(10), "会場", null,
+                LocalDateTime.now().plusDays(5), "説明", "主催者", null, null, null);
+
+        assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("定員を入力してください");
+        verify(event, never()).applyChanges(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    // 異常系（要件定義書§8）: capacity未指定で区分を空（全解除）にする場合は、区分が無くなるため更新できない
+    @Test
+    void update_異常系_capacity未指定で区分を空にすると更新できない() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        EventUpsertRequest request = new EventUpsertRequest(
+                "テストイベント", LocalDateTime.now().plusDays(10), "会場", null,
+                LocalDateTime.now().plusDays(5), "説明", "主催者", null, null, List.of());
+
+        assertThatThrownBy(() -> eventService.update(EVENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("定員を入力してください");
     }
 
     // 正常系（機能追加：定員区分）: 区分ありで更新すると、既存区分を削除してから新しい区分を保存する

@@ -185,6 +185,38 @@ class ApiIntegrationTest {
         assertThat(eventRepository.count()).isZero();
     }
 
+    // AP-07（要件定義書§8）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
+    @Test
+    void ap07_定員を指定せず参加区分のみで登録できる() {
+        EventUpsertRequest request = new EventUpsertRequest(
+                "区分のみ登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
+                LocalDateTime.now().plusDays(15), null, null, null, null,
+                List.of(new com.example.eventapp.dto.TicketTypeRequest("一般枠", 7),
+                        new com.example.eventapp.dto.TicketTypeRequest("会員枠", 3)));
+
+        ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().capacity()).isEqualTo(10);
+    }
+
+    // AP-07（要件定義書§8）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
+    @Test
+    void ap07_定員も参加区分も未指定なら400() {
+        EventUpsertRequest request = new EventUpsertRequest(
+                "定員無し登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
+                LocalDateTime.now().plusDays(15), null, null, null, null, null);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("定員を入力してください");
+    }
+
     // AP-12: 申込がDBに実際に1件作成される
     @Test
     void ap12_一般ユーザーは申込できる() {
