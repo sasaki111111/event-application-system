@@ -1,6 +1,6 @@
-# 07-03 DB・SQL確認表
+# 13-03 DB・SQL確認表
 
-[07_システム動作・実装対応チェックリスト.md](07_システム動作・実装対応チェックリスト.md) の補助資料。`docs/02_テーブル定義書.md`に定義された6テーブルについて、実際のDDL（`backend/src/main/resources/db/schema.sql`）・Entity（`backend/src/main/java/.../entity/`）・Repository（`.../repository/`）を突き合わせ、各テーブルがどの機能からどう使われているかを整理する。
+[13_システム動作・実装対応チェックリスト.md](13_システム動作・実装対応チェックリスト.md) の補助資料。`docs/02_テーブル定義書.md`に定義された6テーブルについて、実際のDDL（`backend/src/main/resources/db/schema.sql`）・Entity（`backend/src/main/java/.../entity/`）・Repository（`.../repository/`）を突き合わせ、各テーブルがどの機能からどう使われているかを整理する。
 
 DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成が中心で、生SQL（`@Query`）は悲観ロック用の3箇所のみ。ORM層で自動生成されるSQLは実行時ログ（`show-sql`は本番`application.yml`では`false`）で確認する運用のため、本表ではメソッド単位でSQL相当の処理内容を記載する。
 
@@ -63,7 +63,7 @@ DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成
 
 - **用途**：イベントへの参加申込。`status`は`受付済`/`キャンセル待ち`/`キャンセル済`の3値（`entity/ApplicationStatus.java`で定数化）。
 - **Entity**：`entity/Application.java`（`cancel()`, `promote()`, `checkIn()`という状態遷移メソッドを持つ）
-- **Repository**：`repository/ApplicationRepository.java`（メソッド一覧は[07-01_設計・コード対応表.md](07-01_設計・コード対応表.md)参照）。主なクエリ：
+- **Repository**：`repository/ApplicationRepository.java`（メソッド一覧は[13-01_設計・コード対応表.md](13-01_設計・コード対応表.md)参照）。主なクエリ：
   - `countByEvent_IdAndStatus` / `countByTicketType_IdAndStatus`：定員判定（AP-12）・一覧のacceptedCount（AP-04/05/18）・削除可否（AP-09）
   - `existsByUser_IdAndEvent_IdAndStatusIn`：二重申込チェック（AP-12）
   - `existsByEvent_IdAndStatusIn`：区分変更可否チェック（AP-07/08）
