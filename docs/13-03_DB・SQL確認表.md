@@ -78,7 +78,7 @@ DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成
 - **DELETEタイミング**：無し（物理削除経路は存在しない。取消は論理的な状態変更のみ）
 - **制約**：`(user_id, event_id)`にUNIQUE制約を意図的に設けていない（テーブル定義書§4.4のとおり、キャンセル後の再申込を許容するため。二重申込防止はアプリ側の`status IN ('受付済','キャンセル待ち')`存在チェックのみで担保＝DB制約による最終防御が無い設計であることに留意）。`fk_applications_ticket_type ON DELETE RESTRICT`（申込が残る区分は削除不可というルールをDBレベルでも保証）。
 - **インデックス**：`idx_app_event_status_user`（定員判定・二重申込チェック）、`idx_app_user_applied`（マイページ）、`idx_app_ticket_type_status`（区分単位の定員判定）
-- **同時実行制御**：D-10で悲観ロック方式が確定（`docs/06_設計確定時の確認事項.md`）。`applications`テーブル自体はロックせず、親（`events`または`ticket_types`）の行をロックすることで同一対象への同時書き込みを直列化する設計（`EventRepository.findByIdForUpdate`/`TicketTypeRepository.findByIdAndEvent_IdForUpdate`/`findByIdForUpdate`）。`ApiIntegrationTest.o01_同時に申し込んでも定員を超えて受付済にならない`で2スレッド同時実行を検証し合格。
+- **同時実行制御**：D-10で悲観ロック方式が確定（`docs/12_設計確定時の確認事項.md`）。`applications`テーブル自体はロックせず、親（`events`または`ticket_types`）の行をロックすることで同一対象への同時書き込みを直列化する設計（`EventRepository.findByIdForUpdate`/`TicketTypeRepository.findByIdAndEvent_IdForUpdate`/`findByIdForUpdate`）。`ApiIntegrationTest.o01_同時に申し込んでも定員を超えて受付済にならない`で2スレッド同時実行を検証し合格。
 - **結果**：✓* 確認済み（自動テストで同時実行含め検証済み）
 
 ## 5. favorites（お気に入り）
