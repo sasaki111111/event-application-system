@@ -30,7 +30,12 @@
           <div class="calendar-day" [class.out-of-month]="!day.inMonth" [class.today]="day.isToday">
             <span class="calendar-date">{{ day.date.getDate() }}</span>
             @for (event of day.events; track event.id) {
-              <a class="calendar-event" [routerLink]="['/events', event.id]" [title]="event.name">{{ event.name }}</a>
+              <a
+                class="calendar-event"
+                [routerLink]="['/events', event.id]"
+                [queryParams]="{ from: 'calendar', month: calendarMonthParam() }"
+                [title]="event.name"
+              >{{ event.name }}</a>
             }
           </div>
         }

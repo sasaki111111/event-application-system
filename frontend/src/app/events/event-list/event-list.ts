@@ -3,7 +3,7 @@
 // 機能追加: 一覧表示／開催カレンダー表示の切替。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail, EventSummary } from '../../core/event-api';
 import { ApplicationApiService } from '../../core/application-api';
 import { FavoriteStore } from '../../core/favorite-store';
@@ -66,6 +66,12 @@ export class EventList implements OnInit {
     return `${month.getFullYear()}年${month.getMonth() + 1}月`;
   });
 
+  // 機能追加（カレンダー表示からの詳細遷移）: 詳細画面の「戻る」がこの表示モード・月に戻れるよう、遷移先へ引き継ぐ値
+  protected readonly calendarMonthParam = computed(() => {
+    const month = this.calendarMonth();
+    return `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+  });
+
   // 月の1日が入る週の日曜から、月の末日が入る週の土曜までを6週分並べる（常に42マス、レイアウトが安定する）
   protected readonly calendarWeeks = computed<CalendarDay[][]>(() => {
     const month = this.calendarMonth();
@@ -112,6 +118,7 @@ export class EventList implements OnInit {
     private readonly applicationApi: ApplicationApiService,
     protected readonly favoriteStore: FavoriteStore,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
 
@@ -121,6 +128,17 @@ export class EventList implements OnInit {
   }
 
   ngOnInit(): void {
+    // 機能追加（カレンダー表示からの詳細遷移）: イベント詳細の「戻る」がこの画面へ渡すview/month
+    const queryParams = this.route.snapshot.queryParamMap;
+    if (queryParams.get('view') === 'calendar') {
+      this.viewMode.set('calendar');
+      const month = queryParams.get('month');
+      const parsed = month?.match(/^(\d{4})-(\d{2})$/);
+      if (parsed) {
+        this.calendarMonth.set(new Date(Number(parsed[1]), Number(parsed[2]) - 1, 1));
+      }
+    }
+
     this.eventApi.list().subscribe({
       next: (events) => {
         this.events.set(events);

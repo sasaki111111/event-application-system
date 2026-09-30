@@ -37,9 +37,11 @@ export class EventDetail implements OnInit {
 
   private eventId = 0;
 
-  // 検索画面（/events/search）から来た場合は「戻る」の行き先をそちらにする（?from=searchで判定）
+  // 検索画面（/events/search）から来た場合は「戻る」の行き先をそちらにする（?from=searchで判定）。
+  // カレンダー表示（/events?view=calendar）から来た場合は、同じ表示モード・月に戻す（?from=calendarで判定）
   protected readonly backLink = signal<string>('/events');
   protected readonly backLabel = signal<string>('← イベント一覧に戻る');
+  protected readonly backQueryParams = signal<Record<string, string>>({});
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -59,9 +61,13 @@ export class EventDetail implements OnInit {
   ngOnInit(): void {
     this.eventId = Number(this.route.snapshot.paramMap.get('id'));
 
-    if (this.route.snapshot.queryParamMap.get('from') === 'search') {
+    const from = this.route.snapshot.queryParamMap.get('from');
+    if (from === 'search') {
       this.backLink.set('/events/search');
       this.backLabel.set('← イベント検索に戻る');
+    } else if (from === 'calendar') {
+      const month = this.route.snapshot.queryParamMap.get('month');
+      this.backQueryParams.set(month ? { view: 'calendar', month } : { view: 'calendar' });
     }
 
     this.eventApi.detail(this.eventId).subscribe({
