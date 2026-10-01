@@ -2,26 +2,30 @@
 
 [13_システム動作・実装対応チェックリスト.md](13_システム動作・実装対応チェックリスト.md) の補助資料。`docs/02_テーブル定義書.md`に定義された6テーブルについて、実際のDDL（`backend/src/main/resources/db/schema.sql`）・Entity（`backend/src/main/java/.../entity/`）・Repository（`.../repository/`）を突き合わせ、各テーブルがどの機能からどう使われているかを整理する。
 
+（2026-10-01更新：`users.anonymized_at`列の追加〔利用者の退会＝匿名化、F-17〕を反映）
+
 DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成が中心で、生SQL（`@Query`）は悲観ロック用の3箇所のみ。ORM層で自動生成されるSQLは実行時ログ（`show-sql`は本番`application.yml`では`false`）で確認する運用のため、本表ではメソッド単位でSQL相当の処理内容を記載する。
 
 ---
 
 ## 1. users（利用者）
 
-- **用途**：一般利用者・管理者の識別。パスワードは保持しない（ダミー認証、要件定義書§8）。
-- **Entity**：`entity/User.java`（`role`は`"general"`/`"admin"`の文字列、DBに列挙型制約は無くアプリ側で担保）
+- **用途**：一般利用者・管理者の識別。パスワードは保持しない（ダミー認証、要件定義書§8）。退会（匿名化）の対象でもある（F-17）。
+- **Entity**：`entity/User.java`（`role`は`"general"`/`"admin"`の文字列、DBに列挙型制約は無くアプリ側で担保。`demote()`でrole変更、`anonymize()`でname/email置換と`anonymizedAt`設定、`isAnonymized()`で判定という業務ロジックを自身が持つ）
 - **Repository**：`repository/UserRepository.java`
-  - `findById`（JPA標準）：`AuthInterceptor.preHandle()`が`X-User-Id`ヘッダの値でログインユーザーを解決する際に使用（毎リクエスト、認証対象APIすべて）
-  - `existsByEmail`：`UserService.register()`／`registerAdmin()`（AP-02/AP-25）の重複チェック
-  - `findByEmail`：`UserService.login()`（AP-01）
+  - `findById`（JPA標準）：`AuthInterceptor.preHandle()`が`X-User-Id`ヘッダの値でログインユーザーを解決する際に使用（毎リクエスト、認証対象APIすべて）。解決したユーザーが`isAnonymized()`済みの場合は未存在と同様401にする
+  - `existsByEmail`：`UserService.register()`／`registerAdmin()`（AP-02/AP-25）の重複チェック（`normalizeEmail()`で正規化後）
+  - `findByEmail`：`UserService.login()`（AP-01、正規化後のメールアドレスで検索）
   - `findAllByOrderByIdAsc`：`UserService.list()`（AP-03）
+  - `countByRole`：`UserService.demote()`（AP-33）が、対象を降格すると管理者が0人になってしまわないかを判定するために使用
   - `getReferenceById`：`ApplicationService.apply()`／`FavoriteService.add()`／`EventCommentService.post()`が、既に存在確認済みのuserIdからDBに問い合わせずプロキシ参照を得るために使用（N+1回避）
 - **INSERTタイミング**：AP-02（一般ユーザー登録）／AP-25（管理者登録）、初期データは`db/seed.sql`（id=1一般／id=2管理者）
 - **SELECTタイミング**：毎リクエストの認証（`findById`）、ログイン（`findByEmail`）、一覧（AP-03）
-- **UPDATE/DELETEタイミング**：無し（利用者の更新・削除機能は提供しない、テーブル定義書§5と一致）
-- **制約**：`email`に`UNIQUE`（`uk_users_email`）→アプリ側の`existsByEmail`チェックとDB制約の二重防御。`role`はNOT NULLのみでCHECK制約は無い（アプリ側で`"general"`/`"admin"`固定値のみ書き込む設計により担保）。
-- **他テーブルとの関連**：`applications.user_id`／`favorites.user_id`／`event_comments.user_id`から参照（いずれも`ON DELETE RESTRICT`。利用者削除機能自体が存在しないため実運用で発火しない）。
-- **結果**：✓ 確認済み
+- **UPDATEタイミング**：AP-33（`role`を`"general"`に変更）、AP-34（`name`・`email`を固定文言・形式に置換、`anonymized_at`を設定）
+- **DELETEタイミング**：無し（物理削除は提供しない。退会〔AP-34〕も物理削除ではなく匿名化で行う設計）
+- **制約**：`email`に`UNIQUE`（`uk_users_email`）→アプリ側の`existsByEmail`チェックとDB制約の二重防御。退会時は`email`を利用者IDに基づく一意な文字列（`withdrawn-{id}@invalid.example`）に置き換えることでこの制約を満たしたまま匿名化する。`role`はNOT NULLのみでCHECK制約は無い（アプリ側で`"general"`/`"admin"`固定値のみ書き込む設計により担保）。
+- **他テーブルとの関連**：`applications.user_id`／`favorites.user_id`／`event_comments.user_id`から参照（いずれも`ON DELETE RESTRICT`。利用者は物理削除されない＝退会〔匿名化〕であっても行は残るため実運用で発火しない）。
+- **結果**：✓* 確認済み（`ApiIntegrationTest`のAP-33・AP-34関連ケースで裏付けあり）
 
 ## 2. events（イベント）
 
@@ -32,7 +36,7 @@ DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成
   - `findAllByDeletedAtIsNotNullOrderByStartAtAsc`：AP-06（削除済み一覧）
   - `findByIdAndDeletedAtIsNull`：AP-05詳細取得、AP-08更新、AP-12申込時のイベント存在確認、AP-16お気に入り登録時、AP-19〜21コメント関連のイベント存在確認、AP-11当日受付一覧のイベント存在確認 — 有効イベントに限定した参照はすべてこのメソッドを経由
   - `findByIdAndDeletedAtIsNotNull`：AP-10復元
-  - `findByIdForUpdate`（`@Lock(PESSIMISTIC_WRITE)`、`SELECT ... FOR UPDATE`相当）：区分の無いイベントへの申込（AP-12）・キャンセル時の繰り上げ（AP-14）で、定員判定から更新までの間の排他制御に使用（D-10／O-01）
+  - `findByIdForUpdate`（`@Lock(PESSIMISTIC_WRITE)`、`SELECT ... FOR UPDATE`相当）：区分の無いイベントへの申込（AP-12）・キャンセル時の繰り上げ（AP-14）で、定員判定から更新までの間の排他制御に使用（`docs/06_詳細設計書.md`7-7）
 - **INSERTタイミング**：AP-07（管理者のイベント登録）
 - **SELECTタイミング**：AP-04/05/06/11/12/14/16/19/20/21ほぼ全機能から参照
 - **UPDATEタイミング**：AP-08（内容変更）、AP-09（`deleted_at`設定＝論理削除）、AP-10（`deleted_at`解除＝復元）、AP-07/AP-08の区分保存時に`capacity`を区分合計へ同期（`syncCapacityFromTicketTypes()`経由）
@@ -71,14 +75,14 @@ DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成
   - `countBy..._StatusAndAppliedAtLessThan`（区分あり/無し2種）：キャンセル待ち順位計算（AP-13）
   - `findByUser_IdOrderByAppliedAtDesc`：マイページ（AP-13）
   - `findByEvent_IdOrderByAppliedAtAsc`：当日受付一覧（AP-11）
-  - `findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc`：CSV出力（AP-22、削除済みイベント紐づき分を除外）
+  - `findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc`：CSV出力（AP-22、削除済みイベント紐づき分を除外。出力列はイベント名・申込者名・申込日時・ステータス・アンケート回答・参加区分の6列で、`ReportService#csvField`がCSVインジェクション対策〔先頭が`=+-@`等の値へのシングルクォート付与〕も行う）
 - **INSERTタイミング**：AP-12（申込）
 - **SELECTタイミング**：ほぼ全機能（一覧の受付数、詳細、マイページ、当日受付、実績集計/CSV）
 - **UPDATEタイミング**：AP-14（キャンセル：対象を`キャンセル済`に、かつ繰り上げ対象を`受付済`に＝1トランザクション内で最大2行UPDATE）、AP-15（チェックイン：`checked_in_at`更新、再実行時は上書き）
 - **DELETEタイミング**：無し（物理削除経路は存在しない。取消は論理的な状態変更のみ）
 - **制約**：`(user_id, event_id)`にUNIQUE制約を意図的に設けていない（テーブル定義書§4.4のとおり、キャンセル後の再申込を許容するため。二重申込防止はアプリ側の`status IN ('受付済','キャンセル待ち')`存在チェックのみで担保＝DB制約による最終防御が無い設計であることに留意）。`fk_applications_ticket_type ON DELETE RESTRICT`（申込が残る区分は削除不可というルールをDBレベルでも保証）。
 - **インデックス**：`idx_app_event_status_user`（定員判定・二重申込チェック）、`idx_app_user_applied`（マイページ）、`idx_app_ticket_type_status`（区分単位の定員判定）
-- **同時実行制御**：D-10で悲観ロック方式が確定（`docs/12_設計確定時の確認事項.md`）。`applications`テーブル自体はロックせず、親（`events`または`ticket_types`）の行をロックすることで同一対象への同時書き込みを直列化する設計（`EventRepository.findByIdForUpdate`/`TicketTypeRepository.findByIdAndEvent_IdForUpdate`/`findByIdForUpdate`）。`ApiIntegrationTest.o01_同時に申し込んでも定員を超えて受付済にならない`で2スレッド同時実行を検証し合格。
+- **同時実行制御**：`docs/06_詳細設計書.md`7-7で悲観ロック方式が確定。`applications`テーブル自体はロックせず、親（`events`または`ticket_types`）の行をロックすることで同一対象への同時書き込みを直列化する設計（`EventRepository.findByIdForUpdate`/`TicketTypeRepository.findByIdAndEvent_IdForUpdate`/`findByIdForUpdate`）。`ApiIntegrationTest.o01_同時に申し込んでも定員を超えて受付済にならない`で2スレッド同時実行を検証し合格。
 - **結果**：✓* 確認済み（自動テストで同時実行含め検証済み）
 
 ## 5. favorites（お気に入り）
