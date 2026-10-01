@@ -11,6 +11,9 @@
   </button>
 </div>
 
+<!-- 機能追加（AP-34）: 自分のアカウントの退会（匿名化） -->
+<button type="button" class="btn-danger" (click)="withdraw()" [disabled]="withdrawing()">退会する</button>
+
 @if (activeTab() === 'applications') {
   @if (loading()) {
     <p>読み込み中...</p>

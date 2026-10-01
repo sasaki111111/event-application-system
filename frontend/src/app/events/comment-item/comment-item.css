@@ -1,5 +1,5 @@
 /* 実行環境: ブラウザ側。comment-item.ts専用のスタイル。event-detail.cssから移設した基本スタイルに、
-   返信のインデント表示（D-18）と削除済みコメントの見た目を追加している。 */
+   返信のインデント表示と削除済みコメントの見た目を追加している。 */
 .comment-item {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

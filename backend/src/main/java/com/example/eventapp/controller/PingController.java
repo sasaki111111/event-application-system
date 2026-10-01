@@ -30,7 +30,7 @@ public class PingController {
 
     // B-5: ダミー認証（AuthInterceptor→AuthContext）の疎通確認用。業務APIではない。
     @Operation(summary = "AP-23 ログイン中利用者情報取得",
-            description = "現在の認証状態（利用者ID・名前・利用者区分・adminフラグ、D-09）を確認する。開発・動作確認時に使う。")
+            description = "現在の認証状態（利用者ID・名前・利用者区分・adminフラグ）を確認する。開発・動作確認時に使う。")
     @GetMapping("/api/whoami")
     public CurrentUser whoami() {
         return authContext.getCurrentUser();

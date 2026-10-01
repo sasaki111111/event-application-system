@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。バックエンド（D-6: 申込実績出力）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（申込実績出力）を呼び出すサービス。
 // backendのReportController・EventReportResponseと対応。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';

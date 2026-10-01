@@ -10,6 +10,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CurrentUser;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.EventDetailResponse;
@@ -31,7 +33,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 
 // 実行環境: サーバー側（JVM）。G-1: EventService.delete()の業務ロジック（要件定義書§8）のユニットテスト。
-// D-8時点で「削除はカスケードされる」と誤認していたが、実際は受付済の申込が残っていると削除を拒否する
+// かつて「削除はカスケードされる」と誤認していたが、実際は受付済の申込が残っていると削除を拒否する
 // 仕様であることが分かったため、そのことを回帰確認できるようテストとして残す。
 // 機能追加（ソフトデリート）: delete()は物理削除ではなくdeleted_atを立てるのみになったため、
 // softDelete()が呼ばれることと、listDeleted()/restore()の挙動を合わせて確認する。
@@ -42,6 +44,7 @@ class EventServiceTest {
     private ApplicationRepository applicationRepository;
     private TicketTypeRepository ticketTypeRepository;
     private FavoriteRepository favoriteRepository;
+    private AuthContext authContext;
     private EventService eventService;
 
     private static final Long EVENT_ID = 10L;
@@ -52,7 +55,10 @@ class EventServiceTest {
         applicationRepository = mock(ApplicationRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
         favoriteRepository = mock(FavoriteRepository.class);
-        eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository, favoriteRepository);
+        authContext = mock(AuthContext.class);
+        // 操作ログ（docs/11_ログ設計書.md 11-5）出力のため、create/update/delete/restoreはログイン中管理者を参照する
+        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", "admin"));
+        eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository, favoriteRepository, authContext);
         // toDetail()が呼ばれる大半のテストで空の区分一覧を返す既定値にしておく
         when(ticketTypeRepository.findByEvent_Id(EVENT_ID)).thenReturn(List.of());
         // saveTicketTypes()が戻り値の区分一覧をcapacity合計に使うため、保存した引数をそのまま返す既定値にしておく
@@ -115,7 +121,7 @@ class EventServiceTest {
         assertThat(result.get(0).deletedAt()).isEqualTo(LocalDateTime.of(2026, 9, 16, 12, 0));
     }
 
-    // 正常系（D-16）: 削除済み一覧のレスポンスに、複製に必要な項目（説明・主催者名・区分等）が含まれる
+    // 正常系: 削除済み一覧のレスポンスに、複製に必要な項目（説明・主催者名・区分等）が含まれる
     @Test
     void listDeleted_正常系_複製に必要な項目を含む() {
         Event event = mock(Event.class);
@@ -229,7 +235,7 @@ class EventServiceTest {
     }
 
     // 正常系（機能追加：定員区分）: 区分未指定でも既存の区分があれば、capacityをその合計値に保つ
-    // （テーブル定義書_v2.0.md§2.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ）
+    // （docs/02_テーブル定義書.md §4.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ）
     @Test
     void update_正常系_区分未指定でも既存区分があればcapacityを合計に保つ() {
         Event event = mock(Event.class);
@@ -371,7 +377,7 @@ class EventServiceTest {
         verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
     }
 
-    // 異常系（D-07）: 同一イベント内で区分名が重複していれば変更を拒否する
+    // 異常系: 同一イベント内で区分名が重複していれば変更を拒否する
     @Test
     void update_異常系_区分名が重複していれば変更できない() {
         Event event = mock(Event.class);

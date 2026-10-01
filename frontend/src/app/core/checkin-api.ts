@@ -10,7 +10,7 @@ export interface Attendee {
   ticketTypeName: string | null;
   status: string;
   checkedInAt: string | null;
-  // D-12（機能追加）: 申込時アンケートへの回答。アンケート未設定・未回答の場合はNULL
+  // （機能追加）: 申込時アンケートへの回答。アンケート未設定・未回答の場合はNULL
   extraAnswer: string | null;
 }
 

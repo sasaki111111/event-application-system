@@ -9,7 +9,7 @@ public record AttendeeResponse(
         String ticketTypeName,
         String status,
         LocalDateTime checkedInAt,
-        // D-12: 申込時アンケートへの回答。対象イベントにアンケート設定が無い場合、または未回答の場合はNULL
+        // 申込時アンケートへの回答。対象イベントにアンケート設定が無い場合、または未回答の場合はNULL
         String extraAnswer
 ) {
 }

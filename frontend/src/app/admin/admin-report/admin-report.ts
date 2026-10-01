@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-05の申込状況・実績画面（D-6対応、E-6）。
+// 実行環境: ブラウザ側。SC-05の申込状況・実績画面（E-6）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { EventReport, ReportApiService, ReportSort } from '../../core/report-api';

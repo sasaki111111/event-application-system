@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// D-3: イベント申込API（AP-12）、D-4: 自分の申込一覧API（AP-13）、D-5: 申込キャンセルAPI（AP-14）。
+// イベント申込API（AP-12）、自分の申込一覧API（AP-13）、申込キャンセルAPI（AP-14）。
 @Tag(name = "申込", description = "イベント申込・自分の申込一覧・キャンセル・チェックイン（AP-12〜15）")
 @RestController
 public class ApplicationController {
@@ -41,7 +41,7 @@ public class ApplicationController {
     }
 
     // AP-12 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
-    // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
+    // 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @Operation(summary = "AP-12 イベント申込",
             description = "対象イベントへの参加を申し込む。参加区分が設定されたイベントではticketTypeIdが必須。"
                     + "定員に空きがあれば「受付済」、無ければ「キャンセル待ち」として登録する（エラーにはしない）。"
@@ -79,7 +79,7 @@ public class ApplicationController {
     // AP-15 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
     @Operation(summary = "AP-15 チェックイン",
             description = "当日受付でのチェックインを記録する。状況が「受付済」の申込のみ対象（それ以外は400）。"
-                    + "既にチェックイン済みの申込に再実行した場合は、画面側の確認を経てチェックイン日時を更新する（D-05）。管理者のみ実行できる。")
+                    + "既にチェックイン済みの申込に再実行した場合は、画面側の確認を経てチェックイン日時を更新する。管理者のみ実行できる。")
     @PutMapping("/api/applications/{id}/check-in")
     public CheckInResponse checkIn(@PathVariable Long id) {
         authContext.requireAdmin();

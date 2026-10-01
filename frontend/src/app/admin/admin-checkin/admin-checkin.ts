@@ -18,7 +18,7 @@ export class AdminCheckin implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly checkingInId = signal<number | null>(null);
 
-  // D-12（機能追加）: アンケートの質問文言はAP-05（イベント詳細）から取得する。未設定ならNULL
+  // （機能追加）: アンケートの質問文言はAP-05（イベント詳細）から取得する。未設定ならNULL
   protected readonly extraQuestion = signal<string | null>(null);
 
   private eventId = 0;
@@ -41,7 +41,7 @@ export class AdminCheckin implements OnInit {
   }
 
   // API-19: 「受付済」以外はbackendが400で拒否する（要件定義書§8 E8）。ボタン自体も受付済のみ活性にする。
-  // D-05: チェックイン済みの申込への再実行は、確認のうえ管理者が許可した場合にのみAPIを呼び出す
+  // チェックイン済みの申込への再実行は、確認のうえ管理者が許可した場合にのみAPIを呼び出す
   protected checkIn(attendee: Attendee): void {
     if (attendee.checkedInAt && !confirm(`「${attendee.userName}」は既にチェックイン済みです。再度チェックインしますか？`)) {
       return;

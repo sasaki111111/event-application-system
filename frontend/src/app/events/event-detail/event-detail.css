@@ -63,7 +63,7 @@ dl {
   border-top: 1px solid var(--color-border);
 }
 
-/* 個々のコメントの見た目（返信のインデント表示を含む）はcomment-item.css（D-18で新設）に移設した */
+/* 個々のコメントの見た目（返信のインデント表示を含む）はcomment-item.cssに移設した */
 .comment-list {
   margin: 1em 0 0;
   display: flex;

@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// D-1: イベント一覧・詳細API（AP-04・AP-05）、D-2: イベント登録・編集・削除API（AP-07〜09、管理者のみ）。
+// イベント一覧・詳細API（AP-04・AP-05）、イベント登録・編集・削除API（AP-07〜09、管理者のみ）。
 @Tag(name = "イベント", description = "イベントの一覧・詳細・登録・編集・削除・復元、当日受付の申込者一覧（AP-04〜11）")
 @RestController
 public class EventController {
@@ -48,7 +48,7 @@ public class EventController {
     // AP-04 GET /api/events?status=all|open（既定all）
     @Operation(summary = "AP-04 イベント一覧取得",
             description = "開催日時昇順でイベント一覧を取得する。statusにopenを指定すると受付中のイベントのみに絞り込む。"
-                    + "acceptedCountは受付済申込件数、favoriteCountはお気に入り登録件数（D-14、全利用者に返す）。削除済みイベントは常に対象外。")
+                    + "acceptedCountは受付済申込件数、favoriteCountはお気に入り登録件数（全利用者に返す）。削除済みイベントは常に対象外。")
     @GetMapping("/api/events")
     public List<EventSummaryResponse> list(@RequestParam(defaultValue = "all") String status) {
         return eventService.list(status);
@@ -73,7 +73,7 @@ public class EventController {
     }
 
     // AP-07 POST /api/events（管理者のみ）
-    // D-7: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
+    // 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     @Operation(summary = "AP-07 イベント登録",
             description = "イベント情報および参加区分（任意）を新規登録する。参加区分を登録した場合、イベント全体の定員は区分の定員合計に同期する。"
                     + "管理者のみ実行できる。一般利用者によるアクセスは403、入力値エラーは400。")
@@ -118,7 +118,7 @@ public class EventController {
 
     // AP-11 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
     @Operation(summary = "AP-11 申込者一覧取得（当日受付用）",
-            description = "当日受付画面で使う申込者一覧（申込日時昇順、状況・区分名・チェックイン日時・アンケート回答を含む、D-12）を取得する。"
+            description = "当日受付画面で使う申込者一覧（申込日時昇順、状況・区分名・チェックイン日時・アンケート回答を含む）を取得する。"
                     + "状況を問わず全ての申込が対象。対象イベントが存在しない場合は404。管理者のみ実行できる。")
     @GetMapping("/api/events/{id}/attendees")
     public List<AttendeeResponse> attendees(@PathVariable Long id) {

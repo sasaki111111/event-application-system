@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-04のイベント管理一覧（D-2対応、E-5）。
+// 実行環境: ブラウザ側。SC-04のイベント管理一覧（E-5）。
 // GET /api/eventsはSC-02と同じAPIを流用する（API設計書の備考の通り）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
@@ -22,7 +22,7 @@ export class AdminEventList implements OnInit {
     private readonly router: Router,
   ) {}
 
-  // D-16: 複製元イベントの詳細（AP-05）を取得し、新規登録フォームへ値を持って遷移する。
+  // 複製元イベントの詳細（AP-05）を取得し、新規登録フォームへ値を持って遷移する。
   // バックエンドAPIは呼ばない（開催日時・申込締切は複製対象外のため、新規登録と同じ入力チェックを通す）
   protected duplicate(event: EventSummary): void {
     this.duplicatingId.set(event.id);

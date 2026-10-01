@@ -24,7 +24,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     // 機能追加（ソフトデリートの復元）: 削除済みイベントのみを対象に取得する
     Optional<Event> findByIdAndDeletedAtIsNotNull(Long id);
 
-    // O-01: 同時申込時の排他制御（悲観ロック）。区分の無いイベントで、定員判定〜申込登録・
+    // 同時申込時の排他制御（悲観ロック）。区分の無いイベントで、定員判定〜申込登録・
     // 繰り上げの間、対象イベント行をロックして直列化する（SELECT ... FOR UPDATE）。
     // ロックはあくまで直列化のための手段であり業務判定ではないため、deleted_atでの絞り込みは行わない
     // （ApplicationService側で別途、有効なイベントであることを確認済みの上で呼ぶ）。

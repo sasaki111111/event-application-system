@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-event-form.tsの単体テスト（D-17）。
-// バリデーション・参加区分の追加削除・複製元の複写（D-16）・保存処理のロジックを検証する。見た目は対象外。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-event-form.tsの単体テスト。
+// バリデーション・参加区分の追加削除・複製元の複写・保存処理のロジックを検証する。見た目は対象外。
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -117,7 +117,7 @@ describe('AdminEventForm', () => {
     expect(component.ticketTypesCapacitySum).toBe(10);
   });
 
-  it('複製元がある場合、開催日時・申込締切を除く項目が複写される（D-16）', () => {
+  it('複製元がある場合、開催日時・申込締切を除く項目が複写される', () => {
     router.getCurrentNavigation.mockReturnValue({ extras: { state: { duplicateFrom: duplicateSource } } });
 
     const component = createComponent(null) as any;

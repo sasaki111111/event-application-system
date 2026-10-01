@@ -14,7 +14,7 @@ public record EventSummaryResponse(
         boolean open,
         String organizerName,
         String imageUrl,
-        // D-14: イベントのお気に入り登録件数。全利用者に返す（管理者限定にはしない）
+        // イベントのお気に入り登録件数。全利用者に返す（管理者限定にはしない）
         long favoriteCount
 ) {
 }

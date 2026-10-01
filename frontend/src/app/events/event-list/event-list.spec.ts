@@ -1,7 +1,7 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-list.tsの単体テスト（D-17）。
-// 一覧取得・並び替え（D-14）・詳細展開・申込・お気に入りトグルのロジックを検証する。見た目は対象外。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-list.tsの単体テスト。
+// 一覧取得・並び替え・詳細展開・申込・お気に入りトグルのロジックを検証する。見た目は対象外。
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { ApplicationApiService } from '../../core/application-api';
 import { DummyUserStore } from '../../core/dummy-user-store';
@@ -38,6 +38,7 @@ describe('EventList', () => {
   let favoriteStore: { favoriteEventIds: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn>; toggle: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
   let dummyUserStore: { isAdmin: ReturnType<typeof vi.fn> };
+  let activatedRoute: { snapshot: { queryParamMap: { get: ReturnType<typeof vi.fn> } } };
 
   function createComponent(): EventList {
     TestBed.configureTestingModule({
@@ -46,6 +47,7 @@ describe('EventList', () => {
         { provide: ApplicationApiService, useValue: applicationApi },
         { provide: FavoriteStore, useValue: favoriteStore },
         { provide: Router, useValue: router },
+        { provide: ActivatedRoute, useValue: activatedRoute },
         { provide: DummyUserStore, useValue: dummyUserStore },
       ],
     });
@@ -67,6 +69,7 @@ describe('EventList', () => {
     };
     router = { navigate: vi.fn() };
     dummyUserStore = { isAdmin: vi.fn(() => false) };
+    activatedRoute = { snapshot: { queryParamMap: { get: vi.fn(() => null) } } };
   });
 
   it('初期表示でイベント一覧を取得する', () => {

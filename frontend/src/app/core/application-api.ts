@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。バックエンド（D-3: イベント申込、D-4: 自分の申込一覧、D-5: 申込キャンセル）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（イベント申込、自分の申込一覧、申込キャンセル）を呼び出すサービス。
 // backendのApplicationController・各Responseと対応。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';

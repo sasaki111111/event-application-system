@@ -17,12 +17,13 @@ DROP TABLE IF EXISTS users;
 
 -- 2.1 users（利用者）
 CREATE TABLE users (
-    id         BIGINT       NOT NULL AUTO_INCREMENT,
-    name       VARCHAR(100) NOT NULL,
-    email      VARCHAR(255) NOT NULL,
-    role       VARCHAR(20)  NOT NULL,
-    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    name          VARCHAR(100) NOT NULL,
+    email         VARCHAR(255) NOT NULL,
+    role          VARCHAR(20)  NOT NULL,
+    anonymized_at DATETIME     NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_users_email (email)
 ) ENGINE = InnoDB;
@@ -83,7 +84,7 @@ CREATE TABLE ticket_types (
     updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT chk_ticket_types_capacity CHECK (capacity >= 1),
-    -- 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3、D-07）
+    -- 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3）
     CONSTRAINT uk_ticket_types_event_name UNIQUE (event_id, name),
     CONSTRAINT fk_ticket_types_event
         FOREIGN KEY (event_id) REFERENCES events (id)
@@ -95,10 +96,10 @@ CREATE TABLE event_comments (
     id                 BIGINT       NOT NULL AUTO_INCREMENT,
     event_id           BIGINT       NOT NULL,
     user_id            BIGINT       NOT NULL,
-    -- D-18: 返信先のコメント。通常の投稿（返信ではない）場合はNULL
+    -- 返信先のコメント。通常の投稿（返信ではない）場合はNULL
     parent_comment_id  BIGINT       NULL,
     body               VARCHAR(500) NOT NULL,
-    -- D-18: 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
+    -- 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
     deleted_at         DATETIME     NULL,
     created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

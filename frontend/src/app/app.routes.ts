@@ -40,9 +40,9 @@ export const routes: Routes = [
   { path: 'admin/events/:id/checkin', component: AdminCheckin, canActivate: [authGuard, adminGuard] },
   { path: 'admin/reports', component: AdminReport, canActivate: [authGuard, adminGuard] },
   { path: 'admin/users', component: AdminUserList, canActivate: [authGuard, adminGuard] },
-  // D-13（機能追加）: 利用者詳細（SC-15）
+  // （機能追加）: 利用者詳細（SC-15）
   { path: 'admin/users/:id', component: AdminUserDetail, canActivate: [authGuard, adminGuard] },
-  // D-22（機能追加）: コメントモデレーション（SC-16）
+  // （機能追加）: コメントモデレーション（SC-16）
   { path: 'admin/comments', component: AdminCommentList, canActivate: [authGuard, adminGuard] },
   // 画面遷移図§3「未定義URLにアクセス→404」（機能追加）。ワイルドカードは必ず配列の最後に置く
   { path: '**', component: NotFound },

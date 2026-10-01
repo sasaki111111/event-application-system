@@ -17,4 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 機能追加（管理者向けユーザー一覧、マスタ確認用）
     List<User> findAllByOrderByIdAsc();
+
+    // AP-33: 管理者権限の降格で、対象が最後の1人の管理者でないかを判定するのに使う
+    long countByRole(String role);
 }

@@ -1,11 +1,13 @@
-// 実行環境: ブラウザ側。SC-03のマイページ（D-4: 一覧表示、D-5: キャンセル操作）。
+// 実行環境: ブラウザ側。SC-03のマイページ（一覧表示、キャンセル操作）。
 // 機能追加: キャンセル待ちの順位表示、お気に入りタブ。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ApplicationApiService, MyApplication } from '../core/application-api';
+import { DummyUserStore } from '../core/dummy-user-store';
 import { FavoriteApiService, FavoriteEvent } from '../core/favorite-api';
 import { FavoriteStore } from '../core/favorite-store';
+import { UserApiService } from '../core/user-api';
 
 @Component({
   selector: 'app-my-applications',
@@ -26,10 +28,16 @@ export class MyApplications implements OnInit {
   protected readonly favoritesErrorMessage = signal<string | null>(null);
   protected readonly unfavoritingId = signal<number | null>(null);
 
+  // AP-34（機能追加）: 退会（匿名化）処理中フラグ
+  protected readonly withdrawing = signal(false);
+
   constructor(
     private readonly applicationApi: ApplicationApiService,
     private readonly favoriteApi: FavoriteApiService,
     private readonly favoriteStore: FavoriteStore,
+    private readonly userApi: UserApiService,
+    private readonly dummyUserStore: DummyUserStore,
+    private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -100,6 +108,25 @@ export class MyApplications implements OnInit {
       error: (err) => {
         this.errorMessage.set(err.error?.message ?? '申込一覧の取得に失敗しました。');
         this.loading.set(false);
+      },
+    });
+  }
+
+  // AP-34: 自分のアカウントを退会（匿名化）する。成功後はログアウトしてSC-01（ログイン）へ遷移する
+  protected withdraw(): void {
+    if (!confirm('退会しますか？この操作は取り消せません。')) {
+      return;
+    }
+    const userId = Number(this.dummyUserStore.currentUserId());
+    this.withdrawing.set(true);
+    this.userApi.anonymize(userId).subscribe({
+      next: () => {
+        this.dummyUserStore.logout();
+        this.router.navigateByUrl('/login');
+      },
+      error: (err) => {
+        this.withdrawing.set(false);
+        alert(err.error?.message ?? '退会処理に失敗しました。');
       },
     });
   }

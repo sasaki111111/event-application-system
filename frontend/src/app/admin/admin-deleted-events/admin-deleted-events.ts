@@ -24,7 +24,7 @@ export class AdminDeletedEvents implements OnInit {
     this.loadDeletedEvents();
   }
 
-  // D-16: 削除済み一覧（AP-06、複製に必要な項目を含む）はAPIを追加で呼ばずそのまま複製元にできる
+  // 削除済み一覧（AP-06、複製に必要な項目を含む）はAPIを追加で呼ばずそのまま複製元にできる
   protected duplicate(event: DeletedEvent): void {
     this.router.navigate(['/admin/events/new'], { state: { duplicateFrom: event } });
   }

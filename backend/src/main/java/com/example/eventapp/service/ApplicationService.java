@@ -1,5 +1,6 @@
 package com.example.eventapp.service;
 
+import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
@@ -18,27 +19,33 @@ import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベント申込（D-3）、自分の申込一覧（D-4）、申込キャンセル（D-5）の業務ロジック。
+// 実行環境: サーバー側（JVM）。イベント申込、自分の申込一覧、申込キャンセル、当日受付の業務ロジック。
 // 機能追加：定員超過時は400で拒否せず「キャンセル待ち」として登録し、受付済がキャンセルされた際に
 // 最も古いキャンセル待ちを自動で「受付済」に繰り上げる。
-// 機能追加（定員区分）: 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（詳細設計書_v2.0.md§3.3.3〜3.3.5）。
+// 機能追加（定員区分）: 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（docs/06_詳細設計書.md 7-3）。
 @Service
 public class ApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ApplicationService.class);
 
     private final ApplicationRepository applicationRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final TicketTypeRepository ticketTypeRepository;
+    private final AuthContext authContext;
 
     public ApplicationService(ApplicationRepository applicationRepository, EventRepository eventRepository,
-            UserRepository userRepository, TicketTypeRepository ticketTypeRepository) {
+            UserRepository userRepository, TicketTypeRepository ticketTypeRepository, AuthContext authContext) {
         this.applicationRepository = applicationRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.ticketTypeRepository = ticketTypeRepository;
+        this.authContext = authContext;
     }
 
     // AP-12: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
@@ -59,7 +66,7 @@ public class ApplicationService {
             throw new BusinessException("すでに申し込み済みです");
         }
 
-        // O-01: 同時申込時の排他制御（悲観ロック）。定員判定から申込登録までの間、対象行
+        // 同時申込時の排他制御（悲観ロック）。定員判定から申込登録までの間、対象行
         // （区分があれば区分、無ければイベント）をロックし、同一対象への同時申込を直列化する。
         // ロックはこのメソッドのトランザクション終了（コミット）までDBが保持する。
         TicketType ticketType = resolveTicketType(eventId, ticketTypeId);
@@ -77,6 +84,9 @@ public class ApplicationService {
                 userRepository.getReferenceById(userId), event, ticketType, status, extraAnswer);
         Application saved = applicationRepository.save(application);
 
+        log.info("申込登録完了 userId={} applicationId={} eventId={} status={}",
+                userId, saved.getId(), eventId, saved.getStatus());
+
         return new ApplicationResponse(
                 saved.getId(),
                 event.getId(),
@@ -87,8 +97,8 @@ public class ApplicationService {
         );
     }
 
-    // 区分存在・必須チェック（要件定義書§8 E11・E12）。区分の無いイベントはticketTypeIdを無視する（API設計書§0）。
-    // O-01: 区分ありイベントでは、対象区分の存在検証とあわせて悲観ロックを取得する（apply()参照）。
+    // 区分存在・必須チェック（docs/08_エラー設計書.md E-B-004・E-B-005）。区分の無いイベントはticketTypeIdを無視する（docs/03_API設計書.md AP-12）。
+    // 区分ありイベントでは、対象区分の存在検証とあわせて悲観ロックを取得する（apply()参照）。
     private TicketType resolveTicketType(Long eventId, Long ticketTypeId) {
         if (!ticketTypeRepository.existsByEvent_Id(eventId)) {
             return null;
@@ -131,7 +141,7 @@ public class ApplicationService {
         application.cancel();
 
         if (wasAccepted) {
-            // O-01: 同時申込時の排他制御（悲観ロック）。繰り上げ対象を探す前に、apply()と同じ行
+            // 同時申込時の排他制御（悲観ロック）。繰り上げ対象を探す前に、apply()と同じ行
             // （区分があれば区分、無ければイベント）をロックし、同時に走る申込・キャンセルと直列化する。
             if (ticketType != null) {
                 ticketTypeRepository.findByIdForUpdate(ticketType.getId());
@@ -144,7 +154,13 @@ public class ApplicationService {
                     : applicationRepository.findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(
                             eventId, ApplicationStatus.WAITLISTED);
             nextInLine.ifPresent(Application::promote);
+            if (nextInLine.isPresent()) {
+                log.info("申込キャンセル完了 userId={} applicationId={} 繰り上げapplicationId={}",
+                        userId, applicationId, nextInLine.get().getId());
+                return;
+            }
         }
+        log.info("申込キャンセル完了 userId={} applicationId={}", userId, applicationId);
     }
 
     // AP-11: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
@@ -168,6 +184,9 @@ public class ApplicationService {
             throw new BusinessException("受付済の申込のみチェックインできます");
         }
         application.checkIn();
+
+        log.info("チェックイン完了 userId={} applicationId={}",
+                authContext.getCurrentUser().userId(), application.getId());
 
         return new CheckInResponse(application.getId(), application.getCheckedInAt());
     }

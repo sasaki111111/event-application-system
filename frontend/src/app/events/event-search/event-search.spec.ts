@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-search.tsの単体テスト（D-17）。
-// D-14で追加した並び替えロジック（フロント側のみの計算）を中心に検証する。画面の見た目は対象外。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-search.tsの単体テスト。
+// 追加した並び替えロジック（フロント側のみの計算）を中心に検証する。画面の見た目は対象外。
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { EventApiService, EventSummary } from '../../core/event-api';

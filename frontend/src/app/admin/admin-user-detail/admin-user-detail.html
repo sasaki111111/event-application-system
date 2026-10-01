@@ -17,8 +17,17 @@
       } @else {
         <span class="badge badge-positive">一般</span>
       }
+      @if (u.anonymizedAt) {
+        <span class="badge badge-neutral">退会済み</span>
+      }
     </dd>
   </dl>
+
+  @if (u.role === 'admin') {
+    <button type="button" (click)="demote()" [disabled]="demoting()">管理者権限を外す</button>
+  } @else if (!u.anonymizedAt) {
+    <button type="button" (click)="anonymize()" [disabled]="anonymizing()">退会させる</button>
+  }
 
   <h2>申込一覧</h2>
   @if (applications().length === 0) {
@@ -90,7 +99,7 @@
     </table>
   }
 
-  <!-- D-21（機能追加）: コメント履歴。論理削除済み（D-18）のコメントも含む -->
+  <!-- （機能追加）: コメント履歴。論理削除済みのコメントも含む -->
   <h2>コメント履歴</h2>
   @if (comments().length === 0) {
     <p>投稿したコメントはありません。</p>

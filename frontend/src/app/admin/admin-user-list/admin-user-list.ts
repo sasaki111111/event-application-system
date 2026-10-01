@@ -1,5 +1,5 @@
 // 実行環境: ブラウザ側。SC-13 利用者管理画面（/admin/users）。
-// 登録済み利用者の一覧（AP-03）と、管理者アカウント登録フォーム（AP-25、D-04）を提供する。
+// 登録済み利用者の一覧（AP-03）と、管理者アカウント登録フォーム（AP-25）を提供する。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';

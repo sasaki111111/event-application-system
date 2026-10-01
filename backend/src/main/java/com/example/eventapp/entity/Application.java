@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。applicationsテーブル（テーブル定義書_v1.0.md §2.3）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。applicationsテーブル（docs/02_テーブル定義書.md §4.4）に対応するJPAエンティティ。
 @Entity
 @Table(name = "applications")
 public class Application {
@@ -33,7 +33,7 @@ public class Application {
     @JoinColumn(name = "ticket_type_id")
     private TicketType ticketType;
 
-    // '受付済' または 'キャンセル済'（要件定義書§4）
+    // '受付済'・'キャンセル待ち'・'キャンセル済'のいずれか（docs/02_テーブル定義書.md §7）
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -64,7 +64,7 @@ public class Application {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // D-3: イベント申込（AP-12）用。生成した瞬間は必ず「受付済」
+    // イベント申込（AP-12）用。生成した瞬間は必ず「受付済」
     public Application(User user, Event event) {
         this(user, event, ApplicationStatus.ACCEPTED);
     }
@@ -116,7 +116,7 @@ public class Application {
         return checkedInAt;
     }
 
-    // D-5: 申込キャンセル（AP-14）用
+    // 申込キャンセル（AP-14）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
     }

@@ -29,7 +29,7 @@ export class EventDetail implements OnInit {
   // 機能追加（お気に入り）: 登録済みかどうかはFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusy = signal(false);
 
-  // 機能追加（イベントコメント）。D-18: commentTreeは返信を親子構造に組み立てたもの（表示用）
+  // 機能追加（イベントコメント）。commentTreeは返信を親子構造に組み立てたもの（表示用）
   protected readonly commentTree = signal<CommentNode[]>([]);
   protected readonly commentBody = signal('');
   protected readonly postingComment = signal(false);
@@ -53,7 +53,7 @@ export class EventDetail implements OnInit {
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない。D-03: role基準で判定する
+  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない。role基準で判定する
   protected get isAdmin(): boolean {
     return this.dummyUserStore.isAdmin();
   }
@@ -88,7 +88,7 @@ export class EventDetail implements OnInit {
   }
 
   // 機能追加（イベントコメント）: 開催前後を問わず投稿可能（要件定義書§4）。
-  // D-18: APIはフラットな配列で返すため、表示用に親子構造（commentTree）へ組み立てる
+  // APIはフラットな配列で返すため、表示用に親子構造（commentTree）へ組み立てる
   private loadComments(): void {
     this.commentApi.list(this.eventId).subscribe({
       next: (comments) => this.commentTree.set(buildCommentTree(comments)),
@@ -124,7 +124,7 @@ export class EventDetail implements OnInit {
     });
   }
 
-  // D-18: comment-itemコンポーネントからバブルしてきた返信イベント（何階層目の返信でも同じハンドラで受ける）
+  // comment-itemコンポーネントからバブルしてきた返信イベント（何階層目の返信でも同じハンドラで受ける）
   protected onReply(event: CommentReplyEvent): void {
     this.commentApi.post(this.eventId, event.body, event.parentCommentId).subscribe({
       next: () => this.loadComments(),
@@ -133,7 +133,7 @@ export class EventDetail implements OnInit {
   }
 
   // API-22: 投稿者本人または管理者のみ削除可能（要件定義書§8 E10）。ボタン自体はmineがtrueの時のみ表示。
-  // 返信が残っている場合はサーバー側で論理削除される（一覧には残り、本文が削除済み表示に置き換わる、D-18）
+  // 返信が残っている場合はサーバー側で論理削除される（一覧には残り、本文が削除済み表示に置き換わる）
   protected onDeleteComment(commentId: number): void {
     if (!confirm('このコメントを削除しますか？')) {
       return;

@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-guard.tsの単体テスト（D-17）。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-guard.tsの単体テスト。
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 import { adminGuard } from './admin-guard';
@@ -25,7 +25,7 @@ describe('adminGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('一般利用者（role=general）はイベント一覧へのUrlTreeを返す（D-03: role基準の判定）', () => {
+  it('一般利用者（role=general）はイベント一覧へのUrlTreeを返す（role基準の判定）', () => {
     dummyUserStore.login('1', 'general');
 
     const result = TestBed.runInInjectionContext(() => adminGuard(null as never, null as never));

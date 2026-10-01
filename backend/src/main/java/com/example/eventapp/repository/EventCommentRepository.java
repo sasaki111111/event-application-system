@@ -12,18 +12,18 @@ public interface EventCommentRepository extends JpaRepository<EventComment, Long
     // created_atは秒単位のため、同一秒内の投稿順が不定にならないようidを第2キーにする
     List<EventComment> findByEvent_IdOrderByCreatedAtAscIdAsc(Long eventId);
 
-    // D-18: 返信投稿時、返信先が同一イベントのコメントであることを検証するために使う
+    // 返信投稿時、返信先が同一イベントのコメントであることを検証するために使う
     Optional<EventComment> findByIdAndEvent_Id(Long id, Long eventId);
 
-    // D-18: 削除可否判定（返信が1件も無ければ物理削除、1件以上あれば論理削除）に使う
+    // 削除可否判定（返信が1件も無ければ物理削除、1件以上あれば論理削除）に使う
     boolean existsByParentComment_Id(Long parentCommentId);
 
-    // D-20: 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
+    // 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
     long countByDeletedAtIsNull();
 
-    // D-21: 利用者詳細（SC-15）のコメント履歴（AP-31、投稿日時降順。論理削除済みも含む）
+    // 利用者詳細（SC-15）のコメント履歴（AP-31、投稿日時降順。論理削除済みも含む）
     List<EventComment> findByUser_IdOrderByCreatedAtDescIdDesc(Long userId);
 
-    // D-22: 全コメント一覧（SC-16コメントモデレーション、AP-32、有効なコメントのみ・投稿日時降順）
+    // 全コメント一覧（SC-16コメントモデレーション、AP-32、有効なコメントのみ・投稿日時降順）
     List<EventComment> findByDeletedAtIsNullOrderByCreatedAtDesc();
 }

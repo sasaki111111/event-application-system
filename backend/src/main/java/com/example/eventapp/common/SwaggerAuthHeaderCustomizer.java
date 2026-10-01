@@ -8,7 +8,7 @@ import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 
-// 実行環境: サーバー側（JVM）。D-23: Swagger UI（D-15）でAPIを試す際、ダミー認証ヘッダ（X-User-Id）を
+// 実行環境: サーバー側（JVM）。Swagger UIでAPIを試す際、ダミー認証ヘッダ（X-User-Id）を
 // Swagger UI画面上で直接入力できるようにするための共通設定。個別のControllerメソッドには手を加えない。
 // 認証不要な3 API（AP-01ログイン、AP-02利用者登録、AP-24稼働確認）には追加しない
 // （@Operationのsummaryに付けたAP番号で判定する）。

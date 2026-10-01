@@ -1,6 +1,6 @@
 // 実行環境: ブラウザ側。ログイン中のユーザー（ダミー認証）を保持する入れ物（E-2）。
 // パスワード認証は実装対象外（要件定義書）のため、ログイン＝ロール選択のみ。未ログイン時はnull。
-// D-03: 管理者判定はバックエンドが返すrole（"admin"/"general"）に基づいて行う（userIdの決め打ちはしない）。
+// 管理者判定はバックエンドが返すrole（"admin"/"general"）に基づいて行う（userIdの決め打ちはしない）。
 import { Injectable, computed, signal } from '@angular/core';
 
 const USER_ID_STORAGE_KEY = 'dummyUserId';

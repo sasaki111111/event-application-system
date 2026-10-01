@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。バックエンド（D-1: 一覧・詳細、D-2: 登録・編集・削除）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（一覧・詳細、登録・編集・削除）を呼び出すサービス。
 // レスポンス・リクエストの型（API設計書 API-01・02・06・07・08）をTypeScriptの型として定義している。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
@@ -16,7 +16,7 @@ export interface EventSummary {
   // 機能追加（イベント情報の拡張）
   organizerName: string | null;
   imageUrl: string | null;
-  // D-14（機能追加）: イベントのお気に入り登録件数。全利用者に返る
+  // （機能追加）: イベントのお気に入り登録件数。全利用者に返る
   favoriteCount: number;
 }
 
@@ -59,7 +59,7 @@ export interface EventUpsertRequest {
 }
 
 // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧1件分（backendのDeletedEventResponseと対応）
-// D-16: description〜ticketTypesは、この画面からのイベント複製に必要な項目として追加（表示は必須としない）
+// description〜ticketTypesは、この画面からのイベント複製に必要な項目として追加（表示は必須としない）
 export interface DeletedEvent {
   id: number;
   name: string;
@@ -74,7 +74,7 @@ export interface DeletedEvent {
   ticketTypes: TicketType[];
 }
 
-// D-16（機能追加）: イベント複製時に新規登録フォームへ複写する項目。EventDetail・DeletedEventの
+// （機能追加）: イベント複製時に新規登録フォームへ複写する項目。EventDetail・DeletedEventの
 // いずれも構造的にこの形を満たす（開催日時・申込締切は複製対象から除く）
 export interface EventDuplicateSource {
   name: string;

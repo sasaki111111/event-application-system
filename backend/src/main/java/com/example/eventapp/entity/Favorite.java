@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。favoritesテーブル（テーブル定義書_v2.0.md §2.4）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。favoritesテーブル（docs/02_テーブル定義書.md §4.5）に対応するJPAエンティティ。
 @Entity
 @Table(name = "favorites")
 public class Favorite {

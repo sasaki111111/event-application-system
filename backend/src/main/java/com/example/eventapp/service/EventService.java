@@ -1,5 +1,6 @@
 package com.example.eventapp.service;
 
+import com.example.eventapp.common.AuthContext;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.NotFoundException;
 import com.example.eventapp.dto.DeletedEventResponse;
@@ -17,25 +18,32 @@ import com.example.eventapp.repository.FavoriteRepository;
 import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベント一覧・詳細（D-1）、登録・編集・削除（D-2）の業務ロジック。
+// 実行環境: サーバー側（JVM）。イベント一覧・詳細、登録・編集・削除・復元の業務ロジック。
 @Service
 public class EventService {
+
+    private static final Logger log = LoggerFactory.getLogger(EventService.class);
 
     private final EventRepository eventRepository;
     private final ApplicationRepository applicationRepository;
     private final TicketTypeRepository ticketTypeRepository;
     private final FavoriteRepository favoriteRepository;
+    private final AuthContext authContext;
 
     public EventService(EventRepository eventRepository, ApplicationRepository applicationRepository,
-            TicketTypeRepository ticketTypeRepository, FavoriteRepository favoriteRepository) {
+            TicketTypeRepository ticketTypeRepository, FavoriteRepository favoriteRepository,
+            AuthContext authContext) {
         this.eventRepository = eventRepository;
         this.applicationRepository = applicationRepository;
         this.ticketTypeRepository = ticketTypeRepository;
         this.favoriteRepository = favoriteRepository;
+        this.authContext = authContext;
     }
 
     // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
@@ -51,7 +59,7 @@ public class EventService {
     }
 
     // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-06）
-    // D-16: description〜ticketTypesは、SC-10からのイベント複製に必要な項目として追加
+    // description〜ticketTypesは、SC-10からのイベント複製に必要な項目として追加
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
@@ -96,6 +104,8 @@ public class EventService {
         );
         Event saved = eventRepository.save(event);
         List<TicketType> ticketTypes = saveTicketTypes(saved, request.ticketTypes());
+        log.info("イベント登録完了 userId={} eventId={} name={} capacity={}",
+                authContext.getCurrentUser().userId(), saved.getId(), saved.getName(), saved.getCapacity());
         return toDetail(saved, ticketTypes);
     }
 
@@ -115,6 +125,7 @@ public class EventService {
                 request.extraQuestion()
         );
         List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
+        log.info("イベント更新完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
         return toDetail(event, ticketTypes);
     }
 
@@ -147,6 +158,7 @@ public class EventService {
             throw new BusinessException("申込があるため削除できません");
         }
         event.softDelete();
+        log.info("イベント削除完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
     }
 
     // 機能追加（ソフトデリートの復元）。削除済みでなければ404。
@@ -155,16 +167,17 @@ public class EventService {
         Event event = eventRepository.findByIdAndDeletedAtIsNotNull(id)
                 .orElseThrow(() -> new NotFoundException("削除済みイベントが見つかりません"));
         event.restore();
+        log.info("イベント復元完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
         return toDetail(event);
     }
 
     // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
     // 戻り値は更新後の区分一覧（呼び出し側がtoDetail()で再度クエリしなくて済むように）。
-    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（詳細設計書_v2.0.md§3.3.10参照）。
+    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（docs/06_詳細設計書.md 7-4 AP-07／AP-08 No.6参照）。
     private List<TicketType> saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
         if (requests == null) {
             // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
-            // （テーブル定義書_v2.0.md§2.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
+            // （docs/02_テーブル定義書.md §4.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
             // リクエストのcapacityは区分の無いイベントの場合のみ有効に使われる）
             List<TicketType> existing = ticketTypeRepository.findByEvent_Id(event.getId());
             if (!existing.isEmpty()) {
@@ -190,7 +203,7 @@ public class EventService {
         }
         long distinctNames = requests.stream().map(TicketTypeRequest::name).distinct().count();
         if (distinctNames < requests.size()) {
-            // 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3、D-07）
+            // 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3）
             throw new BusinessException("区分名が重複しています");
         }
         List<TicketType> saved = requests.stream()
@@ -265,7 +278,7 @@ public class EventService {
         return applicationRepository.countByEvent_IdAndStatus(eventId, ApplicationStatus.ACCEPTED);
     }
 
-    // D-14（機能追加）: お気に入り登録件数。countAccepted()と同様、イベントごとに1クエリで数える
+    // （機能追加）: お気に入り登録件数。countAccepted()と同様、イベントごとに1クエリで数える
     private long countFavorites(Long eventId) {
         return favoriteRepository.countByEvent_Id(eventId);
     }

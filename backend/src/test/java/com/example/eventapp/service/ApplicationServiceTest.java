@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CurrentUser;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
@@ -41,6 +43,7 @@ class ApplicationServiceTest {
     private EventRepository eventRepository;
     private UserRepository userRepository;
     private TicketTypeRepository ticketTypeRepository;
+    private AuthContext authContext;
     private ApplicationService applicationService;
 
     private static final Long USER_ID = 1L;
@@ -52,8 +55,11 @@ class ApplicationServiceTest {
         eventRepository = mock(EventRepository.class);
         userRepository = mock(UserRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
+        authContext = mock(AuthContext.class);
+        // 操作ログ（docs/11_ログ設計書.md 11-5）出力のため、checkIn()はログイン中管理者を参照する
+        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", "admin"));
         applicationService = new ApplicationService(
-                applicationRepository, eventRepository, userRepository, ticketTypeRepository);
+                applicationRepository, eventRepository, userRepository, ticketTypeRepository, authContext);
         // 区分の無いイベントを既定値にしておく（区分ありのテストでは個別にstubし直す）
         when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(false);
     }
@@ -416,7 +422,7 @@ class ApplicationServiceTest {
         assertThat(result.get(0).userName()).isEqualTo("参加者A");
         assertThat(result.get(0).ticketTypeName()).isEqualTo("一般枠");
         assertThat(result.get(0).checkedInAt()).isNull();
-        // D-12（機能追加）: 申込時アンケートへの回答が当日受付一覧にも含まれる
+        // （機能追加）: 申込時アンケートへの回答が当日受付一覧にも含まれる
         assertThat(result.get(0).extraAnswer()).isEqualTo("会場までは電車で向かいます");
     }
 
@@ -432,7 +438,7 @@ class ApplicationServiceTest {
         List<AttendeeResponse> result = applicationService.listAttendees(EVENT_ID);
 
         assertThat(result.get(0).ticketTypeName()).isNull();
-        // D-12（機能追加）: アンケート未回答（コンストラクタ既定値NULL）の場合はextraAnswerもNULL
+        // （機能追加）: アンケート未回答（コンストラクタ既定値NULL）の場合はextraAnswerもNULL
         assertThat(result.get(0).extraAnswer()).isNull();
     }
 

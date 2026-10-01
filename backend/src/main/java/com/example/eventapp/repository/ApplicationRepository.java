@@ -21,7 +21,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // ticketTypeが無い申込（区分の無いイベントだった時点の申込）も対象に含める
     boolean existsByEvent_IdAndStatusIn(Long eventId, Collection<String> statuses);
 
-    // D-3: 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
+    // 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);
 
     // 機能追加（キャンセル待ち）: 二重申込チェックを受付済・キャンセル待ちの両方に対して行う
@@ -46,6 +46,6 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
 
     // AP-22 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
-    // 削除済みイベントに紐づく申込は対象外とする（D-06、集計一覧＝summarize()と対象範囲を揃える）
+    // 削除済みイベントに紐づく申込は対象外とする（集計一覧＝summarize()と対象範囲を揃える）
     List<Application> findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc();
 }

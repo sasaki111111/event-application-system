@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。event_commentsテーブル（テーブル定義書_v2.0.md §2.6）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。event_commentsテーブル（docs/02_テーブル定義書.md §4.6）に対応するJPAエンティティ。
 @Entity
 @Table(name = "event_comments")
 public class EventComment {
@@ -28,7 +28,7 @@ public class EventComment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // D-18: 返信先のコメント。通常の投稿（返信ではない）場合はNULL。階層数に制限は設けない
+    // 返信先のコメント。通常の投稿（返信ではない）場合はNULL。階層数に制限は設けない
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
     private EventComment parentComment;
@@ -36,7 +36,7 @@ public class EventComment {
     @Column(nullable = false, length = 500)
     private String body;
 
-    // D-18: 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
+    // 返信が残っているため物理削除できないコメントの論理削除日時。NULL＝有効（削除されていない）
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -58,7 +58,7 @@ public class EventComment {
         this(event, user, body, null);
     }
 
-    // AP-20: コメント投稿用（D-18: parentCommentを指定すると返信になる）
+    // AP-20: コメント投稿用（parentCommentを指定すると返信になる）
     public EventComment(Event event, User user, String body, EventComment parentComment) {
         this.event = event;
         this.user = user;
@@ -104,7 +104,7 @@ public class EventComment {
         return user.getId().equals(userId);
     }
 
-    // D-18: 返信が残っているコメントの削除（論理削除）。物理削除できる場合はService側がrepository.delete()を使う
+    // 返信が残っているコメントの削除（論理削除）。物理削除できる場合はService側がrepository.delete()を使う
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }

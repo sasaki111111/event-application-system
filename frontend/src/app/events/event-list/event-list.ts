@@ -44,7 +44,7 @@ export class EventList implements OnInit {
   protected readonly viewMode = signal<'list' | 'calendar'>('list');
   protected readonly calendarMonth = signal(this.startOfMonth(new Date()));
 
-  // D-14（機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
+  // （機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
   protected readonly sortedEvents = computed(() => {
@@ -122,7 +122,7 @@ export class EventList implements OnInit {
     protected readonly dummyUserStore: DummyUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）。D-03: role基準で判定する
+  // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）。role基準で判定する
   protected get isAdmin(): boolean {
     return this.dummyUserStore.isAdmin();
   }

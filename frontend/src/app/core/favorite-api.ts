@@ -36,7 +36,7 @@ export class FavoriteApiService {
     return this.http.get<FavoriteEvent[]>(`${API_BASE_URL}/my/favorites`);
   }
 
-  // AP-29（D-20）: 管理者専用。お気に入り総数
+  // AP-29: 管理者専用。お気に入り総数
   count(): Observable<{ count: number }> {
     return this.http.get<{ count: number }>(`${API_BASE_URL}/favorites/count`);
   }

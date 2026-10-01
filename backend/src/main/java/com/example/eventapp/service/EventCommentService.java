@@ -11,13 +11,17 @@ import com.example.eventapp.repository.EventCommentRepository;
 import com.example.eventapp.repository.EventRepository;
 import com.example.eventapp.repository.UserRepository;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベントコメント（機能18、AP-19〜21）の業務ロジック。
-// 開催前後を問わず投稿可能（要件定義書§4）。削除は投稿者本人または管理者のみ（要件定義書§8 E10）。
+// 実行環境: サーバー側（JVM）。イベントコメント（AP-19〜21）の業務ロジック。
+// 開催前後を問わず投稿可能。削除は投稿者本人または管理者のみ。
 @Service
 public class EventCommentService {
+
+    private static final Logger log = LoggerFactory.getLogger(EventCommentService.class);
 
     private final EventCommentRepository eventCommentRepository;
     private final EventRepository eventRepository;
@@ -39,23 +43,25 @@ public class EventCommentService {
                 .toList();
     }
 
-    // AP-20: コメント投稿。イベントが存在しなければ404（D-18: parentCommentIdを指定すると返信になる）
+    // AP-20: コメント投稿。イベントが存在しなければ404（parentCommentIdを指定すると返信になる）
     @Transactional
     public EventCommentResponse post(Long userId, Long eventId, String body, Long parentCommentId) {
         Event event = requireEvent(eventId);
         EventComment parentComment = null;
         if (parentCommentId != null) {
-            // 返信先は同一イベントのコメントであることを要する。削除済み（論理削除）のコメントへの返信は許可する（D-18）
+            // 返信先は同一イベントのコメントであることを要する。削除済み（論理削除）のコメントへの返信は許可する
             parentComment = eventCommentRepository.findByIdAndEvent_Id(parentCommentId, eventId)
                     .orElseThrow(() -> new NotFoundException("返信先のコメントが見つかりません"));
         }
         EventComment saved = eventCommentRepository.save(
                 new EventComment(event, userRepository.getReferenceById(userId), body, parentComment));
+        log.info("コメント投稿完了 userId={} commentId={} eventId={} parentCommentId={}",
+                userId, saved.getId(), eventId, parentCommentId);
         return toResponse(saved, userId);
     }
 
-    // AP-21: 削除可否チェック（要件定義書§8 E10）。投稿者本人または管理者のみ削除可能。
-    // D-18: 返信が1件も無ければ物理削除、1件以上あれば返信との参照関係を保つため論理削除する
+    // AP-21: 削除可否チェック。投稿者本人または管理者のみ削除可能。
+    // 返信が1件も無ければ物理削除、1件以上あれば返信との参照関係を保つため論理削除する
     @Transactional
     public void delete(Long userId, boolean isAdmin, Long commentId) {
         EventComment comment = eventCommentRepository.findById(commentId)
@@ -68,18 +74,20 @@ public class EventCommentService {
 
         if (eventCommentRepository.existsByParentComment_Id(commentId)) {
             comment.softDelete();
+            log.info("コメント論理削除完了 userId={} commentId={}", userId, commentId);
         } else {
             eventCommentRepository.delete(comment);
+            log.info("コメント物理削除完了 userId={} commentId={}", userId, commentId);
         }
     }
 
-    // D-20: 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
+    // 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
     @Transactional(readOnly = true)
     public long countActive() {
         return eventCommentRepository.countByDeletedAtIsNull();
     }
 
-    // D-21: 利用者詳細（SC-15）のコメント履歴（AP-31）。論理削除済みのコメントも含める
+    // 利用者詳細（SC-15）のコメント履歴（AP-31）。論理削除済みのコメントも含める
     @Transactional(readOnly = true)
     public List<UserCommentResponse> listByUser(Long userId) {
         return eventCommentRepository.findByUser_IdOrderByCreatedAtDescIdDesc(userId).stream()
@@ -94,7 +102,7 @@ public class EventCommentService {
                 .toList();
     }
 
-    // D-22: 全コメント一覧（SC-16コメントモデレーション、AP-32）。有効なコメントのみを対象とする
+    // 全コメント一覧（SC-16コメントモデレーション、AP-32）。有効なコメントのみを対象とする
     @Transactional(readOnly = true)
     public List<CommentModerationResponse> listAllActive() {
         return eventCommentRepository.findByDeletedAtIsNullOrderByCreatedAtDesc().stream()

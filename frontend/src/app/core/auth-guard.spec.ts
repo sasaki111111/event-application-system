@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。auth-guard.tsの単体テスト（D-17）。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。auth-guard.tsの単体テスト。
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 import { authGuard } from './auth-guard';

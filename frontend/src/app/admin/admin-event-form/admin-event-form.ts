@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-04のイベント登録・編集フォーム（D-2対応、E-5）。
+// 実行環境: ブラウザ側。SC-04のイベント登録・編集フォーム（E-5）。
 // ルートに:idがあれば編集モード（PUT）、無ければ新規登録モード（POST）として動く。
 // 機能追加: 主催者名・画像URL・アンケート文言・定員区分（複数、追加/削除可能）の入力欄。
 import { CommonModule } from '@angular/common';
@@ -40,7 +40,7 @@ export class AdminEventForm implements OnInit {
   private readonly router = inject(Router);
   private readonly eventApi = inject(EventApiService);
 
-  // D-16: イベント一覧・削除済みイベント一覧の「複製」から遷移した場合、Routerのnavigation stateで
+  // イベント一覧・削除済みイベント一覧の「複製」から遷移した場合、Routerのnavigation stateで
   // 複製元の内容を受け取る（apply-doneと同じ方式）。getCurrentNavigation()は遷移中しか取得できないため
   // フィールド初期化の時点（コンストラクタ相当）で読み取っておく
   private readonly duplicateSource: EventDuplicateSource | null =
@@ -89,7 +89,7 @@ export class AdminEventForm implements OnInit {
     this.ticketTypesArray.removeAt(index);
   }
 
-  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、テーブル定義書_v2.0.md§2.2）
+  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、docs/02_テーブル定義書.md §4.2）
   protected get ticketTypesCapacitySum(): number {
     return this.ticketTypesArray.controls.reduce((sum, group) => sum + (group.value.capacity ?? 0), 0);
   }
@@ -201,7 +201,7 @@ export class AdminEventForm implements OnInit {
     });
   }
 
-  // D-16: 複製元の内容を新規登録フォームに複写する。開催日時・申込締切は複写対象外（未来日時必須のバリデーションに
+  // 複製元の内容を新規登録フォームに複写する。開催日時・申込締切は複写対象外（未来日時必須のバリデーションに
   // 抵触しうるため空欄のまま管理者に入力させる）。イベント名は複製元と全く同じ値をそのまま複写する。
   private applyDuplicateSource(): void {
     const source = this.duplicateSource;

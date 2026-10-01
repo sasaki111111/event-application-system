@@ -1,7 +1,7 @@
-// 実行環境: ブラウザ側。SC-16 コメントモデレーション画面（D-22、/admin/comments）。
+// 実行環境: ブラウザ側。SC-16 コメントモデレーション画面（/admin/comments）。
 // 全イベント横断で有効な（論理削除されていない）コメントを確認し、削除できる管理者専用画面。
 // イベント別・投稿者別の絞り込みは提供しないが、各行にイベント名・投稿者名を表示し、
-// どのイベント・誰の投稿かが常にわかるようにする（D-22）。
+// どのイベント・誰の投稿かが常にわかるようにする。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { CommentApiService, CommentModeration } from '../../core/comment-api';

@@ -21,7 +21,7 @@ export class EventSearch implements OnInit {
   protected readonly dateFrom = signal('');
   protected readonly dateTo = signal('');
 
-  // D-14（機能追加）: 並び替え。APIの再取得は行わず、絞り込み結果を画面側で並び替える
+  // （機能追加）: 並び替え。APIの再取得は行わず、絞り込み結果を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
   protected readonly filteredEvents = computed(() => {

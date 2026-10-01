@@ -13,13 +13,17 @@ import com.example.eventapp.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（機能17、AP-16〜18）の業務ロジック。
-// 登録・解除はどちらも冪等（要件定義書§8 E9）：同じ状態への操作を繰り返してもエラーにしない。
+// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（AP-16〜18）の業務ロジック。
+// 登録・解除はどちらも冪等：同じ状態への操作を繰り返してもエラーにしない。
 @Service
 public class FavoriteService {
+
+    private static final Logger log = LoggerFactory.getLogger(FavoriteService.class);
 
     private final FavoriteRepository favoriteRepository;
     private final EventRepository eventRepository;
@@ -46,6 +50,9 @@ public class FavoriteService {
         Favorite favorite = existing.orElseGet(
                 () -> favoriteRepository.save(new Favorite(userRepository.getReferenceById(userId), event)));
 
+        if (created) {
+            log.info("お気に入り登録完了 userId={} eventId={}", userId, eventId);
+        }
         return new FavoriteAddResult(new FavoriteResponse(favorite.getId(), eventId, favorite.getCreatedAt()), created);
     }
 
@@ -53,6 +60,7 @@ public class FavoriteService {
     @Transactional
     public void remove(Long userId, Long eventId) {
         favoriteRepository.deleteByUser_IdAndEvent_Id(userId, eventId);
+        log.info("お気に入り解除完了 userId={} eventId={}", userId, eventId);
     }
 
     // AP-18: 自分のお気に入り一覧（登録日時の降順）。ソフトデリート済みイベントも
@@ -65,7 +73,7 @@ public class FavoriteService {
                 .toList();
     }
 
-    // D-20: 管理者ダッシュボードのお気に入り総数（AP-29）
+    // 管理者ダッシュボードのお気に入り総数（AP-29）
     @Transactional(readOnly = true)
     public long countAll() {
         return favoriteRepository.count();

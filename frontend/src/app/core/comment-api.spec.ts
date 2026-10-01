@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。comment-api.tsの単体テスト（D-17・D-18）。
+// 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。comment-api.tsの単体テスト。
 // buildCommentTree()は返信の無制限階層をフラットなAPIレスポンスから組み立てる純粋な計算ロジックであり、
 // 壊れるとコメント欄全体の表示が崩れるため重点的に検証する。
 import { buildCommentTree, EventComment } from './comment-api';

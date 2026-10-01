@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 // 実行環境: サーバー側（JVM）。Spring MVCの共通設定をまとめる場所。
-// ここで「AuthInterceptorをどのURLに適用するか」と「CORS（ブラウザの別オリジンからのアクセス許可）」を設定する。
+// ここで各種HandlerInterceptorをどのURLに適用するかと、CORS（ブラウザの別オリジンからのアクセス許可）を設定する。
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
@@ -21,7 +21,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // ログイン・ping（起動確認用）は認証不要（API設計書§0・§2）。
+        // 回数制限（docs/10_非機能設計書.md 10-3、機能追加）は認証の有無によらず最初に適用する
+        // （未認証でのログイン総当たり・登録スパムも抑止対象のため）。
+        registry.addInterceptor(new RateLimitInterceptor())
+                .addPathPatterns("/api/**");
+
+        // ログイン・ping（起動確認用）は認証不要（docs/03_API設計書.md 2.1節）。
         // POST /api/users（軽い会員登録、機能追加）はAuthInterceptor側でメソッド単位に個別許可している
         // （GET /api/usersは一覧＝管理者専用のため、パス単位でここに含めるとGETまで無認証になってしまう）。
         registry.addInterceptor(new AuthInterceptor(userRepository, authContext))

@@ -24,7 +24,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// 実行環境: サーバー側（JVM）。O-2: EventCommentServiceの業務ロジック（要件定義書§8 E10）のユニットテスト。
+// 実行環境: サーバー側（JVM）。EventCommentServiceの業務ロジック（要件定義書§8 E10）のユニットテスト。
 // JUnit5＋Mockito。Repositoryは全てモック化し、DBに触れずにビジネスロジックだけを検証する。
 class EventCommentServiceTest {
 
@@ -118,7 +118,7 @@ class EventCommentServiceTest {
         verify(eventCommentRepository, never()).save(any());
     }
 
-    // 正常系（D-18）: parentCommentIdを指定すると返信として保存され、レスポンスのparentCommentIdに反映される
+    // 正常系: parentCommentIdを指定すると返信として保存され、レスポンスのparentCommentIdに反映される
     @Test
     void post_正常系_返信先を指定すると返信として保存される() {
         Event event = mock(Event.class);
@@ -136,7 +136,7 @@ class EventCommentServiceTest {
         assertThat(response.body()).isEqualTo("返信です");
     }
 
-    // 異常系（D-18）: 返信先のコメントが対象イベントに存在しない場合はNotFoundException
+    // 異常系: 返信先のコメントが対象イベントに存在しない場合はNotFoundException
     @Test
     void post_異常系_返信先が存在しなければNotFoundException() {
         Event event = mock(Event.class);
@@ -200,7 +200,7 @@ class EventCommentServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
-    // 正常系（D-18）: 返信が1件以上あるコメントの削除は、物理削除せず論理削除（deleted_atの設定）にとどめる
+    // 正常系: 返信が1件以上あるコメントの削除は、物理削除せず論理削除（deleted_atの設定）にとどめる
     @Test
     void delete_正常系_返信があるコメントは物理削除せず論理削除する() {
         Event event = mock(Event.class);
@@ -216,7 +216,7 @@ class EventCommentServiceTest {
         verify(eventCommentRepository, never()).delete(any(EventComment.class));
     }
 
-    // 正常系（D-18）: 一覧取得時、論理削除されたコメントは本文が固定文言に置き換わり、deletedがtrueになる
+    // 正常系: 一覧取得時、論理削除されたコメントは本文が固定文言に置き換わり、deletedがtrueになる
     @Test
     void list_正常系_論理削除されたコメントは本文が固定文言になる() {
         Event event = mock(Event.class);
@@ -235,7 +235,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).userName()).isEqualTo("投稿者");
     }
 
-    // 正常系（D-18）: 一覧取得時、返信のparentCommentIdが親コメントのIDを指す
+    // 正常系: 一覧取得時、返信のparentCommentIdが親コメントのIDを指す
     @Test
     void list_正常系_返信のparentCommentIdが親コメントのIDになる() {
         Event event = mock(Event.class);
@@ -252,7 +252,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).parentCommentId()).isEqualTo(COMMENT_ID);
     }
 
-    // 正常系（D-20）: コメント総数はリポジトリのcountByDeletedAtIsNull()をそのまま返す（論理削除済みは除外済み）
+    // 正常系: コメント総数はリポジトリのcountByDeletedAtIsNull()をそのまま返す（論理削除済みは除外済み）
     @Test
     void countActive_正常系_リポジトリの件数を返す() {
         when(eventCommentRepository.countByDeletedAtIsNull()).thenReturn(7L);
@@ -262,7 +262,7 @@ class EventCommentServiceTest {
         assertThat(result).isEqualTo(7L);
     }
 
-    // 正常系（D-21）: 利用者のコメント履歴に、投稿先のイベント名が含まれる
+    // 正常系: 利用者のコメント履歴に、投稿先のイベント名が含まれる
     @Test
     void listByUser_正常系_イベント名を含めて返す() {
         Event event = mock(Event.class);
@@ -281,7 +281,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).deleted()).isFalse();
     }
 
-    // 正常系（D-21）: 論理削除済みのコメントも履歴に含め、本文は固定文言・deletedはtrueになる
+    // 正常系: 論理削除済みのコメントも履歴に含め、本文は固定文言・deletedはtrueになる
     @Test
     void listByUser_正常系_論理削除済みも本文が固定文言で含まれる() {
         Event event = mock(Event.class);
@@ -298,7 +298,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).body()).isEqualTo("このコメントは削除されました");
     }
 
-    // 正常系（D-22）: 全コメント一覧（モデレーション用）に、イベント名・投稿者名が含まれる
+    // 正常系: 全コメント一覧（モデレーション用）に、イベント名・投稿者名が含まれる
     @Test
     void listAllActive_正常系_イベント名と投稿者名を含めて返す() {
         Event event = mock(Event.class);

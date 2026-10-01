@@ -10,7 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。ticket_typesテーブル（テーブル定義書_v2.0.md §2.5）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。ticket_typesテーブル（docs/02_テーブル定義書.md §4.3）に対応するJPAエンティティ。
 // イベントに紐づく定員区分（例：「一般枠」定員30、「会員枠」定員10）。区分の無いイベントでは1件も存在しない。
 @Entity
 @Table(name = "ticket_types")

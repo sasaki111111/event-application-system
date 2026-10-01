@@ -1,6 +1,6 @@
 // 実行環境: ブラウザ側。管理者ダッシュボード画面（/admin/dashboard、機能追加）。
 // 既存のAPI（イベント一覧・ユーザー一覧・申込実績集計）に加え、AP-29（お気に入り総数）・
-// AP-30（コメント総数）を組み合わせて表示する（D-20）。
+// AP-30（コメント総数）を組み合わせて表示する。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
@@ -23,7 +23,6 @@ export class AdminDashboard implements OnInit {
   protected readonly totalEvents = signal(0);
   protected readonly totalUsers = signal(0);
   protected readonly totalAcceptedApplications = signal(0);
-  // D-20（機能追加）
   protected readonly totalFavorites = signal(0);
   protected readonly totalComments = signal(0);
 

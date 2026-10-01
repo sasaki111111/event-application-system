@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// 実行環境: サーバー側（JVM、localhost:8080）。D-6: 申込実績出力API（AP-22、管理者のみ）。
+// 実行環境: サーバー側（JVM、localhost:8080）。申込実績出力API（AP-22、管理者のみ）。
 @Tag(name = "申込実績", description = "申込実績の集計取得・CSV出力（AP-22）")
 @RestController
 public class ReportController {
@@ -29,7 +29,7 @@ public class ReportController {
     // AP-22 GET /api/reports/applications?format=json|csv&sort=startAt|accepted_desc（管理者のみ）
     @Operation(summary = "AP-22 申込実績取得",
             description = "format=json（既定）はイベントごとの受付数・充足率の一覧（sortでstartAt順／accepted_desc順を選択）。"
-                    + "format=csvはBOM付きUTF-8の申込明細（イベント名・申込者名・申込日時・ステータス・アンケート回答、D-12）をダウンロードする。"
+                    + "format=csvはBOM付きUTF-8の申込明細（イベント名・申込者名・申込日時・ステータス・アンケート回答）をダウンロードする。"
                     + "いずれも削除済みイベントは対象外。管理者のみ実行できる。")
     @GetMapping("/api/reports/applications")
     public ResponseEntity<Object> report(

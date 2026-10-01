@@ -65,6 +65,9 @@
             } @else {
               <span class="badge badge-positive">一般</span>
             }
+            @if (user.anonymizedAt) {
+              <span class="badge badge-neutral">退会済み</span>
+            }
           </td>
         </tr>
       }

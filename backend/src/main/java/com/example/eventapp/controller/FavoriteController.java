@@ -66,7 +66,7 @@ public class FavoriteController {
         return favoriteService.myFavorites(userId);
     }
 
-    // AP-29 GET /api/favorites/count（管理者のみ、D-20）
+    // AP-29 GET /api/favorites/count（管理者のみ）
     @Operation(summary = "AP-29 お気に入り総数取得（管理者用）",
             description = "全利用者・全イベントのお気に入り登録件数（削除済みイベントに対する登録も含む）を取得する。"
                     + "SC-07（管理者ダッシュボード）の指標表示に使う。管理者のみ実行できる。")

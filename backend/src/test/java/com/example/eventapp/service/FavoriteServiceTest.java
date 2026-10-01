@@ -134,7 +134,7 @@ class FavoriteServiceTest {
         verify(applicationRepository, never()).countByEvent_IdAndStatus(anyLong(), any());
     }
 
-    // 正常系（D-20）: お気に入り総数はRepositoryのcount()をそのまま返す
+    // 正常系: お気に入り総数はRepositoryのcount()をそのまま返す
     @Test
     void countAll_正常系_リポジトリの件数を返す() {
         when(favoriteRepository.count()).thenReturn(42L);

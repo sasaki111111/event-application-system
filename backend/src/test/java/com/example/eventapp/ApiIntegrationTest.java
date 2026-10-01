@@ -84,7 +84,7 @@ class ApiIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // D-14／D-18／D-19で追加したお気に入り・コメント・参加区分関連テストがeventsを参照したまま残ると、
+        // 追加したお気に入り・コメント・参加区分関連テストがeventsを参照したまま残ると、
         // 後続テストのイベント削除がFK制約違反になるため先に消す
         favoriteRepository.deleteAll();
         eventCommentRepository.deleteAll();
@@ -267,7 +267,7 @@ class ApiIntegrationTest {
         assertThat(cancelled.getStatus()).isEqualTo("キャンセル済");
     }
 
-    // O-01: 同時申込時の排他制御（悲観ロック）。定員1のイベントに2人が同時に申込んでも、
+    // 同時申込時の排他制御（悲観ロック）。定員1のイベントに2人が同時に申込んでも、
     // 「受付済」になるのは1件だけで、もう1件は「キャンセル待ち」になる（二重受付が起きない）ことを確認する。
     @Test
     void o01_同時に申し込んでも定員を超えて受付済にならない() throws Exception {
@@ -305,7 +305,7 @@ class ApiIntegrationTest {
         }
     }
 
-    // AP-23: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる（D-09）
+    // AP-23: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる
     @Test
     void ap23_whoamiはadminフィールドを含む() {
         ResponseEntity<String> response = restTemplate.exchange(
@@ -315,7 +315,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("\"admin\":true");
     }
 
-    // AP-25: 既存の管理者は新たな管理者アカウントを登録でき、実際にDBへ管理者として保存される（D-04）
+    // AP-25: 既存の管理者は新たな管理者アカウントを登録でき、実際にDBへ管理者として保存される
     @Test
     void ap25_管理者は管理者アカウントを登録できる() {
         UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin@example.com");
@@ -345,7 +345,148 @@ class ApiIntegrationTest {
                 Integer.class, "new-admin2@example.com")).isZero();
     }
 
-    // AP-09 format=csv（D-06）: 削除済みイベントに紐づく申込明細はCSVに含まれない
+    // AP-33: 管理者が2人以上いる状態なら、一方をもう一方が降格できる
+    @Test
+    void ap33_管理者は他の管理者を降格できる() {
+        UserRegisterRequest newAdmin = new UserRegisterRequest("新管理者", "new-admin3@example.com");
+        ResponseEntity<UserResponse> created = restTemplate.exchange(
+                url("/api/admins"), HttpMethod.POST, new HttpEntity<>(newAdmin, authHeaders(ADMIN_USER_ID)),
+                UserResponse.class);
+        Long newAdminId = created.getBody().userId();
+
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/users/" + newAdminId + "/demote"), HttpMethod.PUT,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().role()).isEqualTo("general");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT role FROM users WHERE id = ?", String.class, newAdminId)).isEqualTo("general");
+    }
+
+    // AP-33の業務ルール（R-17）: 管理者が1人のみの状態では、その管理者を降格できない
+    @Test
+    void ap33_最後の管理者は降格できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
+    }
+
+    // AP-33の業務ルール（R-16）: 既に一般利用者の対象は降格できない
+    @Test
+    void ap33_既に一般利用者の対象は降格できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID + "/demote"), HttpMethod.PUT,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    // AP-33の権限チェック: 一般ユーザーは降格を実行できない
+    @Test
+    void ap33_一般ユーザーは降格を実行できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
+    }
+
+    // AP-33: 対象の利用者が存在しない場合は404
+    @Test
+    void ap33_対象の利用者が存在しない場合は404() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/9999/demote"), HttpMethod.PUT,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // AP-34: 本人は自分のアカウントを退会（匿名化）できる
+    @Test
+    void ap34_本人は自分のアカウントを退会できる() {
+        ResponseEntity<UserResponse> deleteResponse = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
+
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(deleteResponse.getBody().anonymizedAt()).isNotNull();
+        assertThat(deleteResponse.getBody().name()).isEqualTo("退会済み利用者");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT email FROM users WHERE id = ?", String.class, GENERAL_USER_ID))
+                .isEqualTo("withdrawn-" + GENERAL_USER_ID + "@invalid.example");
+    }
+
+    // AP-34: 管理者は一般利用者を退会させられる
+    @Test
+    void ap34_管理者は一般利用者を退会させられる() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().anonymizedAt()).isNotNull();
+    }
+
+    // AP-34の権限チェック: 一般利用者は他人のアカウントを退会させられない
+    @Test
+    void ap34_一般利用者は他人を退会させられない() {
+        UserRegisterRequest otherUser = new UserRegisterRequest("別の利用者", "other-user@example.com");
+        ResponseEntity<UserResponse> created = restTemplate.exchange(
+                url("/api/users"), HttpMethod.POST, new HttpEntity<>(otherUser), UserResponse.class);
+        Long otherUserId = created.getBody().userId();
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + otherUserId), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT anonymized_at IS NULL FROM users WHERE id = ?", Boolean.class, otherUserId)).isTrue();
+    }
+
+    // AP-34の業務ルール（R-18）: 管理者は退会できない（先にAP-33で降格する必要がある）
+    @Test
+    void ap34_管理者は退会できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + ADMIN_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT anonymized_at IS NULL FROM users WHERE id = ?", Boolean.class, ADMIN_USER_ID)).isTrue();
+    }
+
+    // AP-34の業務ルール（R-19）: 既に退会済みの利用者を再度退会させることはできない
+    @Test
+    void ap34_既に退会済みの利用者は再度退会できない() {
+        restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    // AP-34: 対象の利用者が存在しない場合は404
+    @Test
+    void ap34_対象の利用者が存在しない場合は404() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users/9999"), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // AP-09 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
     @Test
     void ap09_csv出力は削除済みイベントの申込を含まない() {
         Event deletedEvent = openEvent();
@@ -363,7 +504,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).doesNotContain(deletedEvent.getName());
     }
 
-    // AP-04（D-14）: favoriteCountがお気に入り登録件数を反映する。全利用者に返す項目のため一般ユーザーで確認する
+    // AP-04: favoriteCountがお気に入り登録件数を反映する。全利用者に返す項目のため一般ユーザーで確認する
     @Test
     void ap04_favoriteCountはお気に入り登録件数を反映する() {
         Event event = openEvent();
@@ -381,7 +522,7 @@ class ApiIntegrationTest {
                 .containsExactly(1L);
     }
 
-    // AP-22（D-12）: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
+    // AP-22: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
     @Test
     void ap22_csv出力にアンケート回答列が含まれる() {
         Event event = eventRepository.save(new Event(
@@ -406,7 +547,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("業務で必要なため");
     }
 
-    // AP-26（D-13）: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
+    // AP-26: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
     @Test
     void ap26_利用者情報取得は管理者のみ() {
         ResponseEntity<UserResponse> adminResponse = restTemplate.exchange(
@@ -426,7 +567,7 @@ class ApiIntegrationTest {
         assertThat(notFoundResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // AP-27（D-13）: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
+    // AP-27: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
     @Test
     void ap27_利用者の申込一覧取得() {
         Event event = openEvent();
@@ -448,7 +589,7 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-28（D-13）: 管理者は対象利用者のお気に入り一覧を取得できる
+    // AP-28: 管理者は対象利用者のお気に入り一覧を取得できる
     @Test
     void ap28_利用者のお気に入り一覧取得() {
         Event event = openEvent();
@@ -465,7 +606,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].id()).isEqualTo(event.getId());
     }
 
-    // AP-22（D-19）: CSV明細に参加区分列が追加され、区分名がそのまま出力される
+    // AP-22: CSV明細に参加区分列が追加され、区分名がそのまま出力される
     @Test
     void ap22_csv出力に参加区分列が含まれる() {
         Event event = eventRepository.save(new Event(
@@ -500,7 +641,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("一般枠");
     }
 
-    // AP-29（D-20）: お気に入り総数取得は管理者のみ実行できる
+    // AP-29: お気に入り総数取得は管理者のみ実行できる
     @Test
     void ap29_お気に入り総数取得は管理者のみ() {
         Event event = openEvent();
@@ -521,7 +662,7 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-30（D-20）: コメント総数は論理削除済みを除外し、管理者のみ実行できる
+    // AP-30: コメント総数は論理削除済みを除外し、管理者のみ実行できる
     @Test
     void ap30_コメント総数取得は論理削除済みを除外する() {
         Event event = openEvent();
@@ -533,7 +674,7 @@ class ApiIntegrationTest {
                 new HttpEntity<>(new EventCommentCreateRequest("削除予定のコメント", null), authHeaders(GENERAL_USER_ID)),
                 EventCommentResponse.class);
         Long willBeDeletedId = commentResponse.getBody().id();
-        // 返信を付けたうえで削除すると論理削除になる（D-18）
+        // 返信を付けたうえで削除すると論理削除になる
         restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("返信", willBeDeletedId), authHeaders(ADMIN_USER_ID)),
                 EventCommentResponse.class);
@@ -548,7 +689,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody().count()).isEqualTo(2L);
     }
 
-    // AP-31（D-21）: 利用者のコメント履歴は、論理削除済みも含めイベント名付きで取得できる
+    // AP-31: 利用者のコメント履歴は、論理削除済みも含めイベント名付きで取得できる
     @Test
     void ap31_利用者のコメント履歴取得() {
         Event event = openEvent();
@@ -571,7 +712,7 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-32（D-22）: 全コメント一覧は有効なコメントのみを対象とし、イベント名・投稿者名を含む
+    // AP-32: 全コメント一覧は有効なコメントのみを対象とし、イベント名・投稿者名を含む
     @Test
     void ap32_全コメント一覧取得は有効なコメントのみ() {
         Event event = openEvent();
