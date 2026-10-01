@@ -2,7 +2,7 @@ package com.example.eventapp.dto;
 
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。AP-19/20のレスポンス（一覧の1要素・投稿結果、API設計書§2）。
+// 実行環境: サーバー側（JVM）。AP-19/20のレスポンス（一覧の1要素・投稿結果、docs/03_API設計書.md AP-19・AP-20）。
 public record EventCommentResponse(
         Long id,
         String userName,

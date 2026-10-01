@@ -2,7 +2,7 @@ package com.example.eventapp.dto;
 
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。AP-13 GET /api/my/applications のレスポンス1件分（API設計書§2）。
+// 実行環境: サーバー側（JVM）。AP-13 GET /api/my/applications のレスポンス1件分（docs/03_API設計書.md AP-13）。
 public record MyApplicationResponse(
         Long id,
         Long eventId,

@@ -9,7 +9,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 // 実行環境: サーバー側（JVM）。Controllerの処理が始まる直前に必ず通る「関所」（HandlerInterceptor）。
 // docs/09_認証認可設計書.md 9-1: X-User-Idヘッダからログインユーザーを解決するダミー認証。
-// ヘッダ無し／存在しないuserIdは401（GlobalExceptionHandlerが変換）。
+// ヘッダ無し／存在しないuserId／退会済み（匿名化済み）のuserIdは401（GlobalExceptionHandlerが変換）。
 // どのURLに適用するか（/api/**、ただしlogin/pingは除外）はWebConfigで設定している。
 public class AuthInterceptor implements HandlerInterceptor {
 
@@ -49,7 +49,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
 
         User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
+        if (user == null || user.isAnonymized()) {
+            // 退会済み（匿名化済み）の利用者は、存在しない利用者と同様に認証エラーとする
+            // （AP-34による退会の効果を、継続中のアクセスにも及ぼすため）
             throw new UnauthorizedException("認証が必要です");
         }
 

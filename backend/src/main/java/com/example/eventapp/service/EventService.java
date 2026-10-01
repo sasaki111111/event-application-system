@@ -46,7 +46,7 @@ public class EventService {
         this.authContext = authContext;
     }
 
-    // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（API設計書§2）
+    // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（docs/03_API設計書.md AP-04）
     @Transactional(readOnly = true)
     public List<EventSummaryResponse> list(String status) {
         LocalDateTime now = LocalDateTime.now();
@@ -81,7 +81,7 @@ public class EventService {
                 .toList();
     }
 
-    // AP-05: 指定IDのイベントが無ければ404（API設計書§2）
+    // AP-05: 指定IDのイベントが無ければ404（docs/03_API設計書.md AP-05）
     @Transactional(readOnly = true)
     public EventDetailResponse getDetail(Long id) {
         Event event = findByIdOrThrow(id);

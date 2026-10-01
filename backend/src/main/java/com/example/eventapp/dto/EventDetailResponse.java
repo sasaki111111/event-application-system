@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 // 実行環境: サーバー側（JVM）。AP-05 GET /api/events/{id} のレスポンス
-// （AP-04の全フィールド＋description・remaining等、API設計書§2）。
+// （AP-04の全フィールド＋description・remaining等、docs/03_API設計書.md AP-05）。
 public record EventDetailResponse(
         Long id,
         String name,

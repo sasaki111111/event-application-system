@@ -36,7 +36,7 @@ public record EventUpsertRequest(
         @Size(max = 100, message = "100文字以内で入力してください")
         @Pattern(regexp = ValidationPatterns.NO_CONTROL_CHARS, message = "使用できない文字が含まれています") String organizerName,
 
-        // 画像URLインジェクション対策（docs/07_バリデーション設計書.md 8-3 C-07）: http/https以外のスキーム（javascript:等）を拒否する
+        // 画像URLインジェクション対策（docs/07_バリデーション設計書.md 8-2）: http/https以外のスキーム（javascript:等）を拒否する
         @Size(max = 500, message = "500文字以内で入力してください")
         @Pattern(regexp = ValidationPatterns.HTTP_URL, message = "httpまたはhttpsで始まるURLを入力してください") String imageUrl,
 

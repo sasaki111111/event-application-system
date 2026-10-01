@@ -486,6 +486,20 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    // AP-34実行後の認証: 退会済み（匿名化済み）のuserIdは、以後のリクエストで認証エラーになる
+    // （AuthInterceptorがAP-34の効果を継続中のアクセスにも及ぼす）
+    @Test
+    void ap34_退会済みの利用者は以後のリクエストで認証エラーになる() {
+        restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/whoami"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
     // AP-09 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
     @Test
     void ap09_csv出力は削除済みイベントの申込を含まない() {
