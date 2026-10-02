@@ -1,4 +1,5 @@
 /* 実行環境: ブラウザ側。event-search.ts専用のスタイル。テーブル・バッジ等の見た目はstyles.css（共通デザイン）を参照。 */
+/* 検索条件フォーム全体: 各入力項目を横並びにし、画面が狭い時は折り返す */
 .search-form {
   display: flex;
   align-items: flex-end;
@@ -7,6 +8,7 @@
   margin-bottom: 1em;
 }
 
+/* 検索条件1項目分（ラベルと入力欄）のまとまり */
 .field {
   display: flex;
   flex-direction: column;

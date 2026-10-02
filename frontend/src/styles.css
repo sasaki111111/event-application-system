@@ -2,6 +2,8 @@
    色・余白・フォント等をCSS変数にまとめ、各画面のCSSファイルで重複していたテーブル・バッジ・
    エラー表示等の見た目をここに集約する。個々の画面のCSSは、その画面特有のレイアウトのみを持つ。 */
 
+/* CSS変数（カスタムプロパティ）。:rootに定義すると、以下すべてのセレクタでvar(--名前)として
+   参照できる。色・余白・フォントをここに集約し、各画面のCSSファイルではこれらの変数だけを使う */
 :root {
   --color-primary: #7c3aed;
   --color-primary-light: color-mix(in srgb, #7c3aed 68%, white);
@@ -26,6 +28,7 @@
   --font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
 }
 
+/* 全要素共通: widthやheightにborder・paddingを含めて計算させる（レイアウト崩れを防ぐ定番設定） */
 * {
   box-sizing: border-box;
 }
@@ -43,10 +46,12 @@ body {
   background-attachment: fixed;
 }
 
+/* アプリ全体のリンクの基本色 */
 a {
   color: var(--color-primary);
 }
 
+/* 各画面の見出しの基本サイズ */
 h1 {
   font-size: 1.4em;
   margin-top: 0;
@@ -59,6 +64,7 @@ main.page {
   padding: var(--spacing-3);
 }
 
+/* すべてのボタンの基本の見た目（通常操作用） */
 button {
   font-family: inherit;
   font-size: 0.95em;
@@ -142,6 +148,7 @@ button.btn-toggle:hover:not(:disabled) {
   background: #eef1f5;
 }
 
+/* フォーム入力欄（入力・選択・複数行入力）共通の見た目 */
 input,
 select,
 textarea {
@@ -161,6 +168,7 @@ textarea:focus {
   outline-offset: 1px;
 }
 
+/* 入力エラーがある項目に付けるクラス（枠を赤くして分かりやすくする） */
 input.invalid,
 textarea.invalid {
   border-color: var(--color-danger);
@@ -171,6 +179,7 @@ textarea.invalid:focus {
   outline-color: var(--color-danger);
 }
 
+/* 一覧表示に使うテーブルの共通の見た目（各画面のCSSでは列幅などの調整のみ行う） */
 table {
   border-collapse: collapse;
   width: 100%;
@@ -195,6 +204,7 @@ tbody tr:hover {
   background: #fafbfc;
 }
 
+/* ステータス等を示す丸みのあるラベル（バッジ）の共通形。色は.badge-*で切り替える */
 .badge {
   display: inline-block;
   padding: 0.2em 0.6em;
@@ -202,6 +212,7 @@ tbody tr:hover {
   font-size: 0.85em;
 }
 
+/* 「受付中」「承認済み」等、好ましい状態を示す緑系のバッジ */
 .badge-positive {
   background: var(--color-success-bg);
   color: var(--color-success-text);
@@ -213,30 +224,36 @@ tbody tr:hover {
   color: var(--color-accent-hover);
 }
 
+/* 「受付終了」等、中立的な状態を示すグレー系のバッジ */
 .badge-neutral {
   background: var(--color-neutral-bg);
   color: var(--color-neutral-text);
 }
 
+/* 画面全体のエラーメッセージ（通信失敗など）の文字色 */
 .error {
   color: var(--color-danger);
 }
 
+/* フォームの各入力項目に紐づくエラーメッセージの文字色・サイズ */
 .field-error {
   color: var(--color-danger);
   font-size: 0.85em;
   margin: 0;
 }
 
+/* 補足説明文（本文より目立たせない）の見た目 */
 .note {
   color: var(--color-text-muted);
   font-style: italic;
 }
 
+/* 入力必須項目の印（ラベル末尾の「*」等）の文字色 */
 .required {
   color: var(--color-danger);
 }
 
+/* 「*は必須項目です」等、必須マークの意味を説明する注記の見た目 */
 .required-note {
   font-size: 0.85em;
   color: var(--color-text-muted);
@@ -280,6 +297,7 @@ dd.full-row {
   align-items: start;
 }
 
+/* カード1枚分の見た目（枠・影・ホバー時の浮き上がり等） */
 .card {
   position: relative;
   background: var(--color-surface);
@@ -307,6 +325,7 @@ dd.full-row {
   border-top-color: var(--color-neutral-text);
 }
 
+/* カード上部（タイトルとバッジを横並びにする行） */
 .card-header {
   display: flex;
   align-items: center;
@@ -314,6 +333,7 @@ dd.full-row {
   gap: 0.6em;
 }
 
+/* カードのタイトル（イベント名等）。長い場合は末尾を「…」で省略する */
 .card-title {
   flex: 1;
   min-width: 0;
@@ -336,6 +356,7 @@ dd.full-row {
   flex-shrink: 0;
 }
 
+/* カード本文の「項目名：値」の並び（開催日時・場所等） */
 .card-meta {
   display: grid;
   grid-template-columns: 5.5em 1fr;
@@ -350,6 +371,7 @@ dd.full-row {
   color: var(--color-text);
 }
 
+/* カード下部のボタン群（詳細・お気に入り等）。marginTop: autoでカード最下部に押し下げる */
 .card-actions {
   margin-top: auto;
   display: flex;

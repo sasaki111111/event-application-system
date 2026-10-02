@@ -17,6 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。軽い会員登録・メールアドレスでのログイン・ユーザー一覧（いずれも機能追加）の業務ロジック。
 // パスワードは扱わない。登録できるのは常に一般ユーザーのみ（管理者は登録経路を用意しない）。
+/**
+ * ログイン・利用者登録（AP-01・AP-02）、利用者一覧（AP-03）、管理者アカウント登録（AP-25）、
+ * 利用者詳細の基本情報取得（AP-26）、管理者権限の降格（AP-33）、利用者の匿名化／退会（AP-34）の
+ * 業務ロジックを担当するService。UserControllerの各メソッドから呼ばれ、DBアクセスにはUserRepositoryを使う。
+ */
 @Service
 public class UserService {
 
@@ -30,6 +35,13 @@ public class UserService {
         this.authContext = authContext;
     }
 
+    /**
+     * 新規利用者（一般利用者）を登録する（AP-02）。UserController#registerから呼ばれる。
+     *
+     * @param name  利用者名
+     * @param email メールアドレス（登録前に正規化される）
+     * @return 登録された利用者の情報
+     */
     @Transactional
     public UserResponse register(String name, String email) {
         email = normalizeEmail(email);
@@ -46,6 +58,14 @@ public class UserService {
     }
 
     // AP-25: 管理者アカウント登録（管理者のみ。権限チェックはController側）。作成されるのは常に管理者
+    /**
+     * 新たな管理者アカウントを登録する（AP-25）。UserController#registerAdminから呼ばれる
+     * （管理者権限の確認はController側で完了済み）。
+     *
+     * @param name  利用者名
+     * @param email メールアドレス（登録前に正規化される）
+     * @return 登録された管理者アカウントの情報
+     */
     @Transactional
     public UserResponse registerAdmin(String name, String email) {
         email = normalizeEmail(email);
@@ -60,6 +80,13 @@ public class UserService {
     }
 
     // POST /api/login: メールアドレスでユーザーを特定する（パスワード照合は無し＝ダミー認証のまま）
+    /**
+     * メールアドレスでログインする（AP-01）。UserController#loginから呼ばれる。登録されていないメールアドレスの
+     * 場合はUnauthorizedExceptionを投げ、GlobalExceptionHandlerにより401（Unauthorized）になる。
+     *
+     * @param email ログインに使うメールアドレス
+     * @return ログインした利用者の情報
+     */
     @Transactional(readOnly = true)
     public UserResponse login(String email) {
         // 利用者列挙対策（docs/09_認証認可設計書.md 9-8）: 「未登録」と直接断定せず、新規登録を案内する形にする
@@ -76,6 +103,12 @@ public class UserService {
     }
 
     // GET /api/users: ユーザー一覧（管理者専用、権限チェックはController側）
+    /**
+     * 登録済み利用者の一覧を取得する（AP-03）。UserController#listから呼ばれる
+     * （管理者権限の確認はController側で完了済み）。
+     *
+     * @return 利用者一覧（利用者ID昇順）
+     */
     @Transactional(readOnly = true)
     public List<UserResponse> list() {
         return userRepository.findAllByOrderByIdAsc().stream()
@@ -84,6 +117,14 @@ public class UserService {
     }
 
     // AP-26: 利用者詳細（SC-15）の表示対象利用者の基本情報。管理者専用、権限チェックはController側
+    /**
+     * 指定した利用者の基本情報を取得する（AP-26）。UserController#getUserから呼ばれるほか、
+     * applicationsOf／favoritesOf／commentsOf（AP-27・28・31）の中でも対象利用者の存在確認
+     * （存在しなければNotFoundExceptionを投げ、GlobalExceptionHandlerが404にする）に使われる。
+     *
+     * @param id 対象利用者ID
+     * @return 利用者の基本情報
+     */
     @Transactional(readOnly = true)
     public UserResponse getById(Long id) {
         User user = userRepository.findById(id)
@@ -93,6 +134,14 @@ public class UserService {
 
     // AP-33: 管理者権限の降格（管理者のみ。権限チェックはController側）。roleをgeneralに変更するのみ。
     // 管理者が1人のみの状態での降格は禁止する（docs/06_詳細設計書.md 7-5 R-17）
+    /**
+     * 指定した利用者（管理者）を一般利用者に変更する（AP-33）。UserController#demoteから呼ばれる
+     * （管理者権限の確認はController側で完了済み）。対象が既に一般利用者、または管理者が1人のみの
+     * 状態での実行はBusinessExceptionを投げ、GlobalExceptionHandlerにより400（Bad Request）になる。
+     *
+     * @param id 降格対象の利用者ID
+     * @return 降格後の利用者情報
+     */
     @Transactional
     public UserResponse demote(Long id) {
         User user = userRepository.findById(id)
@@ -112,6 +161,17 @@ public class UserService {
     // AP-34: 利用者の匿名化（退会）。本人、または管理者が実行できる（権限チェックはここで行う）。
     // 対象が管理者の場合は実行不可（先にAP-33で降格する必要がある、docs/06_詳細設計書.md 7-5 R-18）。
     // 物理削除ではなく、名前・メールアドレスを固定の文言・形式に置き換えるのみ（申込等の履歴は残す）
+    /**
+     * 指定した利用者を匿名化（退会）する（AP-34）。UserController#anonymizeから呼ばれる。
+     * 他のAdmin専用メソッドと異なり、本人か管理者かの判定はController側のauthContext.requireAdmin()
+     * ではなくこのメソッド自身が行う（本人にも実行を許すため）。本人・管理者のいずれでもない場合は
+     * ForbiddenException（403）、対象が管理者または既に退会済みの場合はBusinessException（400）になる。
+     *
+     * @param id                 退会対象の利用者ID
+     * @param requestingUserId   実行者の利用者ID
+     * @param requestingIsAdmin  実行者が管理者かどうか
+     * @return 匿名化後の利用者情報
+     */
     @Transactional
     public UserResponse anonymize(Long id, Long requestingUserId, boolean requestingIsAdmin) {
         User user = userRepository.findById(id)

@@ -1,11 +1,16 @@
 <!-- 実行環境: ブラウザ側。event-search.tsのテンプレート。 -->
 <h1>イベント検索</h1>
 
+<!--
+  @if / @else はAngularの新しい制御構文（条件分岐）。読み込み中・エラー時はその旨だけを表示し、
+  取得完了後に検索フォームと結果一覧を表示する。
+-->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else {
+  <!-- 検索条件入力フォーム（キーワード・開催日の範囲・並び替え） -->
   <div class="search-form">
     <div class="field">
       <label for="keyword">キーワード（イベント名・場所）</label>
@@ -37,8 +42,10 @@
     <button type="button" class="btn-link" (click)="clearFilters()">条件をクリア</button>
   </div>
 
+  <!-- 絞り込み結果の件数 -->
   <p class="note">{{ filteredEvents().length }}件のイベントが見つかりました。</p>
 
+  <!-- 検索結果一覧（カード表示）。@forはAngularの新しい制御構文（繰り返し表示）、trackには一意なイベントIDを指定する -->
   <div class="card-grid">
     @for (event of filteredEvents(); track event.id) {
       <div class="card" [class.closed]="!event.open">

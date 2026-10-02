@@ -1,21 +1,26 @@
 <!-- 実行環境: ブラウザ側。admin-event-list.tsのテンプレート。 -->
 <h1>イベント管理</h1>
 
+<!-- 画面上部のページ操作リンク。いずれもRouterLinkによる画面遷移（APIは呼ばない） -->
 <div class="page-actions">
   <a class="btn-link" routerLink="/admin/events/new">＋ 新規登録</a>
   <a class="btn-link" routerLink="/admin/events/deleted">削除済みイベント</a>
 </div>
 
+<!-- @if/@else if/@elseで読み込み中・エラー・一覧ありの3状態を切り替える -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else {
+  <!-- イベントカード一覧。@forで1イベント＝1カードとして繰り返し表示する -->
   <div class="card-grid">
     @for (event of events(); track event.id) {
       <div class="card" [class.closed]="!event.open">
         <div class="card-header">
+          <!-- イベント名のリンク。クリックすると編集画面（/admin/events/:id/edit）へ遷移する -->
           <a class="card-title" [routerLink]="['/admin/events', event.id, 'edit']">{{ event.name }}</a>
+          <!-- 受付中かどうかでバッジの色・文言を切り替える -->
           @if (event.open) {
             <span class="badge badge-positive">受付中</span>
           } @else {
@@ -32,6 +37,10 @@
           <dd>{{ event.acceptedCount }} / {{ event.capacity }}</dd>
         </dl>
 
+        <!--
+          操作ボタン群。「受付」は[routerLink]（配列で動的にURLを組み立てる書き方）による画面遷移、
+          「複製」「削除」は(click)イベントバインディングでComponent側のメソッドを呼ぶ
+        -->
         <div class="card-actions">
           <a class="btn-link btn-sm" [routerLink]="['/admin/events', event.id, 'checkin']">受付</a>
           <button type="button" class="btn-sm" (click)="duplicate(event)" [disabled]="duplicatingId() === event.id">

@@ -20,7 +20,9 @@ CREATE TABLE users (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(255) NOT NULL,
+    -- 'general'（一般利用者）または'admin'（管理者）のいずれかの文字列を保持する（ENUM型は使わずアプリ側で制御）
     role          VARCHAR(20)  NOT NULL,
+    -- AP-34（退会）で退会（匿名化）した日時。NULL＝退会していない（通常の利用者）
     anonymized_at DATETIME     NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -41,7 +43,9 @@ CREATE TABLE events (
     description           VARCHAR(1000) NULL,
     -- ソフトデリート: NULL=有効、日時あり=削除済み（管理者の「削除済みイベント」画面から復元可能）
     deleted_at            DATETIME     NULL,
+    -- 主催者名。任意項目のためNULL可
     organizer_name        VARCHAR(100) NULL,
+    -- イベント画像のURL。任意項目のためNULL可
     image_url             VARCHAR(500) NULL,
     -- 申込時アンケートの質問文言。NULL＝アンケート無し
     extra_question        VARCHAR(200) NULL,
@@ -127,6 +131,7 @@ CREATE TABLE applications (
     event_id        BIGINT      NOT NULL,
     -- 申し込んだ区分。対象イベントに区分が無い場合はNULL
     ticket_type_id  BIGINT      NULL,
+    -- '受付済'・'キャンセル待ち'・'キャンセル済'のいずれかの文字列を保持する（ENUM型は使わずアプリ側で制御）
     status          VARCHAR(20) NOT NULL DEFAULT '受付済',
     applied_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 申込時アンケートの回答。対象イベントにextra_questionが無い場合はNULL

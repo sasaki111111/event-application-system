@@ -2,6 +2,12 @@
 <h1>利用者管理</h1>
 <p class="note">登録済みの利用者一覧です。ここから新たな管理者アカウントを登録できます。</p>
 
+<!--
+  管理者アカウント登録フォーム。(submit)イベントバインディングで、ブラウザ標準のフォーム送信
+  （画面がリロードされてしまう）を$event.preventDefault()で止めた上でregisterAdmin()を呼ぶ。
+  各入力欄は[value]（プロパティバインディング）で現在の値を表示し、(input)（イベントバインディング）で
+  入力内容をComponent側のsignalに反映する、という往復の書き方になっている。
+-->
 <h2>管理者を登録</h2>
 @if (registerErrorMessage()) {
   <p class="error">{{ registerErrorMessage() }}</p>
@@ -38,6 +44,7 @@
   </button>
 </form>
 
+<!-- 利用者一覧テーブル。@if/@else if/@elseで読み込み中・エラー・一覧ありの3状態を切り替える -->
 <h2>利用者一覧</h2>
 @if (loading()) {
   <p>読み込み中...</p>
@@ -54,11 +61,13 @@
       </tr>
     </thead>
     <tbody>
+      <!-- @forで1利用者＝1行として繰り返し表示。利用者名のリンクから詳細画面（/admin/users/:id）へ遷移する -->
       @for (user of users(); track user.userId) {
         <tr>
           <td>{{ user.userId }}</td>
           <td><a [routerLink]="['/admin/users', user.userId]">{{ user.name }}</a></td>
           <td>{{ user.email }}</td>
+          <!-- ロール（管理者／一般）のバッジに加え、退会済みの場合は追加でバッジを表示する -->
           <td>
             @if (user.role === 'admin') {
               <span class="badge badge-neutral">管理者</span>

@@ -1,6 +1,7 @@
 <!-- 実行環境: ブラウザ側。event-list.tsのテンプレート。 -->
 <h1>イベント一覧</h1>
 
+<!-- 表示モード（一覧／カレンダー）の切替ボタン -->
 <div class="view-toggle">
   <button type="button" class="btn-toggle" [class.active]="viewMode() === 'list'" (click)="setViewMode('list')">
     一覧表示
@@ -10,11 +11,16 @@
   </button>
 </div>
 
+<!--
+  @if / @else if はAngularの新しい制御構文（条件分岐）。読み込み中→エラー→
+  カレンダー表示→一覧表示、の順に最初に条件が成立したブロックだけが表示される。
+-->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else if (viewMode() === 'calendar') {
+  <!-- 開催カレンダー表示（機能追加）。月の切替ボタンと、曜日・日付のマス -->
   <div class="calendar">
     <div class="calendar-header">
       <button type="button" class="btn-sm" (click)="previousMonth()">← 前月</button>
@@ -24,6 +30,11 @@
     <div class="calendar-grid calendar-weekdays">
       <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
     </div>
+    <!--
+      @forはAngularの新しい制御構文（繰り返し表示）。週ごと（外側）→その週の各日（内側）の
+      二重ループで、カレンダーの1マスずつを描画する。trackには一意に識別できる値を指定する
+      （$indexは配列の添字、day.date.getTime()は日付をミリ秒の数値にしたもの）。
+    -->
     @for (week of calendarWeeks(); track $index) {
       <div class="calendar-grid">
         @for (day of week; track day.date.getTime()) {
@@ -56,6 +67,7 @@
     </label>
   </div>
 
+  <!-- イベント一覧（カード表示）。各カードは展開して詳細とその場での申込フォームを表示できる -->
   <div class="card-grid">
     @for (event of sortedEvents(); track event.id) {
       <div class="card" [class.closed]="!event.open">
@@ -96,6 +108,7 @@
           </button>
         </div>
 
+        <!-- 展開部分: このカードのイベント詳細＋申込フォーム。展開中のカードでのみ表示される -->
         @if (expandedEventId() === event.id) {
           <div class="card-expanded">
             @if (expandedLoading()) {

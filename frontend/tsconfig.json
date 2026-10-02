@@ -15,6 +15,7 @@
     "target": "ES2022",
     "module": "preserve"
   },
+  /* angularCompilerOptions: TypeScript標準のcompilerOptionsとは別に、Angular独自のコンパイラ（テンプレートのコンパイル等）に対する設定 */
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

@@ -1,6 +1,8 @@
 // 実行環境: ブラウザ側。SC-02の一覧部分（イベント一覧）。
 // 各行を展開すると詳細（API-02）を取得して表示し、その場で申込（API-03）もできる（機能追加）。
 // 機能追加: 一覧表示／開催カレンダー表示の切替。
+// `computed()`は、他のsignalの値から自動的に導き出される「計算結果のsignal」を作るAngularの機能。
+// 元になるsignal（例: events, sortOrder）が変わると、computed()の値も自動的に再計算される。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -17,6 +19,22 @@ interface CalendarDay {
   events: EventSummary[];
 }
 
+/**
+ * SC-02イベント一覧画面を担当するComponent。カード形式の一覧表示と、
+ * 開催カレンダー表示（機能追加）の2つの表示モードを切り替えられる。
+ * 一覧の各カードは「▼詳細を見る」で展開でき、展開したカード内でその場で申込もできる。
+ *
+ * 使用するAngular Service:
+ * - `EventApiService`: イベント一覧取得API（API-01）とイベント詳細取得API（API-02、カード展開時）。
+ * - `ApplicationApiService`: 申込API（API-03）の呼び出し。
+ * - `FavoriteStore`: お気に入り登録状態を画面間で共有する状態管理。
+ * - `Router`: 申込成功後に申込完了画面へ遷移するために使う。
+ * - `ActivatedRoute`: カレンダー表示から戻ってきた場合の表示モード・表示月（?view=calendar&month=…）を読み取る。
+ * - `DummyUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
+ *
+ * 画面遷移: カードのタイトル／カレンダーの日付リンクからevent-detail.ts（イベント詳細）へ遷移する。
+ * 申込成功時はapply-done.ts（申込完了画面）へ遷移する。
+ */
 @Component({
   selector: 'app-event-list',
   imports: [CommonModule, RouterLink],
@@ -47,6 +65,7 @@ export class EventList implements OnInit {
   // （機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
+  /** sortOrderの値に応じて、取得済みのeventsを並び替えた結果。sortOrderが変わると自動的に再計算される。 */
   protected readonly sortedEvents = computed(() => {
     const events = [...this.events()];
     switch (this.sortOrder()) {
@@ -61,6 +80,7 @@ export class EventList implements OnInit {
     }
   });
 
+  /** カレンダー見出しに表示する「2027年3月」のような文字列。calendarMonthから導き出す。 */
   protected readonly calendarMonthLabel = computed(() => {
     const month = this.calendarMonth();
     return `${month.getFullYear()}年${month.getMonth() + 1}月`;
@@ -73,6 +93,7 @@ export class EventList implements OnInit {
   });
 
   // 月の1日が入る週の日曜から、月の末日が入る週の土曜までを6週分並べる（常に42マス、レイアウトが安定する）
+  /** カレンダー表示用に、1マス＝1日分のデータ（CalendarDay）を週単位の2次元配列に組み立てた結果。 */
   protected readonly calendarWeeks = computed<CalendarDay[][]>(() => {
     const month = this.calendarMonth();
     const events = this.events();
@@ -113,6 +134,8 @@ export class EventList implements OnInit {
   // 機能追加（お気に入り）: 登録済みのイベントID一覧はFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusyId = signal<number | null>(null);
 
+  // コンストラクタの引数に型を書くと、Angularが対応するServiceのインスタンスを自動的に渡してくれる
+  // （依存性注入／DI）。login.tsの`inject()`と役割は同じで、こちらはAngularの元からある書き方。
   constructor(
     private readonly eventApi: EventApiService,
     private readonly applicationApi: ApplicationApiService,
@@ -127,6 +150,11 @@ export class EventList implements OnInit {
     return this.dummyUserStore.isAdmin();
   }
 
+  /**
+   * ngOnInitは、Angularのライフサイクルフックの一つ。Componentが画面に表示される
+   * 直前に一度だけ自動的に実行される。ここでは、カレンダー表示から戻ってきた場合の
+   * 表示モード・表示月の復元と、イベント一覧・お気に入り状態の取得を行っている。
+   */
   ngOnInit(): void {
     // 機能追加（カレンダー表示からの詳細遷移）: イベント詳細の「戻る」がこの画面へ渡すview/month
     const queryParams = this.route.snapshot.queryParamMap;
@@ -139,6 +167,8 @@ export class EventList implements OnInit {
       }
     }
 
+    // `.subscribe({ next, error })`は、Observable（非同期で届くデータの流れ）の結果を
+    // 受け取るための書き方。成功時はnext、失敗時はerrorに渡した処理が実行される。
     this.eventApi.list().subscribe({
       next: (events) => {
         this.events.set(events);
@@ -155,6 +185,7 @@ export class EventList implements OnInit {
   }
 
   // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）
+  /** カードの「☆/★」ボタン（(click)）で呼ばれる。対象イベントのお気に入りを登録・解除する。 */
   protected toggleFavorite(eventId: number): void {
     this.favoriteBusyId.set(eventId);
     this.favoriteStore.toggle(eventId).subscribe({
@@ -167,6 +198,7 @@ export class EventList implements OnInit {
   }
 
   // 行の「▼／▲」を押した時：もう一度押すと閉じる。開く時は詳細APIを呼んで取得する
+  /** カードの「▼詳細を見る／▲閉じる」ボタン（(click)）で呼ばれる。 */
   protected toggleExpand(eventId: number): void {
     if (this.expandedEventId() === eventId) {
       this.expandedEventId.set(null);
@@ -193,28 +225,34 @@ export class EventList implements OnInit {
     });
   }
 
+  /** 「一覧表示／カレンダー表示」切替ボタン（(click)）で呼ばれる。 */
   protected setViewMode(mode: 'list' | 'calendar'): void {
     this.viewMode.set(mode);
   }
 
+  /** 並び替え用`<select>`の`(change)`イベントで呼ばれる。 */
   protected onSortOrderChange(value: string): void {
     this.sortOrder.set(value as 'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc');
   }
 
+  /** カレンダーの「← 前月」ボタン（(click)）で呼ばれる。表示中の月を1つ前に戻す。 */
   protected previousMonth(): void {
     const month = this.calendarMonth();
     this.calendarMonth.set(new Date(month.getFullYear(), month.getMonth() - 1, 1));
   }
 
+  /** カレンダーの「翌月 →」ボタン（(click)）で呼ばれる。表示中の月を1つ先に進める。 */
   protected nextMonth(): void {
     const month = this.calendarMonth();
     this.calendarMonth.set(new Date(month.getFullYear(), month.getMonth() + 1, 1));
   }
 
+  /** 指定した日付が属する月の1日（時刻は0時）を返す補助関数。 */
   private startOfMonth(date: Date): Date {
     return new Date(date.getFullYear(), date.getMonth(), 1);
   }
 
+  /** 日付を"YYYY-MM-DD"形式の文字列に変換する補助関数。イベントの日付と突き合わせるためのキーとして使う。 */
   private dateKey(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -222,15 +260,18 @@ export class EventList implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  /** 展開カード内の参加区分`<select>`の`(change)`イベントで呼ばれる。 */
   protected onTicketTypeChange(value: string): void {
     this.selectedTicketTypeId.set(value ? Number(value) : null);
   }
 
+  /** 展開カード内のアンケート`<textarea>`の`(input)`イベントで呼ばれる。 */
   protected onExtraAnswerInput(value: string): void {
     this.extraAnswer.set(value);
   }
 
   // 展開部分の「申し込む」。API-03を呼び、成功したら申込完了画面へ画面遷移する
+  /** 展開カード内の「申し込む」ボタン（(click)）で呼ばれる。 */
   protected apply(eventId: number): void {
     this.applyErrorMessage.set(null);
     this.applying.set(true);

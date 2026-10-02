@@ -2,6 +2,7 @@
 # 実際の値はapplication-local.yml（gitignore対象、各自作成）で上書きする。
 spring:
   application:
+    # このアプリケーションの名前。ログ出力などでどのアプリかを識別するために使われる（複数アプリ運用時に有用）
     name: backend
   datasource:
     # 接続先: ローカルPCで動いているMySQL（別プロセス、3306番ポート）のeventapp DB
@@ -10,12 +11,16 @@ spring:
     username: ${DB_USERNAME:eventapp_app}
     # 既定値なし＝application-local.yml等で必ず指定する必要がある
     password: ${DB_PASSWORD}
+    # 接続に使うJDBCドライバのクラス名（MySQL用）。mysql-connector-j（pom.xml参照）が提供する
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       # ddl-auto: none = Hibernateにテーブルを自動作成/変更させない（DDLはC-1で手動適用する方針）
       ddl-auto: none
+    # open-in-view: false = Controllerの処理が終わった後までDB接続を開いたままにしない。
+    # trueのままだと画面表示側の都合でDB接続が長時間保持され、意図しない遅延読み込みが起きやすくなる
     open-in-view: false
+    # show-sql: false = Hibernateが実行するSQLをログに出力しない（trueにすると動作確認やデバッグ時に見やすくなる）
     show-sql: false
 server:
   error:

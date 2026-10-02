@@ -2,13 +2,28 @@
 <h1>ログイン</h1>
 <p>メールアドレスを入力してください。登録内容に応じて一般ユーザー／管理者いずれかの画面に自動で移動します（ダミー認証のためパスワードは不要です）。</p>
 
+<!--
+  @if は Angular の新しい制御構文（テンプレート内で条件分岐を書くための記法）。
+  条件がtrueの間だけ、中のHTMLが画面に表示される。
+-->
+<!-- ログイン失敗時のエラーメッセージ -->
 @if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 }
 
+<!--
+  ログインフォーム。(submit)はAngularのイベントバインディング記法で、フォーム送信時に
+  指定した処理（ここでは login() メソッド）を呼び出す。$event.preventDefault()で
+  ブラウザ標準のページ遷移（再読み込み）を止めてから login() を実行している。
+-->
 <form (submit)="$event.preventDefault(); login()">
   <div class="field">
     <label for="email">メールアドレス</label>
+    <!--
+      [value]はプロパティバインディング（signalの値を入力欄に反映する）、
+      (input)はイベントバインディング（入力されるたびにonEmailInput()を呼ぶ）。
+      この2つを組み合わせて、入力欄の値とTypeScript側のsignalを同期させている。
+    -->
     <input
       id="email"
       type="email"
@@ -17,6 +32,7 @@
       placeholder="例: general@example.com"
     />
   </div>
+  <!-- ログインボタン。処理中（loading）はボタンを無効化し、文言も変える -->
   <button type="submit" [disabled]="loading()">{{ loading() ? 'ログイン中...' : 'ログイン' }}</button>
 </form>
 
@@ -25,11 +41,14 @@
 <h2>はじめての方（新規登録）</h2>
 <p>名前とメールアドレスだけで一般ユーザーとして登録し、そのままログインできます（こちらもパスワードは不要です）。</p>
 
+<!-- 新規登録失敗時のエラーメッセージ（フィールド単位のエラーは各入力欄の下に表示） -->
 @if (registerErrorMessage()) {
   <p class="error">{{ registerErrorMessage() }}</p>
 }
 
+<!-- 新規登録フォーム -->
 <form (submit)="$event.preventDefault(); register()">
+  <!-- 名前の入力欄。[class.invalid]はそのフィールドにエラーがある時だけCSSクラスを付けて見た目を変える -->
   <div class="field">
     <label for="registerName">名前</label>
     <input
@@ -39,10 +58,12 @@
       (input)="onRegisterNameInput($any($event.target).value)"
       [class.invalid]="registerFieldError('name')"
     />
+    <!-- 名前フィールドのエラー文言（サーバー側のバリデーション結果） -->
     @if (registerFieldError('name')) {
       <p class="field-error">{{ registerFieldError('name') }}</p>
     }
   </div>
+  <!-- メールアドレスの入力欄（名前欄と同様の仕組み） -->
   <div class="field">
     <label for="registerEmail">メールアドレス</label>
     <input
@@ -52,10 +73,12 @@
       (input)="onRegisterEmailInput($any($event.target).value)"
       [class.invalid]="registerFieldError('email')"
     />
+    <!-- メールアドレスフィールドのエラー文言 -->
     @if (registerFieldError('email')) {
       <p class="field-error">{{ registerFieldError('email') }}</p>
     }
   </div>
+  <!-- 登録ボタン。処理中（registering）はボタンを無効化し、文言も変える -->
   <button type="submit" [disabled]="registering()">
     {{ registering() ? '登録中...' : '登録してログイン' }}
   </button>

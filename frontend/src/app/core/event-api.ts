@@ -1,5 +1,6 @@
 // 実行環境: ブラウザ側。バックエンド（一覧・詳細、登録・編集・削除）を呼び出すサービス。
 // レスポンス・リクエストの型（API設計書 API-01・02・06・07・08）をTypeScriptの型として定義している。
+// HTTP通信を行うAngular標準のサービス
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -29,6 +30,8 @@ export interface TicketType {
   remaining: number;
 }
 
+// extends: TypeScriptのinterfaceが他のinterfaceのフィールドをすべて引き継ぐ構文。
+// EventDetailはEventSummaryの全フィールド＋詳細画面だけで使う追加フィールドを持つ
 export interface EventDetail extends EventSummary {
   description: string;
   remaining: number;
@@ -89,43 +92,53 @@ export interface EventDuplicateSource {
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+/**
+ * イベント本体（一覧・詳細取得、登録・編集・削除・復元）に関するバックエンドAPIを呼び出すサービス。
+ * イベント一覧・検索・詳細画面、管理者のイベント管理・登録編集・削除済み一覧画面から利用される想定。
+ */
 @Injectable({ providedIn: 'root' })
 export class EventApiService {
   constructor(private readonly http: HttpClient) {}
 
-  // status省略時は既定でall（開催日時昇順・受付終了分も含む全件）
+  /** イベント一覧を取得する（API-01）。status省略時は既定でall（開催日時昇順・受付終了分も含む全件）。 */
   list(status: 'all' | 'open' = 'all'): Observable<EventSummary[]> {
+    // paramsはURLのクエリ文字列になる（例: ?status=open）
     return this.http.get<EventSummary[]>(`${API_BASE_URL}/events`, {
       params: { status },
     });
   }
 
+  /** イベント詳細を取得する（API-02）。 */
   detail(id: number): Observable<EventDetail> {
+    // イベントIDをパスに埋め込んでGETする
     return this.http.get<EventDetail>(`${API_BASE_URL}/events/${id}`);
   }
 
-  // API-06（管理者のみ）
+  /** イベントを新規登録する（API-06、管理者のみ）。 */
   create(request: EventUpsertRequest): Observable<EventDetail> {
+    // requestオブジェクトをそのままJSONボディとしてPOSTする
     return this.http.post<EventDetail>(`${API_BASE_URL}/events`, request);
   }
 
-  // API-07（管理者のみ）
+  /** イベントを編集する（API-07、管理者のみ）。 */
   update(id: number, request: EventUpsertRequest): Observable<EventDetail> {
+    // 更新対象のIDをパスに、更新後の内容をボディにしてPUTする
     return this.http.put<EventDetail>(`${API_BASE_URL}/events/${id}`, request);
   }
 
-  // API-08（管理者のみ）。実体はソフトデリート（deleted_atを立てるのみ）
+  /** イベントを削除する（API-08、管理者のみ）。実体はソフトデリート（deleted_atを立てるのみ）。 */
   remove(id: number): Observable<void> {
     return this.http.delete<void>(`${API_BASE_URL}/events/${id}`);
   }
 
-  // 機能追加（ソフトデリート、管理者のみ）: 削除済みイベント一覧
+  /** 削除済みイベント一覧を取得する（機能追加・ソフトデリート、管理者のみ）。 */
   listDeleted(): Observable<DeletedEvent[]> {
     return this.http.get<DeletedEvent[]>(`${API_BASE_URL}/events/deleted`);
   }
 
-  // 機能追加（ソフトデリートの復元、管理者のみ）
+  /** 削除済みイベントを復元する（機能追加・ソフトデリートの復元、管理者のみ）。 */
   restore(id: number): Observable<EventDetail> {
+    // ボディは空で、対象イベントはURLのIDで指定する
     return this.http.post<EventDetail>(`${API_BASE_URL}/events/${id}/restore`, {});
   }
 }

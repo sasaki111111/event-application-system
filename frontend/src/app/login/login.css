@@ -1,4 +1,6 @@
 /* 実行環境: ブラウザ側。login.ts専用のスタイル。ボタン・入力欄の見た目はstyles.css（共通デザイン）を参照。 */
+
+/* ログインフォーム・新規登録フォーム共通のレイアウト（縦に並べて幅を揃える） */
 form {
   display: flex;
   flex-direction: column;
@@ -7,12 +9,14 @@ form {
   margin-top: 1em;
 }
 
+/* ラベルと入力欄を縦に並べる、1項目分のまとまり */
 .field {
   display: flex;
   flex-direction: column;
   gap: 0.3em;
 }
 
+/* ログインフォームと新規登録フォームを区切る線 */
 hr {
   max-width: 20em;
   margin: 2em 0 1em;
@@ -20,6 +24,7 @@ hr {
   border-top: 1px solid var(--color-border);
 }
 
+/* 「はじめての方（新規登録）」の見出し */
 h2 {
   font-size: 1.1em;
 }

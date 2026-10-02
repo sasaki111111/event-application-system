@@ -1,4 +1,5 @@
 /* 実行環境: ブラウザ側。apply-done.ts専用のスタイル（最低限の見た目のみ）。 */
+/* 申込結果（ステータス・申込日時）を見出しと値の2列で並べる */
 dl {
   display: grid;
   grid-template-columns: 8em 1fr;

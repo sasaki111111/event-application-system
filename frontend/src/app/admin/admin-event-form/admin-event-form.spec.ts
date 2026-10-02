@@ -1,7 +1,13 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-event-form.tsの単体テスト。
 // バリデーション・参加区分の追加削除・複製元の複写・保存処理のロジックを検証する。見た目は対象外。
+// TestBedはAngularのテスト用ユーティリティ。本物のDI（依存性注入）の仕組みを使って
+// テスト対象のComponentを組み立てつつ、依存するService（EventApiService等）だけを
+// テスト用のモック（ダミー実装）に差し替えられる。
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+// of()/throwError()はRxJS（Observableを扱うライブラリ）のテスト用ヘルパー。
+// of(値) は即座に成功して値を1つ流すObservableを作り、throwError(() => エラー) は
+// 即座に失敗するObservableを作る。実際のAPI通信（HTTP）の代わりにこれらを使う。
 import { of, throwError } from 'rxjs';
 import { EventApiService, EventDetail, EventDuplicateSource } from '../../core/event-api';
 import { AdminEventForm } from './admin-event-form';
@@ -39,9 +45,18 @@ const duplicateSource: EventDuplicateSource = {
 };
 
 describe('AdminEventForm', () => {
+  // vi.fn()はVitest（テストランナー）が提供するモック関数。呼ばれたかどうか・何を渡されたかを
+  // 記録でき、mockReturnValue等で戻り値も自由に差し替えられる。
   let eventApi: { detail: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   let router: { getCurrentNavigation: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
 
+  /**
+   * テスト対象のAdminEventFormを、指定したルートパラメータ（:id）で初期化して返すヘルパー。
+   * ActivatedRouteをモックに差し替えることで、実際のURL遷移無しに
+   * 「idが無い（新規登録）」「idがある（編集）」の両パターンを再現できる。
+   * ngOnInit()は本来Angularが自動的に呼ぶものだが、テストでは明示的に呼び出している。
+   * @param idParam ルートの:idパラメータ相当の値。nullなら新規登録モード
+   */
   function createComponent(idParam: string | null): AdminEventForm {
     TestBed.configureTestingModule({
       providers: [
@@ -55,6 +70,7 @@ describe('AdminEventForm', () => {
     return component;
   }
 
+  // 各テスト（it）の前に毎回実行され、モックを初期状態に戻す（前のテストの影響を持ち越さないため）
   beforeEach(() => {
     eventApi = {
       detail: vi.fn(() => of(detail)),
@@ -118,6 +134,8 @@ describe('AdminEventForm', () => {
   });
 
   it('複製元がある場合、開催日時・申込締切を除く項目が複写される', () => {
+    // mockReturnValueで「複製」ボタンから渡されるNavigation stateを再現し、
+    // router.getCurrentNavigation()が複製元データを返す状況を作る
     router.getCurrentNavigation.mockReturnValue({ extras: { state: { duplicateFrom: duplicateSource } } });
 
     const component = createComponent(null) as any;
@@ -160,6 +178,8 @@ describe('AdminEventForm', () => {
   });
 
   it('保存時に入力値エラー（400）が返るとfieldErrorsに反映される', () => {
+    // mockReturnValueでcreate()の戻り値を「400エラーを返すObservable」に差し替え、
+    // サーバー側バリデーションエラーが発生した状況を再現する
     eventApi.create.mockReturnValue(
       throwError(() => ({ status: 400, error: { errors: [{ field: 'name', message: '名前を入力してください' }] } })),
     );

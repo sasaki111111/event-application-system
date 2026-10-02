@@ -14,16 +14,20 @@ export interface UserResponse {
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+/**
+ * 認証不要（ログイン前）のバックエンドAPI（ログイン・簡易会員登録）を呼び出すサービス。
+ * ログイン画面（Login）から利用される想定。
+ */
 @Injectable({ providedIn: 'root' })
 export class LoginApiService {
   constructor(private readonly http: HttpClient) {}
 
-  // メールアドレスでログイン。存在しなければbackendが401を返す
+  /** メールアドレスでログインする。存在しなければbackendが401を返す。 */
   login(email: string): Observable<UserResponse> {
     return this.http.post<UserResponse>(`${API_BASE_URL}/login`, { email });
   }
 
-  // 軽い会員登録。作成されるのは常に一般ユーザー
+  /** 軽い会員登録を行う。作成されるのは常に一般ユーザー。 */
   register(name: string, email: string): Observable<UserResponse> {
     return this.http.post<UserResponse>(`${API_BASE_URL}/users`, { name, email });
   }

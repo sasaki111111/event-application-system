@@ -1,5 +1,6 @@
 /* 実行環境: ブラウザ側。comment-item.ts専用のスタイル。event-detail.cssから移設した基本スタイルに、
    返信のインデント表示と削除済みコメントの見た目を追加している。 */
+/* コメント1件分の枠（カード風の背景・枠線） */
 .comment-item {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -7,11 +8,13 @@
   padding: 0.8em 1em;
 }
 
+/* 削除済みコメント: 背景を消して文字色を薄くする */
 .comment-item.deleted {
   background: transparent;
   color: var(--color-text-muted);
 }
 
+/* 投稿者名・日時・返信／削除ボタンを横一列に並べる行 */
 .comment-header {
   display: flex;
   align-items: center;
@@ -34,10 +37,12 @@
   white-space: pre-line;
 }
 
+/* 返信フォーム（テキストエリア＋投稿ボタン）の上側の余白 */
 .reply-form {
   margin-top: 0.6em;
 }
 
+/* 子コメント（返信）一覧: 左側に線を引いてインデントし、親コメントとの親子関係を視覚的に表す */
 .comment-replies {
   margin-top: 0.8em;
   margin-left: 1.5em;

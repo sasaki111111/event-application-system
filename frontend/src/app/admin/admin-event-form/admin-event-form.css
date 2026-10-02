@@ -1,4 +1,5 @@
 /* 実行環境: ブラウザ側。admin-event-form.ts専用のスタイル。エラー・必須マークの見た目はstyles.css（共通デザイン）を参照。 */
+/* フォーム全体（<form>要素）を縦に並べ、最大幅を制限するレイアウト */
 form {
   display: flex;
   flex-direction: column;
@@ -7,6 +8,7 @@ form {
   margin-top: 1em;
 }
 
+/* 1項目分（ラベル＋入力欄＋エラー文）のまとまり */
 .field {
   display: flex;
   flex-direction: column;
@@ -14,6 +16,7 @@ form {
 }
 
 /* 機能追加（定員区分） */
+/* 参加区分の入力行をまとめて縦に並べるコンテナ */
 .ticket-type-list {
   display: flex;
   flex-direction: column;
@@ -21,22 +24,26 @@ form {
   margin-bottom: 0.5em;
 }
 
+/* 区分1件分（入力行＋その下のエラー文）のまとまり */
 .ticket-type-row-wrapper {
   display: flex;
   flex-direction: column;
   gap: 0.2em;
 }
 
+/* 区分名・定員の入力欄と削除ボタンを横に並べる行 */
 .ticket-type-row {
   display: flex;
   gap: 0.5em;
   align-items: center;
 }
 
+/* 区分名の入力欄（広めに表示） */
 .ticket-type-row input[type='text'] {
   flex: 2;
 }
 
+/* 定員の入力欄（狭めで最小幅を確保） */
 .ticket-type-row input[type='number'] {
   flex: 1;
   min-width: 5em;

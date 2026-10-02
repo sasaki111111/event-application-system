@@ -3,6 +3,7 @@
 
 <h1>{{ isEditMode ? 'イベント編集' : 'イベント新規登録' }}</h1>
 
+<!-- 読み込み中（編集モードで既存データ取得待ち）はローディング表示、それ以外はフォーム本体を表示 -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else {
@@ -12,20 +13,30 @@
 
   <p class="required-note"><span class="required">*</span> は必須項目です</p>
 
+  <!-- 「複製」ボタン経由で遷移してきた場合のみ表示する案内文 -->
   @if (duplicatedFromName; as sourceName) {
     <p class="note">「{{ sourceName }}」の内容を複写しました。開催日時・申込締切は未入力です。内容を確認のうえ入力してください。</p>
   }
 
+  <!--
+    フォーム本体。[formGroup]="form" でComponent側のFormGroup（this.form）と結び付け、
+    (ngSubmit)="submit()" は送信（保存ボタン押下、またはEnterキー）時にsubmit()を呼ぶ指定。
+    各入力欄の formControlName="xxx" が form内の対応する項目名と結び付く。
+  -->
   <form [formGroup]="form" (ngSubmit)="submit()">
+    <!-- 基本項目: イベント名 -->
     <div class="field">
       <label for="name">イベント名 <span class="required">*</span></label>
+      <!-- [class.invalid]はエラーがある時だけinvalidクラスを付け、入力枠を赤く見せるためのプロパティバインディング -->
       <input id="name" type="text" formControlName="name" maxlength="100"
         [class.invalid]="fieldError('name')" />
+      <!-- エラーがある場合のみ、エラー文を入力欄の下に表示する -->
       @if (fieldError('name')) {
         <p class="field-error">{{ fieldError('name') }}</p>
       }
     </div>
 
+    <!-- 基本項目: 開催日時（datetime-local入力。Component側でISO8601文字列と相互変換している） -->
     <div class="field">
       <label for="startAt">開催日時 <span class="required">*</span></label>
       <input id="startAt" type="datetime-local" formControlName="startAt"
@@ -35,6 +46,7 @@
       }
     </div>
 
+    <!-- 基本項目: 開催場所 -->
     <div class="field">
       <label for="place">場所 <span class="required">*</span></label>
       <input id="place" type="text" formControlName="place" maxlength="100"
@@ -44,12 +56,19 @@
       }
     </div>
 
+    <!--
+      基本項目: 定員。参加区分（ticketTypes）が1件以上登録されている場合は、
+      区分ごとの定員の合計値を読み取り専用([value]バインディング、disabled)で表示し、
+      そうでない場合は通常の入力欄（formControlName="capacity"）を表示する。
+    -->
     <div class="field">
       <label for="capacity">定員 <span class="required">*</span></label>
       @if (hasTicketTypes) {
+        <!-- 区分がある場合は、区分の定員合計を表示するだけの読み取り専用入力（disabled、値はformControlと連動しない） -->
         <input id="capacity" type="number" [value]="ticketTypesCapacitySum" disabled />
         <p class="note">区分の合計値が自動的に設定されます。</p>
       } @else {
+        <!-- 区分が無い場合は通常の入力欄として、直接定員を入力してもらう -->
         <input id="capacity" type="number" formControlName="capacity" min="1"
           [class.invalid]="fieldError('capacity')" />
         @if (fieldError('capacity')) {
@@ -58,6 +77,7 @@
       }
     </div>
 
+    <!-- 基本項目: 申込締切（開催日時と同様、datetime-local入力） -->
     <div class="field">
       <label for="applicationDeadline">申込締切 <span class="required">*</span></label>
       <input id="applicationDeadline" type="datetime-local" formControlName="applicationDeadline"
@@ -67,6 +87,7 @@
       }
     </div>
 
+    <!-- 基本項目: 説明（任意項目、複数行入力） -->
     <div class="field">
       <label for="description">説明</label>
       <textarea id="description" formControlName="description" maxlength="1000" rows="4"></textarea>
@@ -75,7 +96,7 @@
       }
     </div>
 
-    <!-- 機能追加（イベント情報の拡張） -->
+    <!-- 機能追加（イベント情報の拡張）: いずれも任意項目 -->
     <div class="field">
       <label for="organizerName">主催者名</label>
       <input id="organizerName" type="text" formControlName="organizerName" maxlength="100" />
@@ -92,31 +113,44 @@
         placeholder="例: アレルギーの有無をご記入ください" />
     </div>
 
-    <!-- 機能追加（定員区分） -->
+    <!--
+      機能追加（定員区分）: 参加区分の繰り返し入力ブロック。
+      formArrayName="ticketTypes" でFormArray（複数件の入力グループ）と結び付け、
+      @forで区分の数だけ行を繰り返し表示する。[formGroupName]="i" で各行をFormArray内の
+      i番目のFormGroupと結び付けている。
+    -->
     <div class="field">
       <label>参加区分（任意、複数可）</label>
       <div formArrayName="ticketTypes" class="ticket-type-list">
+        <!-- 区分の数だけ繰り返す。let i = $index でFormArray内のインデックスを取り出し、[formGroupName]="i"・removeTicketType(i)に使う -->
         @for (group of ticketTypesArray.controls; track group; let i = $index) {
           <div class="ticket-type-row-wrapper">
             <div class="ticket-type-row" [formGroupName]="i">
+              <!-- 区分名の入力欄。未入力かつ操作済み（touched/dirty）ならinvalidクラスを付ける -->
               <input type="text" formControlName="name" placeholder="区分名（例: 一般枠）" maxlength="50"
                 [class.invalid]="group.controls.name.invalid && (group.controls.name.touched || group.controls.name.dirty)" />
+              <!-- 区分の定員入力欄。1未満または未入力かつ操作済みならinvalidクラスを付ける -->
               <input type="number" formControlName="capacity" placeholder="定員" min="1"
                 [class.invalid]="group.controls.capacity.invalid && (group.controls.capacity.touched || group.controls.capacity.dirty)" />
+              <!-- この区分行だけを削除するボタン -->
               <button type="button" class="btn-danger btn-sm" (click)="removeTicketType(i)">削除</button>
             </div>
+            <!-- 区分名が未入力のまま操作された場合のエラー文 -->
             @if (group.controls.name.invalid && (group.controls.name.touched || group.controls.name.dirty)) {
               <p class="field-error">区分名を入力してください</p>
             }
+            <!-- 定員が1未満または未入力のまま操作された場合のエラー文 -->
             @if (group.controls.capacity.invalid && (group.controls.capacity.touched || group.controls.capacity.dirty)) {
               <p class="field-error">1以上で入力してください</p>
             }
           </div>
         }
       </div>
+      <!-- 区分入力行を1件追加するボタン -->
       <button type="button" class="btn-link" (click)="addTicketType()">＋ 区分を追加</button>
     </div>
 
+    <!-- 送信（保存）ボタン。保存処理中（saving()がtrue）は[disabled]で無効化し多重送信を防ぐ -->
     <button type="submit" [disabled]="saving()">{{ saving() ? '保存中...' : '保存' }}</button>
   </form>
 }

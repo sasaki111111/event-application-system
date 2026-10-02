@@ -1,6 +1,10 @@
 <!-- 実行環境: ブラウザ側。app.tsのテンプレート。共通ナビ（画面遷移図の「共通ヘッダーナビ」に対応）とrouter-outlet。 -->
+<!-- [Angularの基礎] @if/@elseはAngularのテンプレート構文で、条件によって表示するHTMLを切り替える
+     （JavaScriptのif/elseのテンプレート版）。カッコの中はapp.tsのprotectedなプロパティ・メソッドを
+     そのまま参照できる -->
 <nav>
   <span class="brand">イベント申込システム</span>
+  <!-- ログイン中（currentUserIdがnullでない）の場合だけナビとログアウトボタンを表示する -->
   @if (dummyUserStore.currentUserId()) {
     @if (dummyUserStore.isAdmin()) {
       <!-- 画面設計書§2 共通仕様: 管理者＝［ダッシュボード／イベント管理／申込状況・実績／利用者管理／コメント管理／ログアウト］ -->
@@ -18,6 +22,8 @@
     <button type="button" (click)="logout()">ログアウト</button>
   }
 </nav>
+<!-- 各画面の表示エリア。router-outletの位置に、現在のURL（app.routes.ts）に対応するコンポーネントが
+     差し込まれる -->
 <main class="page">
   <router-outlet />
 </main>

@@ -1,11 +1,18 @@
 <!-- 実行環境: ブラウザ側。event-detail.tsのテンプレート。 -->
+<!-- 戻るリンク。遷移元（一覧／検索／カレンダー）によってbackLink/backLabel/backQueryParamsの値が変わる -->
 <a class="btn-link" [routerLink]="backLink()" [queryParams]="backQueryParams()">{{ backLabel() }}</a>
 
+<!--
+  @if / @else if はAngularの新しい制御構文（条件分岐）。読み込み中→エラー→本体表示、の順に
+  最初に条件が成立したブロックだけが表示される。`event(); as e`は、signalの値を
+  テンプレート変数eとして受け取り、以降のブロック内で`e.name`のように使うための書き方。
+-->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else if (event(); as e) {
+  <!-- イベント名とお気に入りボタン -->
   <div class="title-row">
     <h1>{{ e.name }}</h1>
     <!-- 機能追加（お気に入り） -->
@@ -27,6 +34,7 @@
     <img class="event-image" [src]="e.imageUrl" [alt]="e.name" />
   }
 
+  <!-- イベントの基本情報（主催者・開催日時・場所・定員・残り枠・締切・状態・説明） -->
   <dl>
     @if (e.organizerName) {
       <dt>主催者</dt>
@@ -54,6 +62,7 @@
     <dd class="full-row">{{ e.description }}</dd>
   </dl>
 
+  <!-- 申込フォーム（参加区分の選択・アンケート）。管理者または受付終了の場合は表示しない -->
   @if (!isAdmin && e.open) {
     <!-- 機能追加（定員区分）: 区分があるイベントのみ選択欄を表示する -->
     @if (e.ticketTypes.length > 0) {
@@ -61,6 +70,7 @@
         <label for="ticketType">参加区分 <span class="required">*</span></label>
         <select id="ticketType" (change)="onTicketTypeChange($any($event.target).value)">
           <option value="">選択してください</option>
+          <!-- @forはAngularの新しい制御構文（繰り返し表示）。track（ここでは区分ID）で各要素を一意に識別する -->
           @for (ticketType of e.ticketTypes; track ticketType.id) {
             <option [value]="ticketType.id">
               {{ ticketType.name }}（残り{{ ticketType.remaining }}/{{ ticketType.capacity }}）
@@ -85,6 +95,7 @@
     }
   }
 
+  <!-- 申込ボタン、または申込できない理由の案内文（管理者／受付終了／満席） -->
   @if (isAdmin) {
     <!-- 要件定義書E7: 管理者は申込できない -->
     <p class="note">管理者アカウントでは申込できません。</p>
@@ -99,6 +110,7 @@
     <p class="note">このイベントは受付を終了しています。</p>
   }
 
+  <!-- 申込失敗時のエラーメッセージ -->
   @if (applyErrorMessage()) {
     <p class="error">{{ applyErrorMessage() }}</p>
   }
@@ -107,6 +119,7 @@
   <section class="comments">
     <h2>コメント</h2>
 
+    <!-- コメント投稿フォーム -->
     <div class="field">
       <label for="commentBody">コメントを投稿する</label>
       <textarea
@@ -124,6 +137,7 @@
       }
     </div>
 
+    <!-- コメント一覧（各コメントはapp-comment-item。返信はその中でさらに再帰的に表示される） -->
     @if (commentTree().length === 0) {
       <p class="note">まだコメントはありません。</p>
     } @else {

@@ -1,4 +1,5 @@
 /* 実行環境: ブラウザ側。admin-report.ts専用のスタイル。テーブル・エラー表示の見た目はstyles.css（共通デザイン）を参照。 */
+/* 並び順セレクトとCSVダウンロードボタンを横に並べるツールバー */
 .toolbar {
   display: flex;
   align-items: center;

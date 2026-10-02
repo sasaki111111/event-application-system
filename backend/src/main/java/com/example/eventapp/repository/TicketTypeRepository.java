@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
 
     // イベント詳細・編集フォームの区分一覧表示用
+    // event_id = ? で絞り込んだ全件取得に相当する
     List<TicketType> findByEvent_Id(Long eventId);
 
     // 申込時の区分必須チェック（対象イベントに区分が1件以上あるか、要件定義書E12）。
@@ -20,10 +21,14 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
     boolean existsByEvent_Id(Long eventId);
 
     // イベント保存時の区分全置換ロジックで、既存の区分をまとめて削除するために使う
+    // event_id = ? に一致する行をまとめて削除するDELETE文に相当する
     void deleteByEvent_Id(Long eventId);
 
     // 同時申込時の排他制御（悲観ロック）。区分ありイベントで、定員判定〜申込登録・繰り上げの間、
     // 対象区分行をロックして直列化する（SELECT ... FOR UPDATE）。対象イベントに属する区分かの検証も兼ねる。
+    // EventRepository.findByIdForUpdate()と同様、命名規則では書けないロック付き問い合わせのため
+    // @QueryでJPQLを直接書き、@Lock(PESSIMISTIC_WRITE)で悲観的ロック（他のトランザクションが
+    // 同時に更新できないようにする仕組み）を掛けている。
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from TicketType t where t.id = :id and t.event.id = :eventId")
     Optional<TicketType> findByIdAndEvent_IdForUpdate(@Param("id") Long id, @Param("eventId") Long eventId);

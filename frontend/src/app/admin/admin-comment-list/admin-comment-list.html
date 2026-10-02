@@ -2,6 +2,7 @@
 <h1>コメント管理</h1>
 <p class="note">全イベントのコメントを新しい順に表示します。削除済み（論理削除）のコメントは対象外です。</p>
 
+<!-- @if/@else if/@elseで読み込み中・エラー・0件・一覧ありの4状態を切り替える -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
@@ -9,6 +10,7 @@
 } @else if (comments().length === 0) {
   <p>コメントはありません。</p>
 } @else {
+  <!-- コメント一覧テーブル。全イベント横断で新しい順に表示する -->
   <table>
     <thead>
       <tr>
@@ -20,12 +22,14 @@
       </tr>
     </thead>
     <tbody>
+      <!-- @forで1コメント＝1行として繰り返し表示。trackには一意なID（comment.id）を指定する -->
       @for (comment of comments(); track comment.id) {
         <tr>
           <td>{{ comment.eventName }}</td>
           <td>{{ comment.userName }}</td>
           <td>{{ comment.body }}</td>
           <td>{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          <!-- 削除ボタン。(click)イベントバインディングでdeleteComment()を呼び、[disabled]で削除中は押せなくする -->
           <td>
             <button
               type="button"

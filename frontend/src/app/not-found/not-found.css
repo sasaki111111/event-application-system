@@ -1,4 +1,6 @@
 /* 実行環境: ブラウザ側。not-found.ts専用のスタイル。 */
+
+/* 404画面全体（中央寄せ・上下の余白）と見出し・説明文の見た目 */
 .not-found {
   text-align: center;
   padding: 64px 20px;

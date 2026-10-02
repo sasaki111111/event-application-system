@@ -72,6 +72,7 @@ describe('EventList', () => {
     activatedRoute = { snapshot: { queryParamMap: { get: vi.fn(() => null) } } };
   });
 
+  // ngOnInit実行直後、EventApiService.list()の結果がevents signalに反映されていることを確認
   it('初期表示でイベント一覧を取得する', () => {
     const component = createComponent() as any;
 
@@ -79,12 +80,14 @@ describe('EventList', () => {
     expect(component.loading()).toBe(false);
   });
 
+  // sortOrderの初期値（'startAt'）では、開催日時の昇順で並ぶことを確認
   it('並び替え: 既定は開催日時昇順', () => {
     const component = createComponent() as any;
 
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1]);
   });
 
+  // onSortOrderChange('accepted_desc')で、申込数（acceptedCount）の降順に並び替わることを確認
   it('並び替え: 申込数の多い順', () => {
     const component = createComponent() as any;
 
@@ -93,6 +96,7 @@ describe('EventList', () => {
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([2, 1, 3]);
   });
 
+  // onSortOrderChange('favorite_desc')で、お気に入り数の降順に並び替わることを確認
   it('並び替え: お気に入り数の多い順', () => {
     const component = createComponent() as any;
 
@@ -101,6 +105,7 @@ describe('EventList', () => {
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1]);
   });
 
+  // onSortOrderChange('deadline_asc')で、申込締切の昇順（近い順）に並び替わることを確認
   it('並び替え: 申込締切が近い順', () => {
     const component = createComponent() as any;
 
@@ -109,6 +114,7 @@ describe('EventList', () => {
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([3, 1, 2]);
   });
 
+  // toggleExpand(id)で、該当イベントのEventApiService.detail()が呼ばれ、展開状態・詳細が設定されることを確認
   it('詳細展開: toggleExpandでイベント詳細を取得する', () => {
     const component = createComponent() as any;
 
@@ -119,6 +125,7 @@ describe('EventList', () => {
     expect(component.expandedDetail()).not.toBeNull();
   });
 
+  // 展開中の行をもう一度toggleExpandすると、展開状態が解除される（expandedEventIdがnullに戻る）ことを確認
   it('詳細展開: 同じ行をもう一度押すと閉じる', () => {
     const component = createComponent() as any;
     component.toggleExpand(1);
@@ -128,6 +135,7 @@ describe('EventList', () => {
     expect(component.expandedEventId()).toBeNull();
   });
 
+  // apply(id)で、ApplicationApiService.apply()が正しい引数で呼ばれ、申込完了画面へnavigateすることを確認
   it('申込成功で申込完了画面へ遷移する', () => {
     const component = createComponent() as any;
 
@@ -137,6 +145,7 @@ describe('EventList', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/events', 1, 'done'], expect.objectContaining({ state: expect.anything() }));
   });
 
+  // toggleFavorite(id)で、FavoriteStore.toggle()が対象イベントIDで呼ばれることを確認
   it('お気に入りトグルでfavoriteStore.toggleを呼ぶ', () => {
     const component = createComponent() as any;
 
@@ -145,6 +154,7 @@ describe('EventList', () => {
     expect(favoriteStore.toggle).toHaveBeenCalledWith(1);
   });
 
+  // DummyUserStore.isAdmin()がtrueを返す時、Componentのget isAdmin()もtrueを返すことを確認
   it('管理者の場合isAdminがtrueになる', () => {
     dummyUserStore.isAdmin.mockReturnValue(true);
 

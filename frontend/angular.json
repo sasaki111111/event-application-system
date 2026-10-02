@@ -14,6 +14,7 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
+      // architect: 「ng build」「ng serve」「ng test」のようなCLIコマンドが実際に何をするか（どのビルダーをどんな設定で動かすか）を定義する部分
       "architect": {
         "build": {
           "builder": "@angular/build:application",
@@ -32,6 +33,7 @@
           },
           "configurations": {
             "production": {
+              // budgets: 本番ビルド後のファイルサイズがここで指定した値を超えたら警告(Warning)/エラー(Error)にする、Angular CLIのサイズ監視機能
               "budgets": [
                 {
                   "type": "initial",

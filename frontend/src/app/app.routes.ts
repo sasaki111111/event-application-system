@@ -1,5 +1,11 @@
 // 実行環境: ブラウザ側。URLのパスとコンポーネント（画面）の対応表。
 // ここに書かれた設定にしたがって、Angular Routerがページ全体を再読み込みせずに画面を切り替える(SPA)。
+//
+// [Angularの基礎: ルーティング] Routes型の配列1件が1つのルート定義で、pathがURLパス、
+// componentがそのパスで表示する画面（Component）を表す。canActivateには、その画面に遷移してよいか
+// を判定するルートガード（CanActivateFn）を配列で指定でき、配列内のガードは前から順に実行され、
+// 1つでも遷移を拒否（false／UrlTree）したらそこで止まる。この設定全体はapp.config.tsの
+// provideRouter(routes)でAngular Routerに登録される。
 import { Routes } from '@angular/router';
 import { Login } from './login/login';
 import { EventList } from './events/event-list/event-list';

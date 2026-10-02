@@ -25,6 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。イベント一覧・詳細、登録・編集・削除・復元の業務ロジック。
+/**
+ * イベント一覧・詳細取得（AP-04・AP-05）、削除済み一覧（AP-06）、登録・更新・削除・復元（AP-07〜10）の業務ロジックを
+ * 担当するService。EventController（list／getDetail／listDeleted／create／update／delete／restore）から呼ばれ、
+ * DBアクセスにはEventRepository・ApplicationRepository・TicketTypeRepository・FavoriteRepositoryを使う。
+ */
 @Service
 public class EventService {
 
@@ -47,11 +52,20 @@ public class EventService {
     }
 
     // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（docs/03_API設計書.md AP-04）
+    /**
+     * イベント一覧を取得する（AP-04）。EventController#listから呼ばれる。
+     *
+     * @param status "all"（既定、全件）または"open"（受付中のみ）
+     * @return イベント一覧（開催日時昇順）
+     */
     @Transactional(readOnly = true)
     public List<EventSummaryResponse> list(String status) {
         LocalDateTime now = LocalDateTime.now();
         boolean openOnly = "open".equals(status);
 
+        // Stream API（.stream()〜.toList()）: リストの各要素を順に処理していく書き方。
+        // .filter(...)は条件に合う要素だけを残し、.map(...)は各要素を別の形に変換する。
+        // event -> ... の部分はラムダ式（引数eventを受け取り、その場で処理内容を定義する小さな関数）。
         return eventRepository.findAllByDeletedAtIsNullOrderByStartAtAsc().stream()
                 .filter(event -> !openOnly || event.isOpen(now))
                 .map(event -> toSummary(event, now))
@@ -60,6 +74,12 @@ public class EventService {
 
     // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-06）
     // description〜ticketTypesは、SC-10からのイベント複製に必要な項目として追加
+    /**
+     * 削除済み（論理削除）のイベント一覧を取得する（AP-06）。EventController#listDeletedから呼ばれる
+     * （管理者権限の確認はController側で完了済み）。
+     *
+     * @return 削除済みイベント一覧
+     */
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
@@ -82,6 +102,12 @@ public class EventService {
     }
 
     // AP-05: 指定IDのイベントが無ければ404（docs/03_API設計書.md AP-05）
+    /**
+     * 指定したイベントの詳細を取得する（AP-05）。EventController#detailから呼ばれる。
+     *
+     * @param id 対象イベントID
+     * @return イベント詳細
+     */
     @Transactional(readOnly = true)
     public EventDetailResponse getDetail(Long id) {
         Event event = findByIdOrThrow(id);
@@ -89,6 +115,12 @@ public class EventService {
     }
 
     // AP-07: イベント登録（管理者のみ。権限チェックはController側）
+    /**
+     * イベントを新規登録する（AP-07）。EventController#createから呼ばれる（管理者権限の確認はController側で完了済み）。
+     *
+     * @param request 登録するイベント情報・参加区分（任意）
+     * @return 登録されたイベントの詳細
+     */
     @Transactional
     public EventDetailResponse create(EventUpsertRequest request) {
         Event event = new Event(
@@ -110,6 +142,13 @@ public class EventService {
     }
 
     // AP-08: イベント編集。指定IDが無ければ404
+    /**
+     * イベント情報・参加区分を編集する（AP-08）。EventController#updateから呼ばれる。
+     *
+     * @param id      編集対象イベントID
+     * @param request 編集後の内容
+     * @return 編集後のイベント詳細
+     */
     @Transactional
     public EventDetailResponse update(Long id, EventUpsertRequest request) {
         Event event = findByIdOrThrow(id);
@@ -151,6 +190,11 @@ public class EventService {
 
     // AP-09: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
     // 機能追加（ソフトデリート）: 物理削除ではなくdeleted_atを立てるのみ。「削除済みイベント」画面から復元できる。
+    /**
+     * イベントを削除（論理削除）する（AP-09）。EventController#deleteから呼ばれる。
+     *
+     * @param id 削除対象イベントID
+     */
     @Transactional
     public void delete(Long id) {
         Event event = findByIdOrThrow(id);
@@ -162,6 +206,12 @@ public class EventService {
     }
 
     // 機能追加（ソフトデリートの復元）。削除済みでなければ404。
+    /**
+     * 削除済みのイベントを復元する（AP-10）。EventController#restoreから呼ばれる。
+     *
+     * @param id 復元対象イベントID
+     * @return 復元後のイベント詳細
+     */
     @Transactional
     public EventDetailResponse restore(Long id) {
         Event event = eventRepository.findByIdAndDeletedAtIsNotNull(id)
@@ -191,6 +241,9 @@ public class EventService {
         if (applicationRepository.existsByEvent_IdAndStatusIn(event.getId(), ApplicationStatus.ACTIVE_STATUSES)) {
             throw new BusinessException("区分に申込があるため変更できません");
         }
+        // try/catch: DBの外部キー制約違反はDataIntegrityViolationExceptionとしてSpring Data JPAが投げる。
+        // ここではその例外を捕まえ、初学者には分かりにくいDB由来の例外ではなく、業務的な意味を持つ
+        // BusinessException（400エラー）に変換してControllerに伝えている。
         try {
             ticketTypeRepository.deleteByEvent_Id(event.getId());
         } catch (DataIntegrityViolationException e) {

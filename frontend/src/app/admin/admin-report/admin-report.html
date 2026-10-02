@@ -1,6 +1,12 @@
 <!-- 実行環境: ブラウザ側。admin-report.tsのテンプレート。 -->
 <h1>申込状況・実績</h1>
 
+<!--
+  ツールバー: 並び順セレクトとCSVダウンロードボタン。
+  [value]="sort()" はプロパティバインディングでselectの現在の選択値をsignalと合わせ、
+  (change)はイベントバインディングで選択が変わったときにchangeSort()を呼ぶ。
+  $event.target はDOMの標準イベントオブジェクトから選択されたoption要素を取得している（$anyは型チェックの回避）。
+-->
 <div class="toolbar">
   <label>
     並び順:
@@ -15,11 +21,13 @@
   </button>
 </div>
 
+<!-- @if/@else if/@elseで読み込み中・エラー・一覧ありの3状態を切り替える -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else {
+  <!-- イベント別の申込実績一覧テーブル -->
   <table>
     <thead>
       <tr>
@@ -31,6 +39,7 @@
       </tr>
     </thead>
     <tbody>
+      <!-- @forで1イベント＝1行として繰り返し表示。trackには一意なID（eventId）を指定する -->
       @for (report of reports(); track report.eventId) {
         <tr>
           <td>{{ report.eventName }}</td>

@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。申込実績レポート（AP-22）の業務ロジック。
+/**
+ * 申込実績の集計取得（JSON）・CSV出力（AP-22）の業務ロジックを担当するService。
+ * ReportController#reportから呼ばれ、DBアクセスにはEventRepository・ApplicationRepositoryを使う。
+ */
 @Service
 public class ReportService {
 
@@ -36,6 +40,12 @@ public class ReportService {
     }
 
     // format=json: イベント別の受付済数・充足率（docs/01_要件定義書.md F-12）
+    /**
+     * イベント別の受付済数・充足率の一覧を取得する（AP-22、format=json）。ReportController#reportから呼ばれる。
+     *
+     * @param sort "startAt"（既定、開催日時順）または"accepted_desc"（受付数降順）
+     * @return イベント別の集計一覧
+     */
     @Transactional(readOnly = true)
     public List<EventReportResponse> summarize(String sort) {
         List<EventReportResponse> reports = new ArrayList<>(
@@ -50,6 +60,8 @@ public class ReportService {
 
     private EventReportResponse toReport(Event event) {
         long acceptedCount = applicationRepository.countByEvent_IdAndStatus(event.getId(), ApplicationStatus.ACCEPTED);
+        // 充足率（0.0〜1.0）を小数第2位で四捨五入する処理。*100して四捨五入し、/100.0することで
+        // 小数第2位までに丸めている（例: 0.666... → 67 → 0.67）
         double fillRate = Math.round(acceptedCount / (double) event.getCapacity() * 100) / 100.0;
         return new EventReportResponse(
                 event.getId(),
@@ -64,6 +76,15 @@ public class ReportService {
     // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス／アンケート回答／参加区分、docs/03_API設計書.md AP-22）
     // 集計一覧（summarize()）と同様、削除済みイベントに紐づく申込は対象外とする
     // アンケート回答列（アンケート未設定・未回答の申込は空欄）・参加区分列（区分の無いイベントへの申込は空欄）を含む
+    /**
+     * 申込明細のCSVデータを文字列として組み立てる（AP-22、format=csv）。ReportController#reportから呼ばれ、
+     * 呼び出し側（Controller）がこの文字列をそのままレスポンスボディとしてダウンロードさせる。
+     * {@link StringBuilder}は、文字列を繰り返し連結する際に{@code String}の{@code +}連結よりも
+     * 効率よく組み立てるためのクラスで、{@code .append(...)}をメソッドチェーンでつないで1文字ずつ・
+     * 1行ずつ追記していく。
+     *
+     * @return BOM付きUTF-8のCSV文字列（1行目はヘッダー）
+     */
     @Transactional(readOnly = true)
     public String toCsv() {
         StringBuilder csv = new StringBuilder();

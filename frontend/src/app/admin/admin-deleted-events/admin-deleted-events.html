@@ -4,6 +4,7 @@
 <h1>削除済みイベント</h1>
 <p class="note">削除（ソフトデリート）したイベントの一覧です。「復元」を押すと、一般ユーザー側の一覧にも再度表示されます。</p>
 
+<!-- @if/@else if/@elseで読み込み中・エラー・0件・一覧ありの4状態を切り替える -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
@@ -11,6 +12,7 @@
 } @else if (events().length === 0) {
   <p>削除済みのイベントはありません。</p>
 } @else {
+  <!-- 削除済みイベントのカード一覧。@forで1イベント＝1カードとして繰り返し表示する -->
   <div class="card-grid">
     @for (event of events(); track event.id) {
       <div class="card">
@@ -30,6 +32,7 @@
           <dd>{{ event.deletedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
         </dl>
 
+        <!-- 操作ボタン。(click)イベントバインディングでComponent側のメソッドを呼ぶ -->
         <div class="card-actions">
           <button type="button" class="btn-accent" (click)="restoreEvent(event)">復元</button>
           <button type="button" (click)="duplicate(event)">複製</button>

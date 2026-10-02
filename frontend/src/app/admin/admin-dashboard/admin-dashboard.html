@@ -1,11 +1,13 @@
 <!-- 実行環境: ブラウザ側。admin-dashboard.tsのテンプレート。 -->
 <h1>ダッシュボード</h1>
 
+<!-- @if/@else if/@elseで読み込み中・エラー・集計完了の3状態を切り替える -->
 @if (loading()) {
   <p>読み込み中...</p>
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else {
+  <!-- 集計カード群。5つの指標（イベント数・ユーザー数・受付済申込数・お気に入り数・コメント数）を並べて表示 -->
   <div class="stat-grid">
     <div class="stat-card">
       <p class="stat-label">総イベント数</p>

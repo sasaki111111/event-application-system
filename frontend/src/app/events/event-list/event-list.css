@@ -19,7 +19,7 @@
   color: var(--color-accent);
 }
 
-/* 機能追加（定員区分・アンケート）: 展開カード内の申込フォーム */
+/* 機能追加（定員区分・アンケート）: 展開カード内の申込フォーム（ラベルと入力欄のまとまり） */
 .field {
   display: flex;
   flex-direction: column;
@@ -29,6 +29,7 @@
 
 /* 機能追加（開催カレンダー表示）: 表示切替ボタン（.view-toggle）の見た目はstyles.css（共通デザイン）を参照。 */
 
+/* カレンダー表示全体を囲む枠 */
 .calendar {
   background: var(--color-surface);
   border-radius: var(--radius);
@@ -48,12 +49,14 @@
   font-weight: 700;
 }
 
+/* 1週分（7列）のマス目レイアウト。曜日見出し行・各週の行の両方で使う */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
+/* 曜日見出し行（日月火水木金土） */
 .calendar-weekdays {
   text-align: center;
   font-size: 0.85em;
@@ -61,6 +64,7 @@
   margin-bottom: 0.3em;
 }
 
+/* カレンダー1マス（1日分）。当月外の日・今日はそれぞれ下の修飾クラスで見た目を変える */
 .calendar-day {
   min-height: 5em;
   padding: 0.3em;

@@ -48,6 +48,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+/**
+ * REST APIを対象にした結合テスト（インテグレーションテスト）。
+ * Controller→Service→Repository→DB（テスト実行時はH2インメモリDB）まで実際に処理を通し、
+ * TestRestTemplateで本物のHTTPリクエストを送信し、レスポンスとDBの状態を合わせて検証する
+ * （ServiceやRepositoryをモック化しない点が、Serviceクラス単体の単体テストとの違い）。
+ * 各テストメソッド名の先頭「apNN」等は、対応する要件定義書の機能ID（例: AP-04）を示す。
+ */
 // 実行環境: サーバー側（JVM）。G-2: API/DB結合テスト。
 // Controller→Service→Repository→H2（インメモリDB）まで実際に通し、必須API 8本のうち代表7本を検証する。
 // Userは公開コンストラクタが無いためJdbcTemplateで直接INSERTし、Eventは実際のEventRepositoryで作成する。
@@ -55,15 +62,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @AutoConfigureTestRestTemplate
 class ApiIntegrationTest {
 
+    // テスト全体で使い回す、一般ユーザー・管理者それぞれのユーザーID（seed.sqlと同じ値）
     private static final Long GENERAL_USER_ID = 1L;
     private static final Long ADMIN_USER_ID = 2L;
 
+    // @SpringBootTestがランダムに割り当てた実際のポート番号。TestRestTemplateでURLを組み立てる際に使う
     @LocalServerPort
     private int port;
 
+    // 本物のHTTPリクエストを送信できるテスト用クライアント
     @Autowired
     private TestRestTemplate restTemplate;
 
+    // 以下はDBの状態を直接確認・準備するために、本物のRepositoryをテストクラスに注入（@Autowired）したもの
     @Autowired
     private EventRepository eventRepository;
 
@@ -79,31 +90,39 @@ class ApiIntegrationTest {
     @Autowired
     private TicketTypeRepository ticketTypeRepository;
 
+    // Repositoryでは書きにくい生のSQL（users直接INSERT等）を実行するためのJdbcTemplate
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // @BeforeEachが付いたメソッドは、このクラスの各@Testメソッドの実行前に毎回呼ばれる（テスト間でデータを独立させるための後始末）
     @BeforeEach
     void setUp() {
         // 追加したお気に入り・コメント・参加区分関連テストがeventsを参照したまま残ると、
         // 後続テストのイベント削除がFK制約違反になるため先に消す
+        // （子テーブル→親テーブルの順で削除し、外部キー制約に違反しないようにしている）
         favoriteRepository.deleteAll();
         eventCommentRepository.deleteAll();
         applicationRepository.deleteAll();
         ticketTypeRepository.deleteAll();
         eventRepository.deleteAll();
+        // Userは公開コンストラクタが無いためRepository経由で作れず、JdbcTemplateで直接INSERTする
         jdbcTemplate.update("DELETE FROM users");
+        // テストで使う一般ユーザー（id=1）を登録する
         jdbcTemplate.update(
                 "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
                 GENERAL_USER_ID, "一般ユーザー", "general@example.com", "general");
+        // テストで使う管理者（id=2）を登録する
         jdbcTemplate.update(
                 "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
                 ADMIN_USER_ID, "管理者", "admin@example.com", "admin");
     }
 
+    // 定員5のテスト用イベントを作るヘルパーメソッド（引数省略版）
     private Event openEvent() {
         return openEvent(5);
     }
 
+    // 指定した定員でテスト用イベントを作り、実際にEventRepositoryで保存するヘルパーメソッド
     private Event openEvent(int capacity) {
         return eventRepository.save(new Event(
                 "結合テスト用イベント",
@@ -115,6 +134,8 @@ class ApiIntegrationTest {
                 null, null, null));
     }
 
+    // 指定したユーザーIDとしてAPIを呼ぶためのHTTPヘッダーを組み立てるヘルパーメソッド。
+    // このアプリはダミー認証（AuthInterceptor）のため、X-User-IdヘッダーだけでログインユーザーをAPI側に伝える
     private HttpHeaders authHeaders(Long userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-User-Id", String.valueOf(userId));
@@ -122,6 +143,7 @@ class ApiIntegrationTest {
         return headers;
     }
 
+    // ランダムに割り当てられたポート番号を使って、呼び出し先のフルURLを組み立てるヘルパーメソッド
     private String url(String path) {
         return "http://localhost:" + port + path;
     }
@@ -129,12 +151,15 @@ class ApiIntegrationTest {
     // AP-04: 登録したイベントがDBから読み出されて一覧に含まれる
     @Test
     void ap04_イベント一覧取得() {
+        // 準備: テスト用イベントを1件、実際にDBへ保存する
         Event event = openEvent();
 
+        // 実行: 一般ユーザーとしてイベント一覧APIを呼び出す
         ResponseEntity<EventSummaryResponse[]> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
                 EventSummaryResponse[].class);
 
+        // 検証: レスポンスが200 OKで、一覧に先ほど作ったイベントのIDが含まれることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).extracting(EventSummaryResponse::id).contains(event.getId());
     }
@@ -144,28 +169,35 @@ class ApiIntegrationTest {
     void ap05_イベント詳細取得() {
         Event event = openEvent();
 
+        // 作成したイベントのIDを指定して詳細取得APIを呼び出す
         ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
                 url("/api/events/" + event.getId()), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
                 EventDetailResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // イベント名がDBに保存した内容と一致することを確認する
         assertThat(response.getBody().name()).isEqualTo("結合テスト用イベント");
+        // 定員5・申込0件なので、残り人数（remaining）が5であることを確認する
         assertThat(response.getBody().remaining()).isEqualTo(5);
     }
 
     // AP-07: 管理者が登録したイベントが実際にDBへ保存される
     @Test
     void ap07_管理者はイベントを登録できる() {
+        // イベント登録APIに渡すリクエストボディを組み立てる
         EventUpsertRequest request = new EventUpsertRequest(
                 "新規登録テスト", LocalDateTime.now().plusDays(20), "会議室B", 10,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
 
+        // 管理者としてイベント登録APIを呼び出す
         ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
                 EventDetailResponse.class);
 
+        // 201 Createdで返ることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         Long createdId = response.getBody().id();
+        // レスポンスのIDで、実際にDBから取得できる（＝本当に保存された）ことを確認する
         assertThat(eventRepository.findById(createdId)).isPresent();
         assertThat(eventRepository.findById(createdId).get().getName()).isEqualTo("新規登録テスト");
     }
@@ -177,17 +209,21 @@ class ApiIntegrationTest {
                 "権限チェック用", LocalDateTime.now().plusDays(20), "会議室B", 10,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
 
+        // 一般ユーザーとして（管理者専用の）イベント登録APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),
                 String.class);
 
+        // 権限が無いので403 Forbiddenになることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        // 拒否されたのでDBにも1件も作られていないことを確認する
         assertThat(eventRepository.count()).isZero();
     }
 
     // AP-07（要件定義書§8）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
     @Test
     void ap07_定員を指定せず参加区分のみで登録できる() {
+        // capacity（4番目の引数）をnullにし、区分（一般枠7・会員枠3＝合計10）だけを指定したリクエストを作る
         EventUpsertRequest request = new EventUpsertRequest(
                 "区分のみ登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
                 LocalDateTime.now().plusDays(15), null, null, null, null,
@@ -199,12 +235,14 @@ class ApiIntegrationTest {
                 EventDetailResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // capacityが区分の定員合計（7+3=10）で自動的に設定されたことを確認する
         assertThat(response.getBody().capacity()).isEqualTo(10);
     }
 
     // AP-07（要件定義書§8）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
     @Test
     void ap07_定員も参加区分も未指定なら400() {
+        // capacityも区分（最後の引数）も指定しないリクエストを作る
         EventUpsertRequest request = new EventUpsertRequest(
                 "定員無し登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
@@ -213,7 +251,9 @@ class ApiIntegrationTest {
                 url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
                 String.class);
 
+        // 業務ルール違反として400 Bad Requestになることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // エラーメッセージに具体的な理由が含まれることを確認する
         assertThat(response.getBody()).contains("定員を入力してください");
     }
 
@@ -223,11 +263,13 @@ class ApiIntegrationTest {
         Event event = openEvent();
         ApplicationCreateRequest request = new ApplicationCreateRequest(event.getId(), null, null);
 
+        // 一般ユーザーとして申込APIを呼び出す
         ResponseEntity<ApplicationResponse> response = restTemplate.exchange(
                 url("/api/applications"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),
                 ApplicationResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // DB上のapplicationsテーブルに実際に1件増えていることを確認する
         assertThat(applicationRepository.count()).isEqualTo(1);
     }
 
@@ -236,15 +278,19 @@ class ApiIntegrationTest {
     void ap13_自分の申込一覧取得() {
         Event event = openEvent();
         ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(event.getId(), null, null);
+        // まず1件申込んでおく（このテストの前提データ）
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(applyRequest, authHeaders(GENERAL_USER_ID)), ApplicationResponse.class);
 
+        // 自分の申込一覧を取得するAPIを呼び出す
         ResponseEntity<MyApplicationResponse[]> response = restTemplate.exchange(
                 url("/api/my/applications"), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
                 MyApplicationResponse[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 1件申込んだので一覧も1件であることを確認する
         assertThat(response.getBody()).hasSize(1);
+        // 一覧の内容が、先ほど申込んだイベントと一致することを確認する
         assertThat(response.getBody()[0].eventId()).isEqualTo(event.getId());
     }
 
@@ -252,17 +298,21 @@ class ApiIntegrationTest {
     @Test
     void ap14_申込をキャンセルできる() {
         Event event = openEvent();
+        // 先に申込を1件作成し、そのレスポンスから申込IDを取り出す
         ResponseEntity<ApplicationResponse> applyResponse = restTemplate.exchange(
                 url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(GENERAL_USER_ID)),
                 ApplicationResponse.class);
         Long applicationId = applyResponse.getBody().id();
 
+        // 作成した申込をキャンセルするAPIを呼び出す
         ResponseEntity<Void> cancelResponse = restTemplate.exchange(
                 url("/api/applications/" + applicationId), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
 
+        // キャンセル成功時は204 No Contentであることを確認する
         assertThat(cancelResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        // DBから申込を再取得し、ステータスが実際に「キャンセル済」に変わっていることを確認する
         Application cancelled = applicationRepository.findById(applicationId).orElseThrow();
         assertThat(cancelled.getStatus()).isEqualTo("キャンセル済");
     }
@@ -271,7 +321,9 @@ class ApiIntegrationTest {
     // 「受付済」になるのは1件だけで、もう1件は「キャンセル待ち」になる（二重受付が起きない）ことを確認する。
     @Test
     void o01_同時に申し込んでも定員を超えて受付済にならない() throws Exception {
+        // 定員1のイベントを用意する（2人が競合する状況を作るため、わざと定員を1にする）
         Event event = openEvent(1); // 定員1
+        // 同時に申込ませる利用者2人（id=3, 4）を追加登録する
         jdbcTemplate.update(
                 "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
                 3L, "利用者3", "user3@example.com", "general");
@@ -279,8 +331,10 @@ class ApiIntegrationTest {
                 "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
                 4L, "利用者4", "user4@example.com", "general");
 
+        // 2スレッドの実行環境（スレッドプール）を用意し、2人分の申込を本当に同時に実行させる
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
+            // userId=3,4のそれぞれについて「申込APIを呼ぶ処理（Callable）」を作る
             List<Callable<ResponseEntity<ApplicationResponse>>> tasks = List.of(3L, 4L).stream()
                     .map(userId -> (Callable<ResponseEntity<ApplicationResponse>>) () -> restTemplate.exchange(
                             url("/api/applications"), HttpMethod.POST,
@@ -288,7 +342,9 @@ class ApiIntegrationTest {
                             ApplicationResponse.class))
                     .collect(Collectors.toList());
 
+            // invokeAll()で2つの申込処理を同時に実行し、両方の完了を待つ
             List<Future<ResponseEntity<ApplicationResponse>>> futures = pool.invokeAll(tasks);
+            // 各申込結果からステータス文字列だけを取り出す
             List<String> statuses = futures.stream().map(f -> {
                 try {
                     return f.get().getBody().status();
@@ -297,10 +353,14 @@ class ApiIntegrationTest {
                 }
             }).toList();
 
+            // 2件のうち、片方が「受付済」でもう片方が「キャンセル待ち」という組み合わせになることを確認する
+            // （順序は実行タイミングで変わるため、containsExactlyInAnyOrderで順不同に比較する）
             assertThat(statuses).containsExactlyInAnyOrder(ApplicationStatus.ACCEPTED, ApplicationStatus.WAITLISTED);
+            // DB上でも、このイベントの「受付済」件数が定員どおり1件だけであることを確認する
             assertThat(applicationRepository.countByEvent_IdAndStatus(event.getId(), ApplicationStatus.ACCEPTED))
                     .isEqualTo(1);
         } finally {
+            // スレッドプールを必ず終了させる（後片付け）
             pool.shutdown();
         }
     }
@@ -308,10 +368,12 @@ class ApiIntegrationTest {
     // AP-23: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる
     @Test
     void ap23_whoamiはadminフィールドを含む() {
+        // 管理者として自分自身の情報を返すwhoami APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/whoami"), HttpMethod.GET, new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // レスポンスのJSON文字列に"admin":trueが含まれることを確認する（管理者であることが分かる項目）
         assertThat(response.getBody()).contains("\"admin\":true");
     }
 
@@ -320,12 +382,15 @@ class ApiIntegrationTest {
     void ap25_管理者は管理者アカウントを登録できる() {
         UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin@example.com");
 
+        // 既存の管理者として、新しい管理者アカウントを登録するAPIを呼び出す
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/admins"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
                 UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // レスポンスのroleが"admin"であることを確認する
         assertThat(response.getBody().role()).isEqualTo("admin");
+        // DBから直接SELECTしても、保存されたroleが"admin"であることを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role FROM users WHERE email = ?", String.class, "new-admin@example.com"))
                 .isEqualTo("admin");
@@ -336,11 +401,13 @@ class ApiIntegrationTest {
     void ap25_一般ユーザーは管理者アカウントを登録できない() {
         UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin2@example.com");
 
+        // 一般ユーザーとして（管理者専用の）管理者登録APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/admins"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(GENERAL_USER_ID)),
                 String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        // 拒否されたので、該当メールアドレスのユーザーはDBに作られていないことを確認する
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?",
                 Integer.class, "new-admin2@example.com")).isZero();
     }
@@ -348,18 +415,22 @@ class ApiIntegrationTest {
     // AP-33: 管理者が2人以上いる状態なら、一方をもう一方が降格できる
     @Test
     void ap33_管理者は他の管理者を降格できる() {
+        // 降格対象となる、2人目の管理者を先に作っておく
         UserRegisterRequest newAdmin = new UserRegisterRequest("新管理者", "new-admin3@example.com");
         ResponseEntity<UserResponse> created = restTemplate.exchange(
                 url("/api/admins"), HttpMethod.POST, new HttpEntity<>(newAdmin, authHeaders(ADMIN_USER_ID)),
                 UserResponse.class);
         Long newAdminId = created.getBody().userId();
 
+        // 既存の管理者（ADMIN_USER_ID）が、新しく作った管理者を降格するAPIを呼び出す
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/users/" + newAdminId + "/demote"), HttpMethod.PUT,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // レスポンス上のroleが"general"に変わったことを確認する
         assertThat(response.getBody().role()).isEqualTo("general");
+        // DB上でも実際にroleが更新されていることを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role FROM users WHERE id = ?", String.class, newAdminId)).isEqualTo("general");
     }
@@ -367,11 +438,14 @@ class ApiIntegrationTest {
     // AP-33の業務ルール（R-17）: 管理者が1人のみの状態では、その管理者を降格できない
     @Test
     void ap33_最後の管理者は降格できない() {
+        // 管理者が1人（ADMIN_USER_IDのみ）の状態で、自分自身を降格しようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
+        // 管理者が0人になってしまうため、400 Bad Requestで拒否されることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // 拒否されたのでroleは変わっていないことを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
     }
@@ -379,6 +453,7 @@ class ApiIntegrationTest {
     // AP-33の業務ルール（R-16）: 既に一般利用者の対象は降格できない
     @Test
     void ap33_既に一般利用者の対象は降格できない() {
+        // すでに一般ユーザーであるGENERAL_USER_IDを降格しようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/demote"), HttpMethod.PUT,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -389,11 +464,13 @@ class ApiIntegrationTest {
     // AP-33の権限チェック: 一般ユーザーは降格を実行できない
     @Test
     void ap33_一般ユーザーは降格を実行できない() {
+        // 一般ユーザーとして（管理者専用の）降格APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        // 拒否されたので管理者のroleは変わっていないことを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
     }
@@ -401,6 +478,7 @@ class ApiIntegrationTest {
     // AP-33: 対象の利用者が存在しない場合は404
     @Test
     void ap33_対象の利用者が存在しない場合は404() {
+        // 存在しないユーザーID(9999)を指定して降格APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/9999/demote"), HttpMethod.PUT,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -411,13 +489,17 @@ class ApiIntegrationTest {
     // AP-34: 本人は自分のアカウントを退会（匿名化）できる
     @Test
     void ap34_本人は自分のアカウントを退会できる() {
+        // 本人として自分自身の退会（削除）APIを呼び出す
         ResponseEntity<UserResponse> deleteResponse = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
 
         assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 退会日時（匿名化日時）が設定されたことを確認する
         assertThat(deleteResponse.getBody().anonymizedAt()).isNotNull();
+        // 氏名が匿名化用の固定文言に置き換わることを確認する
         assertThat(deleteResponse.getBody().name()).isEqualTo("退会済み利用者");
+        // DB上でもメールアドレスが退会済み用の形式に書き換わっていることを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT email FROM users WHERE id = ?", String.class, GENERAL_USER_ID))
                 .isEqualTo("withdrawn-" + GENERAL_USER_ID + "@invalid.example");
@@ -426,6 +508,7 @@ class ApiIntegrationTest {
     // AP-34: 管理者は一般利用者を退会させられる
     @Test
     void ap34_管理者は一般利用者を退会させられる() {
+        // 管理者として、一般ユーザーの退会APIを呼び出す
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
@@ -437,16 +520,19 @@ class ApiIntegrationTest {
     // AP-34の権限チェック: 一般利用者は他人のアカウントを退会させられない
     @Test
     void ap34_一般利用者は他人を退会させられない() {
+        // 退会させようとする対象の、別の一般ユーザーを先に登録する
         UserRegisterRequest otherUser = new UserRegisterRequest("別の利用者", "other-user@example.com");
         ResponseEntity<UserResponse> created = restTemplate.exchange(
                 url("/api/users"), HttpMethod.POST, new HttpEntity<>(otherUser), UserResponse.class);
         Long otherUserId = created.getBody().userId();
 
+        // 一般ユーザー（GENERAL_USER_ID）として、別の利用者（otherUserId）を退会させようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + otherUserId), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        // 拒否されたので、対象ユーザーの匿名化日時はまだNULL（退会していない）ことを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT anonymized_at IS NULL FROM users WHERE id = ?", Boolean.class, otherUserId)).isTrue();
     }
@@ -454,6 +540,7 @@ class ApiIntegrationTest {
     // AP-34の業務ルール（R-18）: 管理者は退会できない（先にAP-33で降格する必要がある）
     @Test
     void ap34_管理者は退会できない() {
+        // 管理者が自分自身を退会させようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -466,13 +553,16 @@ class ApiIntegrationTest {
     // AP-34の業務ルール（R-19）: 既に退会済みの利用者を再度退会させることはできない
     @Test
     void ap34_既に退会済みの利用者は再度退会できない() {
+        // 1回目の退会を実行する（これは成功するはず）
         restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
 
+        // 同じユーザーに対して、管理者から2回目の退会を試みる
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
+        // 既に退会済みのため、2回目は400 Bad Requestになることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
@@ -490,13 +580,16 @@ class ApiIntegrationTest {
     // （AuthInterceptorがAP-34の効果を継続中のアクセスにも及ぼす）
     @Test
     void ap34_退会済みの利用者は以後のリクエストで認証エラーになる() {
+        // 本人が退会する
         restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
 
+        // 退会したはずの同じユーザーIDで、別のAPI（whoami）を呼んでみる
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/whoami"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
 
+        // 退会済みのユーザーとしては認証されず、401 Unauthorizedになることを確認する
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
@@ -505,16 +598,20 @@ class ApiIntegrationTest {
     void ap09_csv出力は削除済みイベントの申込を含まない() {
         Event deletedEvent = openEvent();
         ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(deletedEvent.getId(), null, null);
+        // このイベントに申込を1件作っておく
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(applyRequest, authHeaders(GENERAL_USER_ID)), ApplicationResponse.class);
+        // そのイベント自体をソフトデリート（論理削除）する
         deletedEvent.softDelete();
         eventRepository.save(deletedEvent);
 
+        // CSV形式で申込一覧を出力するAPIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/reports/applications?format=csv"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 削除済みイベントの名前がCSV本文に含まれていない（除外されている）ことを確認する
         assertThat(response.getBody()).doesNotContain(deletedEvent.getName());
     }
 
@@ -522,14 +619,17 @@ class ApiIntegrationTest {
     @Test
     void ap04_favoriteCountはお気に入り登録件数を反映する() {
         Event event = openEvent();
+        // このイベントをお気に入り登録する
         restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
                 FavoriteResponse.class);
 
+        // イベント一覧を取得する
         ResponseEntity<EventSummaryResponse[]> response = restTemplate.exchange(
                 url("/api/events"), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
                 EventSummaryResponse[].class);
 
+        // 一覧の中から対象イベントだけを絞り込み、favoriteCountが1件になっていることを確認する
         assertThat(response.getBody())
                 .filteredOn(e -> e.id().equals(event.getId()))
                 .extracting(EventSummaryResponse::favoriteCount)
@@ -539,6 +639,7 @@ class ApiIntegrationTest {
     // AP-22: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
     @Test
     void ap22_csv出力にアンケート回答列が含まれる() {
+        // アンケート（extra_question）付きのイベントを作る
         Event event = eventRepository.save(new Event(
                 "アンケート付きイベント",
                 LocalDateTime.now().plusDays(10),
@@ -547,6 +648,7 @@ class ApiIntegrationTest {
                 LocalDateTime.now().plusDays(5),
                 "G-2結合テスト用データ",
                 null, null, "参加動機を教えてください"));
+        // アンケートに回答しつつ申込む
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, "業務で必要なため"),
                         authHeaders(GENERAL_USER_ID)),
@@ -557,24 +659,29 @@ class ApiIntegrationTest {
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // CSVの見出しに「アンケート回答」列があることを確認する
         assertThat(response.getBody()).contains("アンケート回答");
+        // 回答した内容がそのままCSVに出力されていることを確認する
         assertThat(response.getBody()).contains("業務で必要なため");
     }
 
     // AP-26: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
     @Test
     void ap26_利用者情報取得は管理者のみ() {
+        // ケース1: 管理者が一般ユーザーの情報を取得する（成功するはず）
         ResponseEntity<UserResponse> adminResponse = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
         assertThat(adminResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(adminResponse.getBody().name()).isEqualTo("一般ユーザー");
 
+        // ケース2: 一般ユーザーが他人（管理者）の情報を取得しようとする（権限が無く失敗するはず）
         ResponseEntity<String> generalResponse = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
         assertThat(generalResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
+        // ケース3: 管理者が存在しないユーザーIDを取得しようとする（404になるはず）
         ResponseEntity<String> notFoundResponse = restTemplate.exchange(
                 url("/api/users/9999"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -585,10 +692,12 @@ class ApiIntegrationTest {
     @Test
     void ap27_利用者の申込一覧取得() {
         Event event = openEvent();
+        // 一般ユーザーが1件申込んでおく
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(GENERAL_USER_ID)),
                 ApplicationResponse.class);
 
+        // 管理者が、対象ユーザーの申込一覧を取得するAPIを呼び出す
         ResponseEntity<MyApplicationResponse[]> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/applications"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), MyApplicationResponse[].class);
@@ -597,6 +706,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).hasSize(1);
         assertThat(response.getBody()[0].eventId()).isEqualTo(event.getId());
 
+        // 一般ユーザー自身が同じAPI（他人の申込一覧用）を呼ぶと、権限が無く拒否されることを確認する
         ResponseEntity<String> forbidden = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/applications"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
@@ -611,6 +721,7 @@ class ApiIntegrationTest {
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
                 FavoriteResponse.class);
 
+        // 管理者が、対象ユーザーのお気に入り一覧を取得するAPIを呼び出す
         ResponseEntity<FavoriteEventResponse[]> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/favorites"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), FavoriteEventResponse[].class);
@@ -631,6 +742,7 @@ class ApiIntegrationTest {
                 LocalDateTime.now().plusDays(5),
                 "G-2結合テスト用データ",
                 null, null, null));
+        // 更新APIで「一般枠（定員5）」という参加区分を追加する
         ResponseEntity<EventDetailResponse> updated = restTemplate.exchange(
                 url("/api/events/" + event.getId()), HttpMethod.PUT,
                 new HttpEntity<>(new EventUpsertRequest(
@@ -639,8 +751,10 @@ class ApiIntegrationTest {
                         List.of(new com.example.eventapp.dto.TicketTypeRequest("一般枠", 5))),
                         authHeaders(ADMIN_USER_ID)),
                 EventDetailResponse.class);
+        // 更新結果から、追加された区分のIDを取り出す
         Long ticketTypeId = updated.getBody().ticketTypes().get(0).id();
 
+        // 取り出した区分IDを指定して申込む
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(new ApplicationCreateRequest(event.getId(), ticketTypeId, null),
                         authHeaders(GENERAL_USER_ID)),
@@ -651,7 +765,9 @@ class ApiIntegrationTest {
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // CSVの見出しに「参加区分」列があることを確認する
         assertThat(response.getBody()).contains("参加区分");
+        // 区分名「一般枠」がそのままCSVに出力されていることを確認する
         assertThat(response.getBody()).contains("一般枠");
     }
 
@@ -663,6 +779,7 @@ class ApiIntegrationTest {
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
                 FavoriteResponse.class);
 
+        // 管理者としてお気に入り総数取得APIを呼び出す
         ResponseEntity<CountResponse> response = restTemplate.exchange(
                 url("/api/favorites/count"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CountResponse.class);
@@ -670,6 +787,7 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().count()).isEqualTo(1L);
 
+        // 一般ユーザーが同じAPIを呼ぶと権限が無く拒否されることを確認する
         ResponseEntity<String> forbidden = restTemplate.exchange(
                 url("/api/favorites/count"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
@@ -680,10 +798,12 @@ class ApiIntegrationTest {
     @Test
     void ap30_コメント総数取得は論理削除済みを除外する() {
         Event event = openEvent();
+        // 1件目: 後で削除される予定のコメント（投稿内容はコメントIDを後で使うためだけの目的）
         ResponseEntity<EventCommentResponse> commentResponse = restTemplate.exchange(
                 url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("有効なコメント", null), authHeaders(GENERAL_USER_ID)),
                 EventCommentResponse.class);
+        // 2件目: 削除されない、有効なコメント
         restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("削除予定のコメント", null), authHeaders(GENERAL_USER_ID)),
                 EventCommentResponse.class);
@@ -692,9 +812,11 @@ class ApiIntegrationTest {
         restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("返信", willBeDeletedId), authHeaders(ADMIN_USER_ID)),
                 EventCommentResponse.class);
+        // 1件目のコメントを削除する（返信があるため論理削除になる）
         restTemplate.exchange(url("/api/comments/" + willBeDeletedId), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
 
+        // コメント総数（論理削除済みを除く）を取得するAPIを呼び出す
         ResponseEntity<CountResponse> response = restTemplate.exchange(
                 url("/api/comments/count"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CountResponse.class);
@@ -711,15 +833,19 @@ class ApiIntegrationTest {
                 new HttpEntity<>(new EventCommentCreateRequest("履歴確認用コメント", null), authHeaders(GENERAL_USER_ID)),
                 EventCommentResponse.class);
 
+        // 管理者が、対象ユーザーのコメント履歴を取得するAPIを呼び出す
         ResponseEntity<UserCommentResponse[]> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserCommentResponse[].class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).hasSize(1);
+        // 投稿先のイベント名が付与されていることを確認する
         assertThat(response.getBody()[0].eventName()).isEqualTo(event.getName());
+        // まだ削除していないのでdeletedがfalseであることを確認する
         assertThat(response.getBody()[0].deleted()).isFalse();
 
+        // 一般ユーザー自身が同じAPIを呼ぶと権限が無く拒否されることを確認する
         ResponseEntity<String> forbidden = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
@@ -735,6 +861,7 @@ class ApiIntegrationTest {
                 new HttpEntity<>(new EventCommentCreateRequest("表示されるコメント", null), authHeaders(GENERAL_USER_ID)),
                 EventCommentResponse.class);
         Long commentId = commentResponse.getBody().id();
+        // このコメントへの返信を投稿する
         restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("返信", commentId), authHeaders(ADMIN_USER_ID)),
                 EventCommentResponse.class);
@@ -742,6 +869,7 @@ class ApiIntegrationTest {
         restTemplate.exchange(url("/api/comments/" + commentId), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
 
+        // 全コメント一覧（モデレーション用）を取得するAPIを呼び出す
         ResponseEntity<CommentModerationResponse[]> response = restTemplate.exchange(
                 url("/api/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CommentModerationResponse[].class);
@@ -753,6 +881,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].eventName()).isEqualTo(event.getName());
         assertThat(response.getBody()[0].userName()).isEqualTo("管理者");
 
+        // 一般ユーザーが同じAPIを呼ぶと権限が無く拒否されることを確認する
         ResponseEntity<String> forbidden = restTemplate.exchange(
                 url("/api/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);

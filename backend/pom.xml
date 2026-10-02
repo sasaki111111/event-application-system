@@ -2,19 +2,24 @@
 <!-- backend（Spring Boot）のビルド設定。使用する依存ライブラリ（下のdependencies）とJavaバージョンをここで管理する -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<!-- pom.xml自体の書式バージョン。Maven4系では現時点でもこの値を使う（固定値） -->
 	<modelVersion>4.0.0</modelVersion>
+	<!-- Spring Boot公式の親POM。下のdependenciesで<version>を省略できる（親が適切なバージョンを決めてくれる）のはこのため -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
+	<!-- このプロジェクト自身を一意に識別するための情報（groupId+artifactId+versionの組み合わせ） -->
 	<groupId>com.example</groupId>
 	<artifactId>backend</artifactId>
+	<!-- SNAPSHOT＝開発中・未リリースのバージョンであることを示す接尾辞 -->
 	<version>0.0.1-SNAPSHOT</version>
 	<name>backend</name>
 	<description>Event Application System Backend API</description>
 	<url/>
+	<!-- licenses/developers/scmはSpring Initializrが生成した雛形のままで、このプロジェクトでは未設定（空）の項目 -->
 	<licenses>
 		<license/>
 	</licenses>
@@ -28,6 +33,7 @@
 		<url/>
 	</scm>
 	<properties>
+		<!-- コンパイル・実行に使うJavaのバージョン -->
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
@@ -60,6 +66,7 @@
 		</dependency>
 
 		<!-- ここから下はtestスコープ＝本番の実行には含まれず、テストコードのビルド・実行時のみ使う -->
+		<!-- JUnit5・Mockito・MockMvc・AssertJなど、Spring Bootのテストで使う定番ライブラリ一式 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
@@ -71,6 +78,7 @@
 			<artifactId>spring-boot-restclient</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- @DataJpaTest等、JPA（DBアクセス）周りだけをテストするための補助ライブラリ -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
@@ -86,6 +94,8 @@
 
 	<build>
 		<plugins>
+			<!-- mvn spring-boot:run での起動や、依存ライブラリを全て含んだ実行可能jar（java -jarで動かせる形式）への
+			     パッケージ化を可能にするプラグイン -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

@@ -38,12 +38,14 @@ describe('EventSearch', () => {
     return component;
   }
 
+  // 絞り込み条件が未入力の初期状態では、全件が開催日時の昇順で返ることを確認
   it('初期状態では開催日時昇順で全件を返す', () => {
     const component = createComponent() as any;
 
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1]);
   });
 
+  // onKeywordInput()でイベント名に部分一致するものだけに絞り込まれることを確認
   it('キーワードでイベント名を絞り込む', () => {
     const component = createComponent() as any;
 
@@ -52,6 +54,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2]);
   });
 
+  // キーワードは場所（place）にも部分一致し、大文字小文字を区別しないことを確認
   it('キーワードで場所を絞り込む（大文字小文字を区別しない）', () => {
     const component = createComponent() as any;
 
@@ -60,6 +63,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([1]);
   });
 
+  // onDateFromInput()/onDateToInput()で指定した開催日の範囲内のイベントだけに絞り込まれることを確認
   it('開催日（から・まで）で絞り込む', () => {
     const component = createComponent() as any;
 
@@ -69,6 +73,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([3]);
   });
 
+  // clearFilters()で入力済みの絞り込み条件がすべてクリアされ、全件表示に戻ることを確認
   it('条件をクリアすると絞り込みが解除される', () => {
     const component = createComponent() as any;
     component.onKeywordInput('読書');
@@ -78,6 +83,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents()).toHaveLength(3);
   });
 
+  // onSortOrderChange('accepted_desc')で、申込数（acceptedCount）の降順に並び替わることを確認
   it('並び替え: 申込数の多い順', () => {
     const component = createComponent() as any;
 
@@ -86,6 +92,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 1, 3]);
   });
 
+  // onSortOrderChange('favorite_desc')で、お気に入り数の降順に並び替わることを確認
   it('並び替え: お気に入り数の多い順', () => {
     const component = createComponent() as any;
 
@@ -94,6 +101,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1]);
   });
 
+  // onSortOrderChange('deadline_asc')で、申込締切の昇順（近い順）に並び替わることを確認
   it('並び替え: 申込締切が近い順', () => {
     const component = createComponent() as any;
 

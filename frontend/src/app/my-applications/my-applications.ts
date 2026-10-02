@@ -9,6 +9,22 @@ import { FavoriteApiService, FavoriteEvent } from '../core/favorite-api';
 import { FavoriteStore } from '../core/favorite-store';
 import { UserApiService } from '../core/user-api';
 
+/**
+ * SC-03マイページを担当するComponent。「申込一覧」「お気に入り」の2タブを持ち、
+ * 申込のキャンセルやお気に入りの解除、アカウントの退会（匿名化）もここから行う。
+ *
+ * 使用するAngular Service:
+ * - `ApplicationApiService`: 自分の申込一覧取得（API）とキャンセルAPI（API-05）の呼び出し。
+ * - `FavoriteApiService`: 自分のお気に入り一覧取得とお気に入り解除APIの呼び出し。
+ * - `FavoriteStore`: イベント一覧・詳細画面と共有するお気に入り状態。このタブで解除した際に
+ *   キャッシュを無効化し、他画面で最新状態を取り直させるために使う。
+ * - `UserApiService`: 退会（匿名化）API（AP-34）の呼び出し。
+ * - `DummyUserStore`: 退会対象（自分）のユーザーIDの取得、退会後のログアウトに使う。
+ * - `Router`: 退会成功後にログイン画面へ遷移するために使う。
+ *
+ * 画面遷移: 申込一覧・お気に入り一覧のカードのタイトルからevent-detail.ts（イベント詳細）へ
+ * 遷移する。退会成功時はログイン画面（/login）へ遷移する。
+ */
 @Component({
   selector: 'app-my-applications',
   imports: [CommonModule, RouterLink],
