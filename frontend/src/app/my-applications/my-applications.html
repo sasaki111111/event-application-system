@@ -9,10 +9,11 @@
   <button type="button" class="btn-toggle" [class.active]="activeTab() === 'favorites'" (click)="setTab('favorites')">
     お気に入り
   </button>
+  <!-- 機能追加（AP-34）: 自分のアカウントの退会（匿名化）。表示タブ切替ボタンと並べて配置する -->
+  <button type="button" class="btn-toggle" (click)="withdraw()" [disabled]="withdrawing()">
+    {{ withdrawing() ? '退会処理中...' : '退会する' }}
+  </button>
 </div>
-
-<!-- 機能追加（AP-34）: 自分のアカウントの退会（匿名化） -->
-<button type="button" class="btn-danger" (click)="withdraw()" [disabled]="withdrawing()">退会する</button>
 
 @if (activeTab() === 'applications') {
   @if (loading()) {
