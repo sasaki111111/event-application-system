@@ -12,6 +12,11 @@ INSERT INTO users (id, name, email, role) VALUES
     (1, '一般ユーザー', 'general@example.com', 'general'),
     (2, '管理者',       'admin@example.com',   'admin');
 
+-- AP-34（利用者の退会＝匿名化）の動作確認用。general@example.comを退会させてしまうと
+-- 上記の基本ログイン確認ができなくなるため、使い捨て用に別アカウントを用意する。
+INSERT INTO users (id, name, email, role) VALUES
+    (3, '退会確認用ユーザー', 'withdraw-test@example.com', 'general');
+
 -- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/01_要件定義書.md「3. 想定利用者」「4. 利用シーン」参照）。
 -- 開催日時の異なる複数件。1件は申込締切・開催日時とも過去＝「受付終了」表示の確認用。
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
