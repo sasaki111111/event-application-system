@@ -28,6 +28,7 @@ import com.example.eventapp.repository.FavoriteRepository;
 import com.example.eventapp.repository.TicketTypeRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -886,5 +887,111 @@ class ApiIntegrationTest {
                 url("/api/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // AP-01（Issue #9の再発防止）: メールアドレスの前後に空白・大文字が混ざっていても、正規化してログインできる。
+    // DTO（LoginRequest）をテスト側で生成すると送信前に空白が除去されてしまうため、Mapで生のJSONを送る
+    @Test
+    void ap01_前後に空白のあるメールアドレスでもログインできる() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "  ADMIN@example.com "), authHeaders(ADMIN_USER_ID)),
+                UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // 空白除去＋小文字化したメールアドレスの利用者（管理者）が返ることを確認する
+        assertThat(response.getBody().userId()).isEqualTo(ADMIN_USER_ID);
+    }
+
+    // AP-02（Issue #9の再発防止）: 前後に空白のあるメールアドレスは、空白除去＋小文字化して登録される
+    @Test
+    void ap02_前後に空白のあるメールアドレスは正規化して登録される() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/users"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("name", "空白確認", "email", " New-User@Example.com "), authHeaders(GENERAL_USER_ID)),
+                UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().email()).isEqualTo("new-user@example.com");
+        // DBにも正規化後のメールアドレスで保存されていることを確認する
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = ?", Integer.class, "new-user@example.com"))
+                .isEqualTo(1);
+    }
+
+    // AP-02（Issue #9の再発防止）: 登録済みのメールアドレスに空白を付けただけのものは、重複として拒否される
+    @Test
+    void ap02_登録済みのメールアドレスに空白を付けても重複として拒否される() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("name", "重複確認", "email", " GENERAL@example.com "), authHeaders(GENERAL_USER_ID)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // 形式エラーではなく、重複時のメッセージになることを確認する
+        assertThat(response.getBody()).contains("この内容では登録できませんでした。ログインをお試しください");
+    }
+
+    // AP-25（Issue #9の再発防止）: 管理者アカウント登録でも、前後に空白のあるメールアドレスを正規化して登録できる
+    @Test
+    void ap25_前後に空白のあるメールアドレスでも管理者アカウントを登録できる() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/admins"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("name", "空白確認管理者", "email", " Space-Admin@Example.com "), authHeaders(ADMIN_USER_ID)),
+                UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().role()).isEqualTo("admin");
+        assertThat(response.getBody().email()).isEqualTo("space-admin@example.com");
+    }
+
+    // AP-07（Issue #10の再発防止）: 申込締切が開催日時と同じ日時のイベントは登録できない（締切は開催日時より前であること）
+    @Test
+    void ap07_申込締切と開催日時が同じ日時なら400() {
+        LocalDateTime sameTime = LocalDateTime.now().plusDays(20).withNano(0);
+        EventUpsertRequest request = new EventUpsertRequest(
+                "締切同時刻テスト", sameTime, "会議室B", 10, sameTime, null, null, null, null, null);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // 申込締切の項目に対する入力エラーとして返ることを確認する
+        assertThat(response.getBody()).contains("\"field\":\"applicationDeadline\"");
+        // イベントが登録されていないことを確認する
+        assertThat(eventRepository.count()).isZero();
+    }
+
+    // AP-07（Issue #10の補足）: 申込締切が開催日時の1秒前なら、これまでどおり登録できる
+    @Test
+    void ap07_申込締切が開催日時の1秒前なら登録できる() {
+        LocalDateTime startAt = LocalDateTime.now().plusDays(20).withNano(0);
+        EventUpsertRequest request = new EventUpsertRequest(
+                "締切1秒前テスト", startAt, "会議室B", 10, startAt.minusSeconds(1), null, null, null, null, null);
+
+        ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    // AP-08（Issue #10の再発防止）: 申込締切が開催日時と同じ日時になる更新はできない
+    @Test
+    void ap08_申込締切と開催日時が同じ日時には更新できない() {
+        Event event = openEvent();
+        LocalDateTime sameTime = LocalDateTime.now().plusDays(20).withNano(0);
+        EventUpsertRequest request = new EventUpsertRequest(
+                "更新後の名前", sameTime, "会議室", 5, sameTime, null, null, null, null, null);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/events/" + event.getId()), HttpMethod.PUT, new HttpEntity<>(request, authHeaders(ADMIN_USER_ID)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("\"field\":\"applicationDeadline\"");
+        // イベントが更新されていないことを確認する
+        assertThat(eventRepository.findById(event.getId()).orElseThrow().getName()).isEqualTo("結合テスト用イベント");
     }
 }

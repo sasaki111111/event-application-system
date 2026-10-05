@@ -8,12 +8,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 「申込締切（applicationDeadline）は開催日時（startAt）以前」というこのプロジェクト独自の
+ * 「申込締切（applicationDeadline）は開催日時（startAt）より前」というこのプロジェクト独自の
  * 検証ルールを定義するアノテーション。実際の検証ロジックは{@link EventDatesValidator}
  * （{@code @Constraint(validatedBy = ...)}で指定）に実装されている。{@code EventUpsertRequest}
  * （クラス全体、{@code @Target(ElementType.TYPE)}）に付けて使う。
  */
-// 実行環境: サーバー側（JVM）。「申込締切はstartAt以前」（API設計書 AP-07/08）を@Validと連携させるための
+// 実行環境: サーバー側（JVM）。「申込締切はstartAtより前」（docs/07_バリデーション設計書.md 8-3 C-01）を@Validと連携させるための
 // クラスレベルのBean Validation制約。EventUpsertRequestに付ける。
 // このアノテーションをクラス全体（TYPE）に付けられるようにする
 @Target(ElementType.TYPE)
@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
 public @interface ValidEventDates {
 
     // 検証に失敗したときに使われるデフォルトのエラーメッセージ
-    String message() default "申込締切は開催日時以前にしてください";
+    String message() default "申込締切は開催日時より前にしてください";
 
     // Bean Validationの標準的な仕組み（検証グループ）用の属性。このプロジェクトでは未使用
     Class<?>[] groups() default {};
