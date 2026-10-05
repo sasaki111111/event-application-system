@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * EventCommentService（イベントへのコメント投稿・削除・一覧取得の業務ロジック）に対する単体テスト。
@@ -390,5 +391,46 @@ class EventCommentServiceTest {
         assertThat(result.get(0).eventName()).isEqualTo("テストイベント");
         assertThat(result.get(0).userName()).isEqualTo("投稿者");
         assertThat(result.get(0).body()).isEqualTo("コメント本文");
+    }
+
+    // 異常系（UT-CMT-10）: 返信先に別イベントのコメントを指定した場合はNotFoundException
+    @Test
+    void post_異常系_返信先が別イベントのコメントならNotFoundException() {
+        Event event = mock(Event.class);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        // COMMENT_IDのコメントは別のイベント（ID=99）に属しており、投稿先イベント（EVENT_ID）では見つからない状況を設定する
+        EventComment commentOfOtherEvent = new EventComment(mock(Event.class), mock(User.class), "別イベントのコメント");
+        when(eventCommentRepository.findByIdAndEvent_Id(COMMENT_ID, 99L)).thenReturn(Optional.of(commentOfOtherEvent));
+        when(eventCommentRepository.findByIdAndEvent_Id(COMMENT_ID, EVENT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> eventCommentService.post(USER_ID, EVENT_ID, "返信です", COMMENT_ID))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("返信先のコメントが見つかりません");
+        // 返信先は「コメントID＋投稿先イベントID」の組で検索されることを確認する
+        verify(eventCommentRepository).findByIdAndEvent_Id(COMMENT_ID, EVENT_ID);
+        verify(eventCommentRepository, never()).save(any());
+    }
+
+    // 正常系（UT-CMT-11）: 論理削除済みのコメントにも返信できる
+    @Test
+    void post_正常系_論理削除済みのコメントにも返信できる() {
+        Event event = mock(Event.class);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(USER_ID);
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user);
+        // 返信先となる親コメントを、論理削除済みの状態にしておく
+        EventComment parentComment = new EventComment(event, mock(User.class), "元のコメント");
+        parentComment.softDelete();
+        when(eventCommentRepository.findByIdAndEvent_Id(COMMENT_ID, EVENT_ID)).thenReturn(Optional.of(parentComment));
+        ArgumentCaptor<EventComment> captor = ArgumentCaptor.forClass(EventComment.class);
+        when(eventCommentRepository.save(captor.capture())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventCommentResponse response = eventCommentService.post(USER_ID, EVENT_ID, "返信です", COMMENT_ID);
+
+        // エラーにならず、論理削除済みの親コメントに紐づく返信として保存されることを確認する
+        assertThat(response.body()).isEqualTo("返信です");
+        assertThat(captor.getValue().getParentComment()).isSameAs(parentComment);
+        assertThat(captor.getValue().getParentComment().isDeleted()).isTrue();
     }
 }

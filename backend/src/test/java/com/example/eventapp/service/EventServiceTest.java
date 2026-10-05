@@ -485,4 +485,52 @@ class EventServiceTest {
                 // 可変長引数ticketTypesがnullならnullを、そうでなければList化して渡す
                 ticketTypes == null ? null : List.of(ticketTypes));
     }
+
+    // 正常系（UT-EVT-03）: キャンセル待ち・キャンセル済の申込しか無ければ削除できる（削除を止めるのは受付済のみ）
+    @Test
+    void delete_正常系_キャンセル待ちとキャンセル済の申込のみなら削除できる() {
+        Event event = mock(Event.class);
+        when(event.getId()).thenReturn(EVENT_ID);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        // 受付済は0件、キャンセル待ち2件・キャンセル済1件がある状況を設定する
+        when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.ACCEPTED)).thenReturn(0L);
+        when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.WAITLISTED)).thenReturn(2L);
+        when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.CANCELLED)).thenReturn(1L);
+
+        eventService.delete(EVENT_ID);
+
+        // 論理削除されることを確認する
+        verify(event).softDelete();
+        verify(eventRepository, never()).delete(event);
+    }
+
+    // 正常系（UT-EVT-22）: status=openなら、受付中かつ未削除のイベントのみを開催日時昇順で返す
+    // （未削除の絞り込みと開催日時順の並びはRepositoryのクエリが行うため、ここではそのメソッドを使うことと、
+    // 受付終了のイベントが除かれ、Repositoryが返した順が保たれることを確認する）
+    @Test
+    void list_正常系_openなら受付中かつ未削除のみを開催日時昇順で返す() {
+        Event open1 = mock(Event.class);
+        when(open1.getId()).thenReturn(1L);
+        when(open1.isOpen(any(LocalDateTime.class))).thenReturn(true);
+        // 受付終了（申込締切を過ぎた）イベント
+        Event closed = mock(Event.class);
+        when(closed.getId()).thenReturn(2L);
+        when(closed.isOpen(any(LocalDateTime.class))).thenReturn(false);
+        Event open2 = mock(Event.class);
+        when(open2.getId()).thenReturn(3L);
+        when(open2.isOpen(any(LocalDateTime.class))).thenReturn(true);
+        // 未削除のイベントを開催日時昇順で取得するRepositoryメソッドが、3件をこの順で返す状況を設定する
+        when(eventRepository.findAllByDeletedAtIsNullOrderByStartAtAsc()).thenReturn(List.of(open1, closed, open2));
+
+        var result = eventService.list("open");
+
+        // 受付終了の1件が除かれ、Repositoryが返した順（開催日時昇順）のまま返ることを確認する
+        assertThat(result).extracting(summary -> summary.id()).containsExactly(1L, 3L);
+        assertThat(result).allMatch(summary -> summary.open());
+        // status=allでは受付終了のイベントも含めて3件返ることを確認する
+        assertThat(eventService.list("all")).extracting(summary -> summary.id()).containsExactly(1L, 2L, 3L);
+        // 削除済みを含む取得メソッドは使われないことを確認する
+        verify(eventRepository, never()).findAll();
+        verify(eventRepository, never()).findAllByDeletedAtIsNotNullOrderByStartAtAsc();
+    }
 }

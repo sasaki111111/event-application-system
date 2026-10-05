@@ -589,4 +589,85 @@ class ApplicationServiceTest {
         assertThatThrownBy(() -> applicationService.checkIn(100L))
                 .isInstanceOf(NotFoundException.class);
     }
+
+    // 正常系（UT-APP-07）: キャンセル済の申込しか無いイベントには再申込できる
+    @Test
+    void apply_正常系_キャンセル済の申込のみなら再申込できる() {
+        Event event = openEvent(5);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        when(applicationRepository.countByEvent_IdAndStatus(EVENT_ID, ApplicationStatus.ACCEPTED)).thenReturn(0L);
+        // 二重申込の判定は有効な申込（受付済・キャンセル待ち）だけが対象。
+        // キャンセル済の申込しか無いので、有効な申込は「無い」という状況を設定する
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(
+                USER_ID, EVENT_ID, ApplicationStatus.ACTIVE_STATUSES)).thenReturn(false);
+        User user = mock(User.class);
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(user);
+        when(applicationRepository.save(any(Application.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, null, null);
+
+        // エラーにならず、新しい申込が受付済で登録されることを確認する
+        assertThat(response.status()).isEqualTo(ApplicationStatus.ACCEPTED);
+        verify(applicationRepository).save(any(Application.class));
+        // 二重申込の判定対象にキャンセル済が含まれていないことを確認する
+        verify(applicationRepository).existsByUser_IdAndEvent_IdAndStatusIn(
+                USER_ID, EVENT_ID, ApplicationStatus.ACTIVE_STATUSES);
+        assertThat(ApplicationStatus.ACTIVE_STATUSES).doesNotContain(ApplicationStatus.CANCELLED);
+    }
+
+    // 境界（UT-APP-12）: 現在時刻が申込締切ちょうどなら受付中（締切「以前」は受付）と判定される。
+    // apply()は現在時刻をLocalDateTime.now()で取得するため時刻を固定できない。そこで、apply()が受付可否の判定に
+    // 使っているEvent#isOpen(現在時刻)に、固定した時刻を直接渡して境界の挙動を確認する。
+    @Test
+    void apply_境界_現在時刻が申込締切ちょうどなら受付中と判定される() {
+        LocalDateTime deadline = LocalDateTime.of(2026, 11, 15, 23, 59, 0);
+        LocalDateTime startAt = LocalDateTime.of(2026, 11, 20, 10, 0, 0);
+        // モックではなく本物のEventを使い、実際の判定ロジックを動かす
+        Event event = new Event("境界確認イベント", startAt, "会場", 5, deadline, null, null, null, null);
+
+        // 締切の1秒前・締切ちょうどは受付中
+        assertThat(event.isOpen(deadline.minusSeconds(1))).isTrue();
+        assertThat(event.isOpen(deadline)).isTrue();
+        // 締切を1秒でも過ぎたら受付終了
+        assertThat(event.isOpen(deadline.plusSeconds(1))).isFalse();
+    }
+
+    // 異常系（UT-APP-19）: キャンセル済の申込は再度取消できない
+    @Test
+    void cancel_異常系_キャンセル済の申込は取消できない() {
+        User owner = mock(User.class);
+        when(owner.getId()).thenReturn(USER_ID);
+        Event futureEvent = mock(Event.class);
+        // 開催前であっても、キャンセル済であれば取消できないことを確認するため開催日時は未来にする
+        when(futureEvent.getStartAt()).thenReturn(LocalDateTime.now().plusDays(1));
+        Application application = new Application(owner, futureEvent, ApplicationStatus.CANCELLED);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> applicationService.cancel(USER_ID, 100L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("取消できません");
+        // キャンセル待ちの繰り上げが発生しないことを確認する
+        verify(applicationRepository, never())
+                .findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(anyLong(), any());
+    }
+
+    // 正常系（UT-APP-27）: チェックイン済みの申込に再度チェックインすると、日時が最新の実行時刻に更新される
+    @Test
+    void checkIn_正常系_チェックイン済みに再実行すると日時が更新される() throws InterruptedException {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        Application application = new Application(user, event);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        // 1回目のチェックイン
+        LocalDateTime first = applicationService.checkIn(100L).checkedInAt();
+        // 2回目との時刻差を確実に作るため少し待つ
+        Thread.sleep(20);
+        // 2回目のチェックイン（エラーにならない）
+        CheckInResponse second = applicationService.checkIn(100L);
+
+        // チェックイン日時が1回目より後の時刻に更新されていることを確認する
+        assertThat(second.checkedInAt()).isAfter(first);
+        assertThat(application.getCheckedInAt()).isEqualTo(second.checkedInAt());
+    }
 }

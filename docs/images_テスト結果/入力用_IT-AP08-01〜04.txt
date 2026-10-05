@@ -1,0 +1,15 @@
+﻿IT-AP08-01〜04 用の入力
+対象API：PUT /api/events/{id}（AP-08 イベント更新）　X-User-Id はすべて 2（管理者）
+各ケースの { から } までを全部コピーして、Request body を全部消してから貼り付ける
+
+■ IT-AP08-01：id = 59　区分を指定せず名称だけ変更（期待：200、区分「午前」「午後」が残る）
+{ "name": "IT-AP08 区分あり（名称変更）", "startAt": "2026-12-10T10:00:00", "place": "会場A", "applicationDeadline": "2026-12-05T23:59:00" }
+
+■ IT-AP08-02：id = 59　区分を空配列にして定員を指定（期待：200、ticketTypes が空、capacity が 10）
+{ "name": "IT-AP08 区分あり（名称変更）", "startAt": "2026-12-10T10:00:00", "place": "会場A", "capacity": 10, "applicationDeadline": "2026-12-05T23:59:00", "ticketTypes": [] }
+
+■ IT-AP08-03：id = 60　申込がある区分を変更（期待：400「区分に申込があるため変更できません」）
+{ "name": "IT-AP08-03 区分申込あり", "startAt": "2026-12-11T10:00:00", "place": "会場B", "applicationDeadline": "2026-12-05T23:59:00", "ticketTypes": [ { "name": "昼", "capacity": 5 } ] }
+
+■ IT-AP08-04：id = 99999　存在しないID（期待：404「イベントが見つかりません」）
+{ "name": "存在しないイベント", "startAt": "2026-12-12T10:00:00", "place": "会場", "capacity": 5, "applicationDeadline": "2026-12-05T23:59:00" }
