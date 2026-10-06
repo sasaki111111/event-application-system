@@ -154,6 +154,28 @@ describe('EventList', () => {
     expect(favoriteStore.toggle).toHaveBeenCalledWith(1);
   });
 
+  // お気に入り登録に成功したら、一覧を取り直さずに対象イベントのお気に入り数が1増えることを確認（Issue #13）
+  it('お気に入り登録でお気に入り数が即座に1増える', () => {
+    const component = createComponent() as any;
+    const before = component.events().find((e: EventSummary) => e.id === 1).favoriteCount;
+
+    component.toggleFavorite(1);
+
+    expect(component.events().find((e: EventSummary) => e.id === 1).favoriteCount).toBe(before + 1);
+    expect(eventApi.list).toHaveBeenCalledTimes(1);
+  });
+
+  // お気に入り解除に成功したら、対象イベントのお気に入り数が1減る（0未満にはならない）ことを確認（Issue #13）
+  it('お気に入り解除でお気に入り数が即座に1減る', () => {
+    favoriteStore.toggle.mockReturnValue(of(false));
+    const component = createComponent() as any;
+    const before = component.events().find((e: EventSummary) => e.id === 1).favoriteCount;
+
+    component.toggleFavorite(1);
+
+    expect(component.events().find((e: EventSummary) => e.id === 1).favoriteCount).toBe(Math.max(0, before - 1));
+  });
+
   // DummyUserStore.isAdmin()がtrueを返す時、Componentのget isAdmin()もtrueを返すことを確認
   it('管理者の場合isAdminがtrueになる', () => {
     dummyUserStore.isAdmin.mockReturnValue(true);

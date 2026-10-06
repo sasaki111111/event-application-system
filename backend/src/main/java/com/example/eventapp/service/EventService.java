@@ -246,6 +246,12 @@ public class EventService {
         // BusinessException（400エラー）に変換してControllerに伝えている。
         try {
             ticketTypeRepository.deleteByEvent_Id(event.getId());
+            // 削除をこの時点でDBへ反映する（flush）。JPAは通常、登録（INSERT）を削除（DELETE）より先に
+            // DBへ送るため、flushしないと、同じ区分名を登録し直すときに一意制約
+            // （uk_ticket_types_event_name）に違反してしまう。編集画面は区分を変更していなくても
+            // 既存の区分を毎回送るため、区分のあるイベントが保存できなくなる（Issue #15）。
+            // 申込の履歴が区分を参照している場合の外部キー制約違反も、ここで発生して下のcatchで拾われる
+            ticketTypeRepository.flush();
         } catch (DataIntegrityViolationException e) {
             // 上のチェックは受付済・キャンセル待ちのみを見ているため、キャンセル済の申込が
             // 区分を参照したまま残っているケースはここで拾う（fk_applications_ticket_typeはRESTRICT）

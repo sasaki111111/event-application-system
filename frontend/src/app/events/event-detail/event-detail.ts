@@ -185,7 +185,13 @@ export class EventDetail implements OnInit {
   protected toggleFavorite(): void {
     this.favoriteBusy.set(true);
     this.favoriteStore.toggle(this.eventId).subscribe({
-      next: () => this.favoriteBusy.set(false),
+      next: (favorited) => {
+        this.favoriteBusy.set(false);
+        // 「お気に入り N件」の表示も即座に反映する（詳細を取り直さず、表示中の件数を1増減する）
+        this.event.update((event) =>
+          event ? { ...event, favoriteCount: Math.max(0, event.favoriteCount + (favorited ? 1 : -1)) } : event,
+        );
+      },
       error: (err) => {
         this.favoriteBusy.set(false);
         alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');

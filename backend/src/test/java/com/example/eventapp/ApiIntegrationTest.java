@@ -994,4 +994,60 @@ class ApiIntegrationTest {
         // イベントが更新されていないことを確認する
         assertThat(eventRepository.findById(event.getId()).orElseThrow().getName()).isEqualTo("結合テスト用イベント");
     }
+
+    // AP-08（Issue #15の再発防止）: 区分のあるイベントを、既存と同じ区分名のまま更新できる。
+    // 編集画面は区分を変更していなくても既存の区分を毎回送るため、これが失敗すると画面から編集できなくなる
+    @Test
+    void ap08_既存と同じ区分名を送り直しても更新できる() {
+        EventUpsertRequest create = new EventUpsertRequest(
+                "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室B", null,
+                LocalDateTime.now().plusDays(15), null, null, null, null,
+                List.of(new com.example.eventapp.dto.TicketTypeRequest("午前", 2),
+                        new com.example.eventapp.dto.TicketTypeRequest("午後", 3)));
+        Long eventId = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(create, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class).getBody().id();
+
+        // 場所だけを変更し、区分は既存と同じ名前・定員のまま送る
+        EventUpsertRequest update = new EventUpsertRequest(
+                "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室C", 5,
+                LocalDateTime.now().plusDays(15), null, null, null, null,
+                List.of(new com.example.eventapp.dto.TicketTypeRequest("午前", 2),
+                        new com.example.eventapp.dto.TicketTypeRequest("午後", 3)));
+        ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
+                url("/api/events/" + eventId), HttpMethod.PUT, new HttpEntity<>(update, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().place()).isEqualTo("会議室C");
+        assertThat(response.getBody().ticketTypes()).extracting(t -> t.name()).containsExactlyInAnyOrder("午前", "午後");
+        assertThat(response.getBody().capacity()).isEqualTo(5);
+    }
+
+    // AP-08（Issue #15の再発防止）: 区分名を一部残したまま、区分を追加・定員変更する更新ができる
+    @Test
+    void ap08_区分名を一部残したまま区分を変更できる() {
+        EventUpsertRequest create = new EventUpsertRequest(
+                "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室B", null,
+                LocalDateTime.now().plusDays(15), null, null, null, null,
+                List.of(new com.example.eventapp.dto.TicketTypeRequest("午前", 2),
+                        new com.example.eventapp.dto.TicketTypeRequest("午後", 3)));
+        Long eventId = restTemplate.exchange(
+                url("/api/events"), HttpMethod.POST, new HttpEntity<>(create, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class).getBody().id();
+
+        // 「午前」は名前を残して定員を変更、「午後」を外して「夜」を追加する
+        EventUpsertRequest update = new EventUpsertRequest(
+                "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室B", null,
+                LocalDateTime.now().plusDays(15), null, null, null, null,
+                List.of(new com.example.eventapp.dto.TicketTypeRequest("午前", 4),
+                        new com.example.eventapp.dto.TicketTypeRequest("夜", 1)));
+        ResponseEntity<EventDetailResponse> response = restTemplate.exchange(
+                url("/api/events/" + eventId), HttpMethod.PUT, new HttpEntity<>(update, authHeaders(ADMIN_USER_ID)),
+                EventDetailResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().ticketTypes()).extracting(t -> t.name()).containsExactlyInAnyOrder("午前", "夜");
+        assertThat(response.getBody().capacity()).isEqualTo(5);
+    }
 }
