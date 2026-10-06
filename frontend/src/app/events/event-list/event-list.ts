@@ -189,7 +189,17 @@ export class EventList implements OnInit {
   protected toggleFavorite(eventId: number): void {
     this.favoriteBusyId.set(eventId);
     this.favoriteStore.toggle(eventId).subscribe({
-      next: () => this.favoriteBusyId.set(null),
+      next: (favorited) => {
+        this.favoriteBusyId.set(null);
+        // カードの「お気に入り数」も即座に反映する（一覧を取り直さず、表示中の件数を1増減する）
+        this.events.update((events) =>
+          events.map((event) =>
+            event.id === eventId
+              ? { ...event, favoriteCount: Math.max(0, event.favoriteCount + (favorited ? 1 : -1)) }
+              : event,
+          ),
+        );
+      },
       error: (err) => {
         this.favoriteBusyId.set(null);
         alert(err.error?.message ?? 'お気に入りの更新に失敗しました。');
