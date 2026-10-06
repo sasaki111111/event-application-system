@@ -22,7 +22,7 @@ import jakarta.validation.ConstraintValidatorContext;
 public class EventDatesValidator implements ConstraintValidator<ValidEventDates, EventUpsertRequest> {
 
     /**
-     * 検証本体。申込締切（applicationDeadline）が開催日時（startAt）以前であればOK（true）、
+     * 検証本体。申込締切（applicationDeadline）が開催日時（startAt）より前であればOK（true）、
      * そうでなければNG（false）として検証エラーにする。
      */
     @Override
@@ -34,13 +34,13 @@ public class EventDatesValidator implements ConstraintValidator<ValidEventDates,
             return true;
         }
 
-        // 申込締切が開催日時より後（isAfter）でなければ、つまり「締切が開催日時以前」なら
-        // ルールを満たしているのでtrue（OK）を返す
-        if (!value.applicationDeadline().isAfter(value.startAt())) {
+        // 申込締切が開催日時より前（isBefore）なら、ルールを満たしているのでtrue（OK）を返す。
+        // 同じ日時は「前」ではないためエラーにする（docs/07_バリデーション設計書.md 8-3 C-01）
+        if (value.applicationDeadline().isBefore(value.startAt())) {
             return true;
         }
 
-        // ここに到達するのは「締切が開催日時より後」の場合＝ルール違反。
+        // ここに到達するのは「締切が開催日時と同じ、または開催日時より後」の場合＝ルール違反。
         // デフォルトのエラー内容（クラス全体に対するエラー）をいったん無効化する
         // GlobalExceptionHandlerがfield名としてapplicationDeadlineを拾えるようにする
         context.disableDefaultConstraintViolation();

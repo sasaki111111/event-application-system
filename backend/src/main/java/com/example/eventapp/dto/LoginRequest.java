@@ -9,4 +9,11 @@ public record LoginRequest(
         @NotBlank(message = "メールアドレスを入力してください")
         @Email(message = "メールアドレスの形式が正しくありません") String email
 ) {
+    // メールアドレスの前後の空白は、形式チェック（@Email）より前に取り除く
+    // （docs/07_バリデーション設計書.md 8-6「メールアドレスの正規化」）。
+    // recordのコンパクトコンストラクタは、JSONからこのオブジェクトが作られる時点で実行されるため、
+    // @Validによる検証は空白を除いた後の値に対して行われる。小文字化はUserService#normalizeEmailが行う
+    public LoginRequest {
+        email = email == null ? null : email.strip();
+    }
 }
