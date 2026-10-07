@@ -72,6 +72,8 @@ class ApiIntegrationTest {
 
     // テスト用の利用者に設定するパスワードと、そのハッシュ値（BCrypt）
     private static final String PASSWORD = "Test1234";
+    // ログイン失敗時のメッセージ（E-A-006）。失敗の理由によらず同じ文言になる
+    private static final String LOGIN_FAILED_MESSAGE = "ログインできませんでした";
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder(4).encode(PASSWORD);
 
     // @SpringBootTestがランダムに割り当てた実際のポート番号。TestRestTemplateでURLを組み立てる際に使う
@@ -690,27 +692,35 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("業務で必要なため");
     }
 
-    // AP-141: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
+    // AP-141: 管理者は利用者情報を取得できる
     @Test
-    void ap141_利用者情報取得は管理者のみ() {
-        // ケース1: 管理者が一般ユーザーの情報を取得する（成功するはず）
-        ResponseEntity<UserResponse> adminResponse = restTemplate.exchange(
+    void ap141_管理者は利用者情報を取得できる() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
-        assertThat(adminResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(adminResponse.getBody().name()).isEqualTo("一般ユーザー");
 
-        // ケース2: 一般ユーザーが他人（管理者）の情報を取得しようとする（権限が無く失敗するはず）
-        ResponseEntity<String> generalResponse = restTemplate.exchange(
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().name()).isEqualTo("一般ユーザー");
+    }
+
+    // AP-141: 一般ユーザーは利用者情報を取得できない（403）
+    @Test
+    void ap141_一般ユーザーは利用者情報を取得できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
-        assertThat(generalResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 
-        // ケース3: 管理者が存在しないユーザーIDを取得しようとする（404になるはず）
-        ResponseEntity<String> notFoundResponse = restTemplate.exchange(
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // AP-141: 存在しない利用者の情報は取得できない（404）
+    @Test
+    void ap141_存在しない利用者の情報は取得できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/9999"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
-        assertThat(notFoundResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     // AP-142: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
@@ -796,27 +806,30 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("一般枠");
     }
 
-    // AP-131: お気に入り総数取得は管理者のみ実行できる
+    // AP-131: 管理者はお気に入りの総数を取得できる
     @Test
-    void ap131_お気に入り総数取得は管理者のみ() {
+    void ap131_管理者はお気に入り総数を取得できる() {
         Event event = openEvent();
         restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
                 FavoriteResponse.class);
 
-        // 管理者としてお気に入り総数取得APIを呼び出す
         ResponseEntity<CountResponse> response = restTemplate.exchange(
                 url("/api/favorites/count"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CountResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().count()).isEqualTo(1L);
+    }
 
-        // 一般ユーザーが同じAPIを呼ぶと権限が無く拒否されることを確認する
-        ResponseEntity<String> forbidden = restTemplate.exchange(
+    // AP-131: 一般ユーザーはお気に入りの総数を取得できない（403）
+    @Test
+    void ap131_一般ユーザーはお気に入り総数を取得できない() {
+        ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/favorites/count"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
-        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     // AP-132: コメント総数は論理削除済みを除外し、管理者のみ実行できる
@@ -1089,23 +1102,29 @@ class ApiIntegrationTest {
         assertThat(response.getBody().roleName()).isEqualTo("管理者");
     }
 
-    // AP-010（R-22）: パスワードが一致しない場合と、メールアドレスが未登録の場合は、同じ401・同じメッセージになる
+    // AP-010（R-22）: パスワードが一致しない場合は401になり、応答にパスワードが含まれない
     @Test
-    void ap010_パスワード不一致と未登録は同じ401になる() {
-        ResponseEntity<String> wrongPassword = restTemplate.exchange(
+    void ap010_パスワードが一致しなければ401になる() {
+        ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/login"), HttpMethod.POST,
                 new HttpEntity<>(Map.of("email", "admin@example.com", "password", "Wrong1234")), String.class);
-        ResponseEntity<String> unknownEmail = restTemplate.exchange(
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).contains(LOGIN_FAILED_MESSAGE);
+        // 応答にパスワードやハッシュ値が含まれないことを確認する
+        assertThat(response.getBody()).doesNotContain("Wrong1234").doesNotContain("password");
+    }
+
+    // AP-010（R-22）: メールアドレスが未登録の場合も、パスワードの不一致と同じ401・同じメッセージになる
+    // （どちらの理由で失敗したかを区別できないようにするため）
+    @Test
+    void ap010_未登録のメールアドレスはパスワード不一致と同じ401になる() {
+        ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/login"), HttpMethod.POST,
                 new HttpEntity<>(Map.of("email", "nobody@example.com", "password", PASSWORD)), String.class);
 
-        assertThat(wrongPassword.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(unknownEmail.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        // どちらの理由で失敗したかを区別できないよう、メッセージが同一であることを確認する
-        assertThat(wrongPassword.getBody()).contains("ログインできませんでした");
-        assertThat(unknownEmail.getBody()).contains("ログインできませんでした");
-        // レスポンスにパスワードやハッシュ値が含まれないことを確認する
-        assertThat(wrongPassword.getBody()).doesNotContain("Wrong1234").doesNotContain("password");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).contains(LOGIN_FAILED_MESSAGE);
     }
 
     // AP-010（E-V-024）: パスワードが未入力の場合は入力エラー（400）になる
@@ -1119,18 +1138,32 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("\"field\":\"password\"");
     }
 
-    // AP-011（E-V-025）: パスワードが条件（8文字以上、英字と数字を含む）を満たさない場合は登録できない
+    // AP-011（E-V-025）: パスワードが8文字未満の場合は登録できない
     @Test
-    void ap011_条件を満たさないパスワードでは登録できない() {
-        for (String weak : new String[] {"Short1", "onlyletters", "12345678"}) {
-            ResponseEntity<String> response = restTemplate.exchange(
-                    url("/api/users"), HttpMethod.POST,
-                    new HttpEntity<>(Map.of("name", "弱いパスワード", "email", "weak@example.com", "password", weak)),
-                    String.class);
+    void ap011_8文字未満のパスワードでは登録できない() {
+        assertWeakPasswordRejected("Short1");
+    }
 
-            assertThat(response.getStatusCode()).as(weak).isEqualTo(HttpStatus.BAD_REQUEST);
-        }
-        // いずれも登録されていないことをDBで確認する
+    // AP-011（E-V-025）: パスワードが英字だけの場合は登録できない
+    @Test
+    void ap011_英字だけのパスワードでは登録できない() {
+        assertWeakPasswordRejected("onlyletters");
+    }
+
+    // AP-011（E-V-025）: パスワードが数字だけの場合は登録できない
+    @Test
+    void ap011_数字だけのパスワードでは登録できない() {
+        assertWeakPasswordRejected("12345678");
+    }
+
+    // 条件を満たさないパスワードで利用者登録を試み、400で拒否され、利用者が登録されていないことを確認する
+    private void assertWeakPasswordRejected(String weakPassword) {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("name", "弱いパスワード", "email", "weak@example.com", "password", weakPassword)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE email = ?", Integer.class, "weak@example.com")).isZero();
     }
@@ -1152,24 +1185,50 @@ class ApiIntegrationTest {
         assertThat(new BCryptPasswordEncoder().matches(PASSWORD, stored)).isTrue();
     }
 
-    // AP-012: パスワードを変更すると、新しいパスワードでログインでき、古いパスワードではログインできなくなる
+    // AP-012（R-23）: 現在のパスワードが正しければ変更でき、保存されているハッシュ値が変わる
     @Test
-    void ap012_パスワードを変更すると新しいパスワードでログインできる() {
-        ResponseEntity<Void> change = restTemplate.exchange(
-                url("/api/my/password"), HttpMethod.PUT,
-                new HttpEntity<>(Map.of("currentPassword", PASSWORD, "newPassword", "NewPass5678"),
-                        authHeaders(GENERAL_USER_ID)), Void.class);
-        assertThat(change.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    void ap012_現在のパスワードが正しければ変更できる() {
+        String before = jdbcTemplate.queryForObject(
+                "SELECT password_hash FROM users WHERE id = ?", String.class, GENERAL_USER_ID);
 
-        ResponseEntity<String> withNew = restTemplate.exchange(
+        ResponseEntity<Void> change = changePassword(PASSWORD, "NewPass5678");
+
+        assertThat(change.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        String after = jdbcTemplate.queryForObject(
+                "SELECT password_hash FROM users WHERE id = ?", String.class, GENERAL_USER_ID);
+        assertThat(after).isNotEqualTo(before);
+    }
+
+    // AP-012: パスワードの変更後は、新しいパスワードでログインできる
+    @Test
+    void ap012_変更後は新しいパスワードでログインできる() {
+        changePassword(PASSWORD, "NewPass5678");
+
+        ResponseEntity<String> login = restTemplate.exchange(
                 url("/api/login"), HttpMethod.POST,
                 new HttpEntity<>(Map.of("email", "general@example.com", "password", "NewPass5678")), String.class);
-        ResponseEntity<String> withOld = restTemplate.exchange(
+
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    // AP-012: パスワードの変更後は、古いパスワードではログインできない
+    @Test
+    void ap012_変更後は古いパスワードでログインできない() {
+        changePassword(PASSWORD, "NewPass5678");
+
+        ResponseEntity<String> login = restTemplate.exchange(
                 url("/api/login"), HttpMethod.POST,
                 new HttpEntity<>(Map.of("email", "general@example.com", "password", PASSWORD)), String.class);
 
-        assertThat(withNew.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(withOld.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    // 一般ユーザー（GENERAL_USER_ID）としてパスワード変更APIを呼び出すヘルパーメソッド
+    private ResponseEntity<Void> changePassword(String currentPassword, String newPassword) {
+        return restTemplate.exchange(
+                url("/api/my/password"), HttpMethod.PUT,
+                new HttpEntity<>(Map.of("currentPassword", currentPassword, "newPassword", newPassword),
+                        authHeaders(GENERAL_USER_ID)), Void.class);
     }
 
     // AP-012（E-B-023）: 現在のパスワードが一致しない場合は変更できない

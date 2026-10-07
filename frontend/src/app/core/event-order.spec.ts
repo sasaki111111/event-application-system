@@ -28,20 +28,37 @@ describe('event-order', () => {
     expect(moveHeldEventsLast(events, now).map((e) => e.id)).toEqual([2, 4, 1, 3]);
   });
 
-  it('moveHeldEventsLast: 開催済みが無ければ順序は変わらず、元の配列は変更しない', () => {
+  it('moveHeldEventsLast: 開催済みが無ければ順序は変わらない', () => {
     const events = [
       { id: 2, startAt: '2026-11-01T10:00:00' },
       { id: 4, startAt: '2026-10-20T10:00:00' },
     ];
 
-    const result = moveHeldEventsLast(events, now);
-
-    expect(result.map((e) => e.id)).toEqual([2, 4]);
-    expect(result).not.toBe(events);
+    expect(moveHeldEventsLast(events, now).map((e) => e.id)).toEqual([2, 4]);
   });
 
-  it('moveHeldEventsLast: すべて開催済み・空の配列でも動作する', () => {
-    expect(moveHeldEventsLast([{ id: 1, startAt: '2020-01-01T10:00:00' }], now).map((e) => e.id)).toEqual([1]);
+  it('moveHeldEventsLast: 渡された配列そのものは変更せず、新しい配列を返す', () => {
+    const events = [
+      { id: 1, startAt: '2026-10-01T10:00:00' },
+      { id: 2, startAt: '2026-11-01T10:00:00' },
+    ];
+
+    const result = moveHeldEventsLast(events, now);
+
+    expect(result).not.toBe(events);
+    expect(events.map((e) => e.id)).toEqual([1, 2]);
+  });
+
+  it('moveHeldEventsLast: すべて開催済みの場合は順序を変えずに返す', () => {
+    const events = [
+      { id: 1, startAt: '2020-01-01T10:00:00' },
+      { id: 3, startAt: '2019-01-01T10:00:00' },
+    ];
+
+    expect(moveHeldEventsLast(events, now).map((e) => e.id)).toEqual([1, 3]);
+  });
+
+  it('moveHeldEventsLast: 空の配列を渡すと空の配列を返す', () => {
     expect(moveHeldEventsLast([], now)).toEqual([]);
   });
 });

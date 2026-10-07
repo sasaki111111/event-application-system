@@ -567,12 +567,12 @@ class ApplicationServiceTest {
         assertThat(response.checkedInAt()).isEqualTo(application.getCheckedInAt());
     }
 
-    // 異常系（要件定義書§8 E8）: 受付済以外（キャンセル待ち・キャンセル済）の申込はチェックインできない
+    // 異常系（R-06）: キャンセル待ちの申込はチェックインできない
     @Test
-    void checkIn_異常系_受付済以外はチェックインできない() {
+    void checkIn_異常系_キャンセル待ちの申込はチェックインできない() {
         User user = mock(User.class);
         Event event = mock(Event.class);
-        // ステータスを「キャンセル待ち」にした申込を用意する（受付済ではない）
+        // 申込状況を「キャンセル待ち」にした申込を用意する（受付済ではない）
         Application application = new Application(user, event, ApplicationStatus.WAITLISTED);
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
 
@@ -581,6 +581,21 @@ class ApplicationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("受付済の申込のみチェックインできます");
         // 拒否されたので、チェックイン日時は設定されていない（nullのまま）ことを確認する
+        assertThat(application.getCheckedInAt()).isNull();
+    }
+
+    // 異常系（R-06）: キャンセル済の申込はチェックインできない
+    @Test
+    void checkIn_異常系_キャンセル済の申込はチェックインできない() {
+        User user = mock(User.class);
+        Event event = mock(Event.class);
+        // 申込状況を「キャンセル済」にした申込を用意する
+        Application application = new Application(user, event, ApplicationStatus.CANCELLED);
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> applicationService.checkIn(100L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("受付済の申込のみチェックインできます");
         assertThat(application.getCheckedInAt()).isNull();
     }
 

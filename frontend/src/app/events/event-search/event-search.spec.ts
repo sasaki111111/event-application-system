@@ -64,7 +64,25 @@ describe('EventSearch', () => {
   });
 
   // onDateFromInput()/onDateToInput()で指定した開催日の範囲内のイベントだけに絞り込まれることを確認
-  it('開催日（から・まで）で絞り込む', () => {
+  it('開催日（から）で絞り込む', () => {
+    const component = createComponent() as any;
+
+    component.onDateFromInput('2027-02-01');
+
+    // 2027-02-01以降に開催されるイベント（3: 02-02、1: 03-03）が開催日時順に残る
+    expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([3, 1]);
+  });
+
+  it('開催日（まで）で絞り込む', () => {
+    const component = createComponent() as any;
+
+    component.onDateToInput('2027-02-28');
+
+    // 2027-02-28以前に開催されるイベント（2: 01-01、3: 02-02）が開催日時順に残る
+    expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 3]);
+  });
+
+  it('開催日（から）と（まで）の両方を指定すると、その範囲で絞り込む', () => {
     const component = createComponent() as any;
 
     component.onDateFromInput('2027-02-01');
@@ -84,6 +102,30 @@ describe('EventSearch', () => {
   });
 
   // onSortOrderChange('accepted_desc')で、申込数（acceptedCount）の降順に並び替わることを確認
+  // 開催済み（開催日時が過去）のイベントは、開催日時が最も古くても検索結果の末尾に並ぶことを確認
+  it('並び替え: 開催済みのイベントは検索結果の末尾に並ぶ', () => {
+    const component = createComponent() as any;
+    component.events.set([
+      makeEvent({ id: 9, name: '開催済みの読書会', startAt: '2020-01-01T10:00:00', open: false }),
+      ...events,
+    ]);
+
+    expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1, 9]);
+  });
+
+  // キーワードで絞り込んだ結果の中でも、開催済みのイベントは末尾に並ぶことを確認
+  it('並び替え: 絞り込んだ結果の中でも開催済みのイベントは末尾に並ぶ', () => {
+    const component = createComponent() as any;
+    component.events.set([
+      makeEvent({ id: 9, name: '開催済みの読書会', startAt: '2020-01-01T10:00:00', open: false }),
+      ...events,
+    ]);
+
+    component.onKeywordInput('読書会');
+
+    expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 9]);
+  });
+
   it('並び替え: 申込数の多い順', () => {
     const component = createComponent() as any;
 

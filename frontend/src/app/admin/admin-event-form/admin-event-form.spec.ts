@@ -112,14 +112,22 @@ describe('AdminEventForm', () => {
     expect(component.form.valid).toBe(true);
   });
 
-  it('参加区分: addTicketTypeで行が増え、removeTicketTypeで減る', () => {
+  it('参加区分: addTicketTypeで行が増える', () => {
     const component = createComponent(null) as any;
 
     component.addTicketType();
     component.addTicketType();
+
     expect(component.ticketTypesArray.length).toBe(2);
+  });
+
+  it('参加区分: removeTicketTypeで行が減る', () => {
+    const component = createComponent(null) as any;
+    component.addTicketType();
+    component.addTicketType();
 
     component.removeTicketType(0);
+
     expect(component.ticketTypesArray.length).toBe(1);
   });
 

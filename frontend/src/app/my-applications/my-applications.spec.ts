@@ -63,12 +63,17 @@ describe('MyApplications', () => {
     favoriteStore = { invalidate: vi.fn() };
   });
 
-  it('初期表示で申込一覧・お気に入り一覧を取得する', () => {
+  it('初期表示で申込一覧を取得する', () => {
     const component = createComponent() as any;
 
     expect(component.applications()).toEqual([application]);
-    expect(component.favorites()).toEqual([favorite]);
     expect(component.loading()).toBe(false);
+  });
+
+  it('初期表示でお気に入り一覧を取得する', () => {
+    const component = createComponent() as any;
+
+    expect(component.favorites()).toEqual([favorite]);
     expect(component.favoritesLoading()).toBe(false);
   });
 

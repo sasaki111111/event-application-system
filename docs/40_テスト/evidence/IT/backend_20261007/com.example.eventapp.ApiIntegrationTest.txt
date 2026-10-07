@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.example.eventapp.ApiIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 63, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.80 s -- in com.example.eventapp.ApiIntegrationTest
