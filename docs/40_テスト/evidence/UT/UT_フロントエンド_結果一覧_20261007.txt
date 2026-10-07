@@ -1,0 +1,77 @@
+単体テスト（フロントエンド）実行結果
+============================================================
+実行日時      : 2026-10-07 17:01:03
+実行コマンド  : frontend で npm test（ng test --watch=false --reporters=verbose）
+合計          : 65件（成功 65件、失敗・記録なし 0件）
+元の記録      : このファイルは、次の実行レポートからテストケースごとの結果を抜き出して一覧にしたものである。
+                UT/frontend_20261007.txt（npm test の出力そのもの）
+見方          : 「結果」がOKの行は、右のテストが実行レポート上で成功していることを示す。
+                テストIDは docs/40_テスト のテスト仕様書・44_テスト結果表.xlsx のIDと対応する。
+
+テストID          結果         時間  テスト（メソッド名、またはファイル > テスト名）
+----------------------------------------------------------------------------------------------------
+UT-FORM-N01    OK      135ms  admin/admin-event-form/admin-event-form.spec.ts > 新規登録モード: idが無ければeditModeはfalse
+UT-FORM-N02    OK       22ms  admin/admin-event-form/admin-event-form.spec.ts > 編集モード: idがあればイベント詳細を取得しフォームへ反映する
+UT-FORM-N03    OK       14ms  admin/admin-event-form/admin-event-form.spec.ts > 参加区分: addTicketTypeで行が増える
+UT-FORM-N04    OK       12ms  admin/admin-event-form/admin-event-form.spec.ts > 参加区分: removeTicketTypeで行が減る
+UT-FORM-N05    OK       12ms  admin/admin-event-form/admin-event-form.spec.ts > 参加区分の定員合計が正しく計算される
+UT-FORM-N06    OK       10ms  admin/admin-event-form/admin-event-form.spec.ts > 複製元がある場合、開催日時・申込締切を除く項目が複写される
+UT-FORM-N07    OK       11ms  admin/admin-event-form/admin-event-form.spec.ts > 複製元が無い場合は何も複写されない
+UT-FORM-N08    OK       15ms  admin/admin-event-form/admin-event-form.spec.ts > 保存成功時はイベント一覧へ遷移する
+UT-FORM-E01    OK       16ms  admin/admin-event-form/admin-event-form.spec.ts > バリデーション: 必須項目が未入力の場合form.invalid
+UT-FORM-E02    OK       15ms  admin/admin-event-form/admin-event-form.spec.ts > 保存時に入力値エラー（400）が返るとfieldErrorsに反映される
+UT-LIST-N01    OK      167ms  events/event-list/event-list.spec.ts > 初期表示でイベント一覧を取得する
+UT-LIST-N02    OK       38ms  events/event-list/event-list.spec.ts > 並び替え: 既定は開催日時昇順
+UT-LIST-N03    OK       16ms  events/event-list/event-list.spec.ts > 並び替え: 申込数の多い順
+UT-LIST-N04    OK       15ms  events/event-list/event-list.spec.ts > 並び替え: お気に入り数の多い順
+UT-LIST-N05    OK       15ms  events/event-list/event-list.spec.ts > 並び替え: 申込締切が近い順
+UT-LIST-N06    OK       13ms  events/event-list/event-list.spec.ts > 並び替え: 開催済みのイベントは末尾に並ぶ（既定の開催日時順）
+UT-LIST-N07    OK       11ms  events/event-list/event-list.spec.ts > 並び替え: 申込数の多い順でも開催済みのイベントは末尾に並ぶ
+UT-LIST-N08    OK       12ms  events/event-list/event-list.spec.ts > 並び替え: 受付終了でも開催前のイベントは末尾に移動しない
+UT-LIST-N09    OK       13ms  events/event-list/event-list.spec.ts > 詳細展開: toggleExpandでイベント詳細を取得する
+UT-LIST-N10    OK        9ms  events/event-list/event-list.spec.ts > 詳細展開: 同じ行をもう一度押すと閉じる
+UT-LIST-N11    OK       11ms  events/event-list/event-list.spec.ts > 申込成功で申込完了画面へ遷移する
+UT-LIST-N12    OK        9ms  events/event-list/event-list.spec.ts > お気に入りトグルでfavoriteStore.toggleを呼ぶ
+UT-LIST-N13    OK        8ms  events/event-list/event-list.spec.ts > お気に入り登録でお気に入り数が即座に1増える
+UT-LIST-N14    OK        8ms  events/event-list/event-list.spec.ts > お気に入り解除でお気に入り数が即座に1減る
+UT-LIST-N15    OK        9ms  events/event-list/event-list.spec.ts > 管理者の場合isAdminがtrueになる
+UT-SRCH-N01    OK      184ms  events/event-search/event-search.spec.ts > 初期状態では開催日時昇順で全件を返す
+UT-SRCH-N02    OK       16ms  events/event-search/event-search.spec.ts > キーワードでイベント名を絞り込む
+UT-SRCH-N03    OK       11ms  events/event-search/event-search.spec.ts > キーワードで場所を絞り込む（大文字小文字を区別しない）
+UT-SRCH-N04    OK       12ms  events/event-search/event-search.spec.ts > 開催日（から）で絞り込む
+UT-SRCH-N05    OK       10ms  events/event-search/event-search.spec.ts > 開催日（まで）で絞り込む
+UT-SRCH-N06    OK        9ms  events/event-search/event-search.spec.ts > 開催日（から）と（まで）の両方を指定すると、その範囲で絞り込む
+UT-SRCH-N07    OK        9ms  events/event-search/event-search.spec.ts > 条件をクリアすると絞り込みが解除される
+UT-SRCH-N08    OK        9ms  events/event-search/event-search.spec.ts > 並び替え: 開催済みのイベントは検索結果の末尾に並ぶ
+UT-SRCH-N09    OK       17ms  events/event-search/event-search.spec.ts > 並び替え: 絞り込んだ結果の中でも開催済みのイベントは末尾に並ぶ
+UT-SRCH-N10    OK       11ms  events/event-search/event-search.spec.ts > 並び替え: 申込数の多い順
+UT-SRCH-N11    OK        8ms  events/event-search/event-search.spec.ts > 並び替え: お気に入り数の多い順
+UT-SRCH-N12    OK       10ms  events/event-search/event-search.spec.ts > 並び替え: 申込締切が近い順
+UT-MY-N01      OK      186ms  my-applications/my-applications.spec.ts > 初期表示で申込一覧を取得する
+UT-MY-N02      OK       17ms  my-applications/my-applications.spec.ts > 初期表示でお気に入り一覧を取得する
+UT-MY-N03      OK       17ms  my-applications/my-applications.spec.ts > タブ切替でactiveTabが切り替わる
+UT-MY-N04      OK       20ms  my-applications/my-applications.spec.ts > キャンセル確認でOKした場合、APIを呼び一覧を再取得する
+UT-MY-N05      OK       13ms  my-applications/my-applications.spec.ts > キャンセル確認でキャンセルした場合、APIを呼ばない
+UT-MY-N06      OK       11ms  my-applications/my-applications.spec.ts > お気に入り解除でAPIを呼び、ストアを無効化してから一覧を再取得する
+UT-MY-E01      OK       15ms  my-applications/my-applications.spec.ts > 申込一覧の取得に失敗した場合はエラーメッセージを表示する
+UT-ORD-N01     OK        6ms  core/event-order.spec.ts > isHeld: 開催日時が現在時刻より前なら開催済み
+UT-ORD-N02     OK        1ms  core/event-order.spec.ts > isHeld: 開催日時が現在時刻ちょうどなら開催済み（境界）
+UT-ORD-N03     OK        1ms  core/event-order.spec.ts > isHeld: 開催日時が現在時刻より後なら開催前
+UT-ORD-N04     OK        2ms  core/event-order.spec.ts > moveHeldEventsLast: 開催済みを末尾に移し、それぞれの中の順序は保つ
+UT-ORD-N05     OK        1ms  core/event-order.spec.ts > moveHeldEventsLast: 開催済みが無ければ順序は変わらない
+UT-ORD-N06     OK        2ms  core/event-order.spec.ts > moveHeldEventsLast: 渡された配列そのものは変更せず、新しい配列を返す
+UT-ORD-N07     OK        1ms  core/event-order.spec.ts > moveHeldEventsLast: すべて開催済みの場合は順序を変えずに返す
+UT-ORD-N08     OK        1ms  core/event-order.spec.ts > moveHeldEventsLast: 空の配列を渡すと空の配列を返す
+UT-TREE-N01    OK        6ms  core/comment-api.spec.ts > 親を持たないコメントはすべてルートになる
+UT-TREE-N02    OK        1ms  core/comment-api.spec.ts > parentCommentIdで指定した親の子として組み立てる
+UT-TREE-N03    OK        1ms  core/comment-api.spec.ts > 返信の階層数に制限が無く、何階層でも入れ子にできる
+UT-TREE-N04    OK        2ms  core/comment-api.spec.ts > 1つの親に複数の返信がある場合、すべて子として並ぶ
+UT-TREE-N05    OK        1ms  core/comment-api.spec.ts > 削除済み（deleted: true）のコメントも、返信の親としてそのままツリーに残る
+UT-AUTHG-N01   OK       49ms  core/auth-guard.spec.ts > ログイン中は通過させる（true）
+UT-AUTHG-E01   OK       11ms  core/auth-guard.spec.ts > 未ログインの場合はログイン画面へのUrlTreeを返す
+UT-ADMG-N01    OK       39ms  core/admin-guard.spec.ts > 管理者（利用者区分コード＝管理者）は通過させる（true）
+UT-ADMG-E01    OK       12ms  core/admin-guard.spec.ts > 一般利用者（利用者区分コード＝一般利用者）はイベント一覧へのUrlTreeを返す（利用者区分コード基準の判定）
+UT-HTTP-E01    OK       42ms  core/http-error-interceptor.spec.ts > 401を受け取るとログイン状態を解除してログイン画面へ遷移し、エラーは呼び出し元にも伝える
+UT-HTTP-E02    OK       12ms  core/http-error-interceptor.spec.ts > ログインAPIの401（メールアドレス・パスワードの誤り）ではログイン状態を変えず遷移もしない
+UT-HTTP-E03    OK       11ms  core/http-error-interceptor.spec.ts > 403（権限エラー）ではログイン状態を変えず遷移もしない
+UT-HTTP-E04    OK       10ms  core/http-error-interceptor.spec.ts > サーバーに接続できない場合（status 0）は共通のメッセージに置き換える
