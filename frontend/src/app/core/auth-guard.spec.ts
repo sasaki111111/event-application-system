@@ -1,15 +1,16 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。auth-guard.tsの単体テスト。
-// TestBedの使い方はadmin-guard.spec.tsと同様（DummyUserStoreのログイン状態を変えて、
+// TestBedの使い方はadmin-guard.spec.tsと同様（LoginUserStoreのログイン状態を変えて、
 // authGuardの戻り値（true／UrlTree）を確認する）。
 // TestBed: Angularのテスト用DIコンテナ
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 // テスト対象の関数
 import { authGuard } from './auth-guard';
-import { DummyUserStore } from './dummy-user-store';
+import { LoginUserStore } from './login-user-store';
+import { ROLE_CODE } from './codes';
 
 describe('authGuard', () => {
-  let dummyUserStore: DummyUserStore;
+  let loginUserStore: LoginUserStore;
   let router: Router;
 
   beforeEach(() => {
@@ -20,13 +21,13 @@ describe('authGuard', () => {
       providers: [provideRouter([])],
     });
     // 組み立てたDIコンテナから、テストで使うサービスのインスタンスを取得する
-    dummyUserStore = TestBed.inject(DummyUserStore);
+    loginUserStore = TestBed.inject(LoginUserStore);
     router = TestBed.inject(Router);
   });
 
   it('ログイン中は通過させる（true）', () => {
     // 一般利用者としてログイン状態にする
-    dummyUserStore.login('1', 'general');
+    loginUserStore.login('1', ROLE_CODE.GENERAL);
 
     // インジェクションコンテキストの中でauthGuardを実行する（引数はこのガードが使わないダミー）
     const result = TestBed.runInInjectionContext(() => authGuard(null as never, null as never));

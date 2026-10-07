@@ -181,7 +181,7 @@ describe('AdminEventForm', () => {
     // mockReturnValueでcreate()の戻り値を「400エラーを返すObservable」に差し替え、
     // サーバー側バリデーションエラーが発生した状況を再現する
     eventApi.create.mockReturnValue(
-      throwError(() => ({ status: 400, error: { errors: [{ field: 'name', message: '名前を入力してください' }] } })),
+      throwError(() => ({ status: 400, error: { errors: [{ field: 'name', message: 'イベント名を入力してください' }] } })),
     );
     const component = createComponent(null) as any;
     component.form.patchValue({
@@ -194,7 +194,7 @@ describe('AdminEventForm', () => {
 
     component.submit();
 
-    expect(component.fieldErrors()).toEqual([{ field: 'name', message: '名前を入力してください' }]);
+    expect(component.fieldErrors()).toEqual([{ field: 'name', message: 'イベント名を入力してください' }]);
     expect(component.saving()).toBe(false);
   });
 });

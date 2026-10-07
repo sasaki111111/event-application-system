@@ -7,11 +7,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CodeNameResolver;
 import com.example.eventapp.common.CurrentUser;
 import com.example.eventapp.dto.EventReportResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.RoleCode;
 import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.entity.User;
 import com.example.eventapp.repository.ApplicationRepository;
@@ -26,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * JUnit5とMockitoを使用する。Repository（DBアクセスを担うクラス）はすべてモック化（偽装）し、
  * 本物のDBに接続せずに「充足率の丸め」「CSVのエスケープ」「CSVインジェクション対策」等だけを検証する。
  */
-// 実行環境: サーバー側（JVM）。docs/12_テスト仕様書.md 12-3 UT-RPT-01〜07に対応する。
+// 実行環境: サーバー側（JVM）。docs/old/12_テスト仕様書.md 12-3 UT-RPT-01〜07に対応する。
 class ReportServiceTest {
 
     private EventRepository eventRepository;
@@ -45,9 +47,9 @@ class ReportServiceTest {
         eventRepository = mock(EventRepository.class);
         applicationRepository = mock(ApplicationRepository.class);
         authContext = mock(AuthContext.class);
-        // 操作ログ（docs/11_ログ設計書.md 11-5）出力のため、toCsv()はログイン中管理者を参照する
-        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", "admin"));
-        reportService = new ReportService(eventRepository, applicationRepository, authContext);
+        // 操作ログ（docs/30_詳細設計/33_共通詳細設計書.md）出力のため、toCsv()はログイン中管理者を参照する
+        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", RoleCode.ADMIN));
+        reportService = new ReportService(eventRepository, applicationRepository, authContext, codeNameResolver());
     }
 
     // テスト用の「ID・名前・定員・受付済数」を持つEventのモックを組み立てるヘルパーメソッド
@@ -61,7 +63,7 @@ class ReportServiceTest {
     }
 
     // テスト用の申込（CSVの1行分）のモックを組み立てるヘルパーメソッド。ticketTypeNameがnullなら区分なし
-    private Application application(String eventName, String userName, String status, String extraAnswer,
+    private Application application(String eventName, String userName, Integer status, String extraAnswer,
             String ticketTypeName) {
         Event event = mock(Event.class);
         when(event.getName()).thenReturn(eventName);
@@ -206,5 +208,17 @@ class ReportServiceTest {
                 application("A=B", "a-b@example", ApplicationStatus.ACCEPTED, "1+1", null)));
 
         assertThat(lines[1]).isEqualTo("A=B,a-b@example," + APPLIED_AT + ",受付済,1+1,");
+    }
+
+    // 区分値の表示名（コードマスタの内容）を返すCodeNameResolverのモックを組み立てるヘルパーメソッド。
+    // 単体テストではDBに接続しないため、コードマスタの初期データと同じ対応をここで定義する
+    private static CodeNameResolver codeNameResolver() {
+        CodeNameResolver resolver = mock(CodeNameResolver.class);
+        when(resolver.roleName(RoleCode.GENERAL)).thenReturn("一般利用者");
+        when(resolver.roleName(RoleCode.ADMIN)).thenReturn("管理者");
+        when(resolver.statusName(ApplicationStatus.ACCEPTED)).thenReturn("受付済");
+        when(resolver.statusName(ApplicationStatus.WAITLISTED)).thenReturn("キャンセル待ち");
+        when(resolver.statusName(ApplicationStatus.CANCELLED)).thenReturn("キャンセル済");
+        return resolver;
     }
 }

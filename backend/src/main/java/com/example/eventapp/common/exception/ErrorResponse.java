@@ -8,7 +8,7 @@ import java.util.List;
  * （Data Transfer Object＝データを受け渡すためだけの入れ物クラス）。
  * GlobalExceptionHandlerがこのクラスのインスタンスを組み立て、JSONに変換してHTTPレスポンスとして返す。
  */
-// 実行環境: サーバー側（JVM）。docs/03_API設計書.md 2.3節の共通エラーレスポンス形式。
+// 実行環境: サーバー側（JVM）。docs/30_詳細設計/31_API詳細設計書.mdの共通エラーレスポンス形式。
 public record ErrorResponse(
         OffsetDateTime timestamp,
         int status,

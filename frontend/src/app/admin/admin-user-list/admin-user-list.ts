@@ -1,9 +1,10 @@
-// 実行環境: ブラウザ側。SC-13 利用者管理画面（/admin/users）。
-// 登録済み利用者の一覧（AP-03）と、管理者アカウント登録フォーム（AP-25）を提供する。
+// 実行環境: ブラウザ側。SC-140 利用者管理画面（/admin/users）。
+// 登録済み利用者の一覧（AP-140）と、管理者アカウント登録フォーム（AP-145）を提供する。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { UserApiService, UserSummary } from '../../core/user-api';
+import { ROLE_CODE } from '../../core/codes';
 
 interface FieldError {
   field: string;
@@ -17,7 +18,7 @@ interface FieldError {
   styleUrl: './admin-user-list.css',
 })
 /**
- * SC-13 利用者管理画面（/admin/users）を担当するComponent。
+ * SC-140 利用者管理画面（/admin/users）を担当するComponent。
  * 登録済み利用者の一覧表示と、管理者アカウントの新規登録フォームを1画面で提供する。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
@@ -26,13 +27,17 @@ interface FieldError {
  * - 画面遷移: 一覧の各行の利用者名（[routerLink]）から /admin/users/:id（AdminUserDetail）へ遷移する。
  */
 export class AdminUserList implements OnInit {
+  // テンプレートで利用者区分コードを判定するために公開する
+  protected readonly RoleCode = ROLE_CODE;
   protected readonly users = signal<UserSummary[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
 
-  // SC-13: 管理者アカウント登録フォーム（AP-25）
+  // SC-140: 管理者アカウント登録フォーム（AP-145）
   protected readonly registerName = signal('');
   protected readonly registerEmail = signal('');
+  // 管理者アカウント登録フォームの初期パスワード入力値
+  protected readonly registerPassword = signal('');
   protected readonly registering = signal(false);
   protected readonly registerErrorMessage = signal<string | null>(null);
   protected readonly registerFieldErrors = signal<FieldError[]>([]);
@@ -58,13 +63,18 @@ export class AdminUserList implements OnInit {
   }
 
   /** 指定した項目名（field）について、管理者登録フォームに表示すべきサーバー側エラーを返す（無ければnull）。 */
+  /** 初期パスワード入力欄の入力値をsignalに反映する。 */
+  protected onRegisterPasswordInput(value: string): void {
+    this.registerPassword.set(value);
+  }
+
   protected registerFieldError(field: string): string | null {
     return this.registerFieldErrors().find((e) => e.field === field)?.message ?? null;
   }
 
   /**
    * 管理者登録フォームの送信（(submit)="...registerAdmin()"）から呼ばれる処理。
-   * AP-25: 既存の管理者のみ実行できる。作成されるのは常に管理者。
+   * AP-145: 既存の管理者のみ実行できる。作成されるのは常に管理者。
    * 名前・メールアドレスの入力チェックはサーバー側で行われ、400エラー＋errors配列が
    * 返ってきた場合にregisterFieldErrorsへ反映して各入力欄の下にエラー文を表示する。
    */
@@ -75,12 +85,13 @@ export class AdminUserList implements OnInit {
     this.registering.set(true);
 
     // 入力されている名前・メールアドレスで管理者登録APIを呼び出す
-    this.userApi.registerAdmin(this.registerName(), this.registerEmail()).subscribe({
+    this.userApi.registerAdmin(this.registerName(), this.registerEmail(), this.registerPassword()).subscribe({
       next: () => {
         // 成功したら登録中状態を解除し、入力欄を空に戻し、利用者一覧を再取得する
         this.registering.set(false);
         this.registerName.set('');
         this.registerEmail.set('');
+        this.registerPassword.set('');
         this.loadUsers();
       },
       error: (err) => {

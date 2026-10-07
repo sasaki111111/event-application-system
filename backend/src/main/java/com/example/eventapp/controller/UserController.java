@@ -5,6 +5,7 @@ import com.example.eventapp.common.CurrentUser;
 import com.example.eventapp.dto.FavoriteEventResponse;
 import com.example.eventapp.dto.LoginRequest;
 import com.example.eventapp.dto.MyApplicationResponse;
+import com.example.eventapp.dto.PasswordChangeRequest;
 import com.example.eventapp.dto.UserCommentResponse;
 import com.example.eventapp.dto.UserRegisterRequest;
 import com.example.eventapp.dto.UserResponse;
@@ -32,17 +33,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。ログイン（機能追加：メールアドレス方式）・
 // 軽い会員登録（機能追加）・ユーザー一覧（機能追加：管理者向けマスタ確認用）・
-// 管理者アカウント登録（AP-25、機能追加）・利用者詳細（AP-26〜28）・管理者権限の降格（AP-33）・利用者の匿名化（AP-34）。
+// 管理者アカウント登録（AP-145、機能追加）・利用者詳細（AP-141〜28）・管理者権限の降格（AP-146）・利用者の匿名化（AP-013）。
 // login・registerはログイン前（未認証）に呼ばれるため、認証不要（WebConfig／AuthInterceptor参照）。
-// @Operationの説明文はdocs/03_API設計書.mdの記載と一致させる（食い違いが出たら実装＝Swagger UIを正とし本書を見直す）
+// @Operationの説明文はdocs/30_詳細設計/31_API詳細設計書.mdの記載と一致させる（食い違いが出たら実装＝Swagger UIを正とし本書を見直す）
 /**
- * ログイン・利用者登録（AP-01・AP-02）、利用者一覧（AP-03）、管理者アカウント登録（AP-25）、
- * 利用者詳細（AP-26〜28・AP-31）、管理者権限の降格（AP-33）、利用者の匿名化／退会（AP-34）のHTTP入口を担当するController。
+ * ログイン・利用者登録（AP-010・AP-011）、利用者一覧（AP-140）、管理者アカウント登録（AP-145）、
+ * 利用者詳細（AP-141〜28・AP-144）、管理者権限の降格（AP-146）、利用者の匿名化／退会（AP-013）のHTTP入口を担当するController。
  * フロントエンドのcore/login-api.ts（LoginApiService）・core/user-api.ts（UserApiService）から呼ばれ、
  * 内部ではUserServiceのほか、ApplicationService・FavoriteService・EventCommentServiceの各メソッドにも処理を委譲する
- * （SC-15利用者詳細画面で、申込・お気に入り・コメントの履歴を他のAPIと共通のロジックで取得するため）。
+ * （SC-141利用者詳細画面で、申込・お気に入り・コメントの履歴を他のAPIと共通のロジックで取得するため）。
  */
-@Tag(name = "利用者", description = "ログイン・利用者登録・利用者一覧・管理者アカウント登録・利用者詳細・管理者権限の降格・利用者の匿名化（AP-01〜03, AP-25〜28, AP-33, AP-34）")
+@Tag(name = "利用者", description = "ログイン・利用者登録・利用者一覧・管理者アカウント登録・利用者詳細・管理者権限の降格・利用者の匿名化（AP-010〜03, AP-145〜28, AP-146, AP-013）")
 @RestController
 public class UserController {
 
@@ -66,48 +67,48 @@ public class UserController {
 
     // POST /api/login（認証不要）。メールアドレスからユーザーを特定し、そのロールを返す
     /**
-     * メールアドレスでログインする（AP-01）。フロントエンドのcore/login-api.ts（LoginApiService#login）から呼ばれ、
+     * メールアドレスでログインする（AP-010）。フロントエンドのcore/login-api.ts（LoginApiService#login）から呼ばれ、
      * UserService#loginに処理を委譲する。このAPIはWebConfig／AuthInterceptorの対象外として設定されており、
      * ログイン前（未認証）でも呼び出せる。
      *
      * @param request ログインに使うメールアドレス
      * @return ログインした利用者の情報
      */
-    @Operation(summary = "AP-01 ログイン",
-            description = "メールアドレスにより利用者を識別し、認証状態を確立する。パスワードによる照合は行わない。"
-                    + "登録済みでないメールアドレスの場合は401を返す。認証不要で呼び出せる。")
+    @Operation(summary = "AP-010 ログイン",
+            description = "メールアドレスとパスワードにより本人確認を行い、認証状態を確立する。"
+                    + "メールアドレスが未登録、退会済み、またはパスワードが一致しない場合は401を返す。認証不要で呼び出せる。")
     @PostMapping("/api/login")
     public UserResponse login(@Valid @RequestBody LoginRequest request) {
         // UserServiceに、リクエストのメールアドレスを渡してログイン処理を依頼し、その結果をそのまま返す
-        return userService.login(request.email());
+        return userService.login(request.email(), request.password());
     }
 
     // POST /api/users（認証不要。作成されるのは常に一般ユーザー）
     /**
-     * 新規利用者登録を行う（AP-02）。フロントエンドのcore/login-api.ts（LoginApiService#register）から呼ばれ、
+     * 新規利用者登録を行う（AP-011）。フロントエンドのcore/login-api.ts（LoginApiService#register）から呼ばれ、
      * UserService#registerに処理を委譲する。loginと同様、認証不要で呼び出せる。
      *
      * @param request 名前・メールアドレス
      * @return 登録された利用者の情報
      */
-    @Operation(summary = "AP-02 利用者登録",
+    @Operation(summary = "AP-011 利用者登録",
             description = "名前・メールアドレスによる新規利用者登録。作成されるのは常に一般利用者（管理者としての登録はできない）。"
                     + "登録後はそのままログイン状態となる。メールアドレスが登録済みの場合は400を返す。認証不要で呼び出せる。")
     @PostMapping("/api/users")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse register(@Valid @RequestBody UserRegisterRequest request) {
         // UserServiceに、名前・メールアドレスを渡して登録処理を依頼し、その結果をそのまま返す
-        return userService.register(request.name(), request.email());
+        return userService.register(request.name(), request.email(), request.password());
     }
 
     // GET /api/users（管理者のみ。マスタ確認用の一覧）
     /**
-     * 登録済み利用者の一覧を取得する（AP-03）。フロントエンドのcore/user-api.ts（UserApiService#list）から呼ばれ、
+     * 登録済み利用者の一覧を取得する（AP-140）。フロントエンドのcore/user-api.ts（UserApiService#list）から呼ばれ、
      * UserService#listに処理を委譲する。authContext.requireAdmin()により管理者以外は403になる。
      *
      * @return 利用者一覧（利用者ID昇順）
      */
-    @Operation(summary = "AP-03 利用者一覧取得",
+    @Operation(summary = "AP-140 利用者一覧取得",
             description = "登録済み利用者の一覧（利用者ID・名前・メールアドレス・利用者区分）を利用者ID昇順で取得する。管理者のみ実行できる。")
     @GetMapping("/api/users")
     public List<UserResponse> list() {
@@ -117,17 +118,17 @@ public class UserController {
         return userService.list();
     }
 
-    // AP-25 POST /api/admins（管理者のみ。作成されるのは常に管理者）
+    // AP-145 POST /api/admins（管理者のみ。作成されるのは常に管理者）
     // API設計書§2.5: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     /**
-     * 新たな管理者アカウントを登録する（AP-25）。フロントエンドのcore/user-api.ts（UserApiService#registerAdmin）
+     * 新たな管理者アカウントを登録する（AP-145）。フロントエンドのcore/user-api.ts（UserApiService#registerAdmin）
      * から呼ばれ、UserService#registerAdminに処理を委譲する。authContext.requireAdmin()により
      * 管理者以外は403になる（一般利用者は管理者アカウントを作れない）。
      *
      * @param request 名前・メールアドレス
      * @return 登録された管理者アカウントの情報
      */
-    @Operation(summary = "AP-25 管理者アカウント登録",
+    @Operation(summary = "AP-145 管理者アカウント登録",
             description = "既存の管理者が、名前・メールアドレスを指定して新たな管理者アカウントを登録する。作成されるのは常に管理者。"
                     + "一般利用者によるアクセスは403、メールアドレスが登録済みの場合は400を返す。管理者のみ実行できる。")
     @PostMapping("/api/admins")
@@ -138,20 +139,39 @@ public class UserController {
         // リクエスト内容を手動でバリデーションする（違反があれば、ここで例外が投げられる）
         validate(request);
         // UserServiceに、名前・メールアドレスを渡して管理者登録を依頼し、その結果をそのまま返す
-        return userService.registerAdmin(request.name(), request.email());
+        return userService.registerAdmin(request.name(), request.email(), request.password());
     }
 
-    // AP-26 GET /api/users/{id}（管理者のみ。SC-15利用者詳細の基本情報）
+    // AP-012 PUT /api/my/password（ログイン中の利用者本人のパスワードのみ変更できる）
     /**
-     * 指定した利用者の基本情報を取得する（AP-26）。フロントエンドのcore/user-api.ts（UserApiService#getById）
-     * から呼ばれ、UserService#getByIdに処理を委譲する。SC-15（利用者詳細）の表示に使う。
+     * ログイン中の利用者のパスワードを変更する（AP-012）。フロントエンドのcore/login-api.ts
+     * （LoginApiService#changePassword）から呼ばれ、UserService#changePasswordに処理を委譲する。
+     * 対象の利用者はリクエストで指定させず、認証情報（AuthContext）から特定する。
+     *
+     * @param request 現在のパスワード・新しいパスワード
+     */
+    @Operation(summary = "AP-012 パスワード変更",
+            description = "ログイン中の利用者本人のパスワードを変更する。現在のパスワードが一致しない場合は400を返す。"
+                    + "新しいパスワードは8〜72文字で、英字と数字をそれぞれ1文字以上含む必要がある。")
+    @PutMapping("/api/my/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@Valid @RequestBody PasswordChangeRequest request) {
+        // 認証情報から取り出したログイン中の利用者IDを対象として、UserServiceに変更を依頼する
+        userService.changePassword(authContext.getCurrentUser().userId(),
+                request.currentPassword(), request.newPassword());
+    }
+
+    // AP-141 GET /api/users/{id}（管理者のみ。SC-141利用者詳細の基本情報）
+    /**
+     * 指定した利用者の基本情報を取得する（AP-141）。フロントエンドのcore/user-api.ts（UserApiService#getById）
+     * から呼ばれ、UserService#getByIdに処理を委譲する。SC-141（利用者詳細）の表示に使う。
      *
      * @param id 対象利用者ID
      * @return 利用者の基本情報
      */
-    @Operation(summary = "AP-26 利用者情報取得（管理者用）",
+    @Operation(summary = "AP-141 利用者情報取得（管理者用）",
             description = "指定した利用者の基本情報（利用者ID・名前・メールアドレス・利用者区分）を取得する。"
-                    + "SC-15（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
+                    + "SC-141（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
     @GetMapping("/api/users/{id}")
     public UserResponse getUser(@PathVariable Long id) {
         // ログイン中の利用者が管理者かどうかを確認する（管理者でなければ、ここで例外が投げられる）
@@ -160,19 +180,19 @@ public class UserController {
         return userService.getById(id);
     }
 
-    // AP-27 GET /api/users/{id}/applications（管理者のみ。SC-15利用者詳細の申込一覧）
-    // Service層はAP-13（自分の申込一覧）と共通のmyApplications()をそのまま利用する
+    // AP-142 GET /api/users/{id}/applications（管理者のみ。SC-141利用者詳細の申込一覧）
+    // Service層はAP-031（自分の申込一覧）と共通のmyApplications()をそのまま利用する
     /**
-     * 指定した利用者の申込一覧を取得する（AP-27）。フロントエンドのcore/user-api.ts（UserApiService#applicationsOf）
+     * 指定した利用者の申込一覧を取得する（AP-142）。フロントエンドのcore/user-api.ts（UserApiService#applicationsOf）
      * から呼ばれる。{@code userService.getById(id)}で対象利用者の存在確認（存在しなければ404）をしたうえで、
-     * ApplicationService#myApplications（AP-13と共通）に処理を委譲する。
+     * ApplicationService#myApplications（AP-031と共通）に処理を委譲する。
      *
      * @param id 対象利用者ID
-     * @return 対象利用者の申込一覧（AP-13と同一形式）
+     * @return 対象利用者の申込一覧（AP-031と同一形式）
      */
-    @Operation(summary = "AP-27 利用者の申込一覧取得（管理者用）",
-            description = "指定した利用者の申込一覧（キャンセル済みを含む全件、AP-13と同一形式）を取得する。"
-                    + "SC-15（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
+    @Operation(summary = "AP-142 利用者の申込一覧取得（管理者用）",
+            description = "指定した利用者の申込一覧（キャンセル済みを含む全件、AP-031と同一形式）を取得する。"
+                    + "SC-141（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
     @GetMapping("/api/users/{id}/applications")
     public List<MyApplicationResponse> applicationsOf(@PathVariable Long id) {
         // ログイン中の利用者が管理者かどうかを確認する（管理者でなければ、ここで例外が投げられる）
@@ -183,18 +203,18 @@ public class UserController {
         return applicationService.myApplications(id);
     }
 
-    // AP-28 GET /api/users/{id}/favorites（管理者のみ。SC-15利用者詳細のお気に入り一覧）
-    // Service層はAP-18（自分のお気に入り一覧）と共通のmyFavorites()をそのまま利用する
+    // AP-143 GET /api/users/{id}/favorites（管理者のみ。SC-141利用者詳細のお気に入り一覧）
+    // Service層はAP-042（自分のお気に入り一覧）と共通のmyFavorites()をそのまま利用する
     /**
-     * 指定した利用者のお気に入り一覧を取得する（AP-28）。フロントエンドのcore/user-api.ts（UserApiService#favoritesOf）
-     * から呼ばれる。対象利用者の存在確認後、FavoriteService#myFavorites（AP-18と共通）に処理を委譲する。
+     * 指定した利用者のお気に入り一覧を取得する（AP-143）。フロントエンドのcore/user-api.ts（UserApiService#favoritesOf）
+     * から呼ばれる。対象利用者の存在確認後、FavoriteService#myFavorites（AP-042と共通）に処理を委譲する。
      *
      * @param id 対象利用者ID
-     * @return 対象利用者のお気に入り一覧（AP-18と同一形式）
+     * @return 対象利用者のお気に入り一覧（AP-042と同一形式）
      */
-    @Operation(summary = "AP-28 利用者のお気に入り一覧取得（管理者用）",
-            description = "指定した利用者のお気に入り一覧（AP-18と同一形式、削除済みイベントへの登録も含む）を取得する。"
-                    + "SC-15（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
+    @Operation(summary = "AP-143 利用者のお気に入り一覧取得（管理者用）",
+            description = "指定した利用者のお気に入り一覧（AP-042と同一形式、削除済みイベントへの登録も含む）を取得する。"
+                    + "SC-141（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
     @GetMapping("/api/users/{id}/favorites")
     public List<FavoriteEventResponse> favoritesOf(@PathVariable Long id) {
         // ログイン中の利用者が管理者かどうかを確認する（管理者でなければ、ここで例外が投げられる）
@@ -205,19 +225,19 @@ public class UserController {
         return favoriteService.myFavorites(id);
     }
 
-    // AP-31 GET /api/users/{id}/comments（管理者のみ。SC-15利用者詳細のコメント履歴）
+    // AP-144 GET /api/users/{id}/comments（管理者のみ。SC-141利用者詳細のコメント履歴）
     /**
-     * 指定した利用者が投稿したコメント履歴を取得する（AP-31）。フロントエンドのcore/user-api.ts
+     * 指定した利用者が投稿したコメント履歴を取得する（AP-144）。フロントエンドのcore/user-api.ts
      * （UserApiService#commentsOf）から呼ばれる。対象利用者の存在確認後、EventCommentService#listByUser
      * に処理を委譲する。
      *
      * @param id 対象利用者ID
      * @return 対象利用者のコメント履歴（投稿日時降順、論理削除済みのコメントも含む）
      */
-    @Operation(summary = "AP-31 利用者のコメント履歴取得（管理者用）",
+    @Operation(summary = "AP-144 利用者のコメント履歴取得（管理者用）",
             description = "指定した利用者が投稿したコメント履歴（返信を含む、投稿日時降順）を取得する。"
                     + "論理削除済みのコメントも履歴として含める（本文は固定の削除済み表示文言になる）。"
-                    + "SC-15（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
+                    + "SC-141（利用者詳細）の表示に使う。対象の利用者が存在しない場合は404。管理者のみ実行できる。")
     @GetMapping("/api/users/{id}/comments")
     public List<UserCommentResponse> commentsOf(@PathVariable Long id) {
         // ログイン中の利用者が管理者かどうかを確認する（管理者でなければ、ここで例外が投げられる）
@@ -228,16 +248,16 @@ public class UserController {
         return eventCommentService.listByUser(id);
     }
 
-    // AP-33 PUT /api/users/{id}/demote（管理者のみ）
+    // AP-146 PUT /api/users/{id}/demote（管理者のみ）
     /**
-     * 指定した利用者（管理者）を一般利用者に変更する（AP-33）。フロントエンドのcore/user-api.ts
+     * 指定した利用者（管理者）を一般利用者に変更する（AP-146）。フロントエンドのcore/user-api.ts
      * （UserApiService#demote）から呼ばれ、UserService#demoteに処理を委譲する。
      * authContext.requireAdmin()により管理者以外は403になる。
      *
      * @param id 降格対象の利用者ID
      * @return 降格後の利用者情報
      */
-    @Operation(summary = "AP-33 管理者権限の降格",
+    @Operation(summary = "AP-146 管理者権限の降格",
             description = "指定した利用者（管理者）を一般利用者に変更する。対象が存在しない場合は404、既に一般利用者の場合、"
                     + "または管理者が1人のみの状態で実行しようとした場合は400を返す。管理者のみ実行できる。")
     @PutMapping("/api/users/{id}/demote")
@@ -248,16 +268,16 @@ public class UserController {
         return userService.demote(id);
     }
 
-    // AP-34 DELETE /api/users/{id}（本人または管理者）
+    // AP-013 DELETE /api/users/{id}（本人または管理者）
     /**
-     * 指定した利用者を匿名化（退会）する（AP-34）。フロントエンドのcore/user-api.ts（UserApiService#anonymize）
+     * 指定した利用者を匿名化（退会）する（AP-013）。フロントエンドのcore/user-api.ts（UserApiService#anonymize）
      * から呼ばれ、UserService#anonymizeに処理を委譲する。本人か管理者かの判定は、権限チェック用の
      * authContext.requireAdmin()ではなくUserService側で行う（本人にも実行を許すため）。
      *
      * @param id 退会対象の利用者ID
      * @return 匿名化後の利用者情報
      */
-    @Operation(summary = "AP-34 利用者の匿名化（退会）",
+    @Operation(summary = "AP-013 利用者の匿名化（退会）",
             description = "指定した利用者を匿名化（退会）する。名前・メールアドレスを固定の文言・形式に置き換え、"
                     + "申込等の履歴は残したまま行を保持する（物理削除ではない）。本人、または管理者が実行できる。"
                     + "対象が存在しない場合は404、対象が管理者の場合（先に管理者権限の降格が必要）、"
@@ -270,7 +290,7 @@ public class UserController {
         return userService.anonymize(id, currentUser.userId(), currentUser.isAdmin());
     }
 
-    // AP-25で、権限チェックの後に手動でBean Validationを実行するためのヘルパー
+    // AP-145で、権限チェックの後に手動でBean Validationを実行するためのヘルパー
     // （ApplicationController・EventControllerのvalidate()と同じ考え方）
     private void validate(UserRegisterRequest request) {
         // requestの内容をBean Validationのルールに従って検証し、違反があれば一覧として取得する

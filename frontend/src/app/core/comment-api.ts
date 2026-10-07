@@ -24,7 +24,7 @@ export interface CommentNode {
   children: CommentNode[];
 }
 
-// AP-31のレスポンス1件分（backendのUserCommentResponseと対応）
+// AP-144のレスポンス1件分（backendのUserCommentResponseと対応）
 export interface UserComment {
   id: number;
   eventId: number;
@@ -34,7 +34,7 @@ export interface UserComment {
   deleted: boolean;
 }
 
-// AP-32のレスポンス1件分（backendのCommentModerationResponseと対応）
+// AP-150のレスポンス1件分（backendのCommentModerationResponseと対応）
 export interface CommentModeration {
   id: number;
   eventId: number;
@@ -104,13 +104,13 @@ export class CommentApiService {
     return this.http.delete<void>(`${API_BASE_URL}/comments/${commentId}`);
   }
 
-  /** コメント総数を取得する（AP-30、管理者専用。論理削除済みは除く）。 */
+  /** コメント総数を取得する（AP-132、管理者専用。論理削除済みは除く）。 */
   count(): Observable<{ count: number }> {
     // { count: number }はこのメソッド専用の使い捨ての型。interfaceを別途定義せずインラインで書いている
     return this.http.get<{ count: number }>(`${API_BASE_URL}/comments/count`);
   }
 
-  /** 全イベント横断の有効なコメント一覧を取得する（AP-32、管理者専用）。 */
+  /** 全イベント横断の有効なコメント一覧を取得する（AP-150、管理者専用）。 */
   listAll(): Observable<CommentModeration[]> {
     // イベントIDの指定なしで、全イベント分のコメントをまとめて取得する
     return this.http.get<CommentModeration[]>(`${API_BASE_URL}/comments`);

@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。eventsテーブル（docs/02_テーブル定義書.md §4.2）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。eventsテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "events")
 public class Event {
@@ -65,7 +65,7 @@ public class Event {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // イベント登録（AP-07）用
+    // イベント登録（AP-120）用
     public Event(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
             String organizerName, String imageUrl, String extraQuestion) {
@@ -80,7 +80,7 @@ public class Event {
         this.extraQuestion = extraQuestion;
     }
 
-    // イベント編集（AP-08）用
+    // イベント編集（AP-121）用
     public void applyChanges(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
             String organizerName, String imageUrl, String extraQuestion) {

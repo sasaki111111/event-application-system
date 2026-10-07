@@ -1,13 +1,14 @@
-// 実行環境: ブラウザ側。SC-02の申込完了画面（/events/:id/done）。
+// 実行環境: ブラウザ側。SC-020の申込完了画面（/events/:id/done）。
 // API設計書の備考どおり、専用APIは無く「申込APIのレスポンスをそのまま表示する」だけの画面。
 // そのためRouterのnavigation stateで結果を受け取る＝ページの再読み込みには対応しない。
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApplicationResponse } from '../../core/application-api';
+import { STATUS_CODE } from '../../core/codes';
 
 /**
- * 申込完了画面（SC-02の一部、/events/:id/done）を担当するComponent。
+ * 申込完了画面（SC-020の一部、/events/:id/done）を担当するComponent。
  * APIは呼ばず、event-detail.tsやevent-list.tsが`router.navigate(...)`で遷移する際に
  * 渡した申込結果（state）をそのまま表示するだけの画面。
  *
@@ -25,6 +26,8 @@ import { ApplicationResponse } from '../../core/application-api';
   styleUrl: './apply-done.css',
 })
 export class ApplyDone {
+  // テンプレートで申込状況コードを判定するために公開する（文字列の表示名では判定しない）
+  protected readonly StatusCode = STATUS_CODE;
   protected readonly application: ApplicationResponse | null;
 
   constructor(router: Router) {

@@ -28,7 +28,10 @@ export interface ApplicationResponse {
   // 機能追加（定員区分）: 区分の無いイベントへの申込はNULL
   ticketTypeId: number | null;
   userId: number;
-  status: string;
+  /** 申込状況コード（STATUS_CODE参照）。表示の切り替えの判定に使う。 */
+  statusCode: number;
+  /** 申込状況の表示名（コードマスタの値）。 */
+  statusName: string;
   appliedAt: string;
 }
 
@@ -38,7 +41,10 @@ export interface MyApplication {
   eventId: number;
   eventName: string;
   startAt: string;
-  status: string;
+  /** 申込状況コード（STATUS_CODE参照）。表示の切り替えの判定に使う。 */
+  statusCode: number;
+  /** 申込状況の表示名（コードマスタの値）。 */
+  statusName: string;
   appliedAt: string;
   // 機能追加（定員区分）: キャンセル待ちの順位（1始まり）。キャンセル待ち以外はNULL
   waitlistRank: number | null;

@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-05の申込状況・実績画面（E-6）。
+// 実行環境: ブラウザ側。SC-023の申込状況・実績画面（E-6）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { EventReport, ReportApiService, ReportSort } from '../../core/report-api';
@@ -10,7 +10,7 @@ import { EventReport, ReportApiService, ReportSort } from '../../core/report-api
   styleUrl: './admin-report.css',
 })
 /**
- * SC-05 申込状況・実績画面（/admin/reports）を担当するComponent。
+ * SC-023 申込状況・実績画面（/admin/reports）を担当するComponent。
  * イベントごとの申込実績（定員・受付済数・充足率）を一覧表示し、並び替えとCSVダウンロードができる。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、

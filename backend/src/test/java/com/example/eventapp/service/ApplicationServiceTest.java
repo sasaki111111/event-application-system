@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CodeNameResolver;
 import com.example.eventapp.common.CurrentUser;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
@@ -22,6 +23,7 @@ import com.example.eventapp.dto.MyApplicationResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.RoleCode;
 import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.entity.User;
 import com.example.eventapp.repository.ApplicationRepository;
@@ -67,11 +69,12 @@ class ApplicationServiceTest {
         userRepository = mock(UserRepository.class);
         ticketTypeRepository = mock(TicketTypeRepository.class);
         authContext = mock(AuthContext.class);
-        // 操作ログ（docs/11_ログ設計書.md 11-5）出力のため、checkIn()はログイン中管理者を参照する
-        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", "admin"));
+        // 操作ログ（docs/30_詳細設計/33_共通詳細設計書.md）出力のため、checkIn()はログイン中管理者を参照する
+        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", RoleCode.ADMIN));
         // モック化したRepository・AuthContextを渡して、テスト対象のServiceを生成する
         applicationService = new ApplicationService(
-                applicationRepository, eventRepository, userRepository, ticketTypeRepository, authContext);
+                applicationRepository, eventRepository, userRepository, ticketTypeRepository, authContext,
+                codeNameResolver());
         // 区分の無いイベントを既定値にしておく（区分ありのテストでは個別にstubし直す）
         when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(false);
     }
@@ -119,7 +122,7 @@ class ApplicationServiceTest {
         // レスポンスのユーザーIDが一致することを確認する
         assertThat(response.userId()).isEqualTo(USER_ID);
         // 定員に余裕があるため、ステータスが「受付済」になることを確認する
-        assertThat(response.status()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(response.statusCode()).isEqualTo(ApplicationStatus.ACCEPTED);
         // save()に渡されたApplicationの申込者が、期待したユーザーと一致することを確認する
         assertThat(captor.getValue().getUser()).isEqualTo(user);
     }
@@ -171,7 +174,7 @@ class ApplicationServiceTest {
         ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, null, null);
 
         // 満員のため、エラーにはならず「キャンセル待ち」になることを確認する
-        assertThat(response.status()).isEqualTo(ApplicationStatus.WAITLISTED);
+        assertThat(response.statusCode()).isEqualTo(ApplicationStatus.WAITLISTED);
         // save()に渡されたApplication自体のステータスも「キャンセル待ち」になっていることを確認する
         assertThat(captor.getValue().getStatus()).isEqualTo(ApplicationStatus.WAITLISTED);
     }
@@ -350,7 +353,7 @@ class ApplicationServiceTest {
         ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, 1L, null);
 
         // 区分の定員に余裕があるため受付済になることを確認する
-        assertThat(response.status()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(response.statusCode()).isEqualTo(ApplicationStatus.ACCEPTED);
         // レスポンスの区分IDが指定したものと一致することを確認する
         assertThat(response.ticketTypeId()).isEqualTo(1L);
         // 区分がある場合はイベント全体の受付済数（countByEvent_IdAndStatus）では判定しないことを確認する
@@ -375,7 +378,7 @@ class ApplicationServiceTest {
         ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, 1L, null);
 
         // イベント全体（999）には余裕があっても、区分単位で判定されキャンセル待ちになることを確認する
-        assertThat(response.status()).isEqualTo(ApplicationStatus.WAITLISTED);
+        assertThat(response.statusCode()).isEqualTo(ApplicationStatus.WAITLISTED);
     }
 
     // 異常系（機能追加：定員区分）: 区分があるイベントで区分未指定は400（要件定義書§8 E12）
@@ -607,7 +610,7 @@ class ApplicationServiceTest {
         ApplicationResponse response = applicationService.apply(USER_ID, EVENT_ID, null, null);
 
         // エラーにならず、新しい申込が受付済で登録されることを確認する
-        assertThat(response.status()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(response.statusCode()).isEqualTo(ApplicationStatus.ACCEPTED);
         verify(applicationRepository).save(any(Application.class));
         // 二重申込の判定対象にキャンセル済が含まれていないことを確認する
         verify(applicationRepository).existsByUser_IdAndEvent_IdAndStatusIn(
@@ -669,5 +672,17 @@ class ApplicationServiceTest {
         // チェックイン日時が1回目より後の時刻に更新されていることを確認する
         assertThat(second.checkedInAt()).isAfter(first);
         assertThat(application.getCheckedInAt()).isEqualTo(second.checkedInAt());
+    }
+
+    // 区分値の表示名（コードマスタの内容）を返すCodeNameResolverのモックを組み立てるヘルパーメソッド。
+    // 単体テストではDBに接続しないため、コードマスタの初期データと同じ対応をここで定義する
+    private static CodeNameResolver codeNameResolver() {
+        CodeNameResolver resolver = mock(CodeNameResolver.class);
+        when(resolver.roleName(RoleCode.GENERAL)).thenReturn("一般利用者");
+        when(resolver.roleName(RoleCode.ADMIN)).thenReturn("管理者");
+        when(resolver.statusName(ApplicationStatus.ACCEPTED)).thenReturn("受付済");
+        when(resolver.statusName(ApplicationStatus.WAITLISTED)).thenReturn("キャンセル待ち");
+        when(resolver.statusName(ApplicationStatus.CANCELLED)).thenReturn("キャンセル済");
+        return resolver;
     }
 }

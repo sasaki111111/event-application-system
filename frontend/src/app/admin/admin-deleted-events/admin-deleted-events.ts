@@ -44,7 +44,7 @@ export class AdminDeletedEvents implements OnInit {
    * 各カードの「複製」ボタン（(click)="duplicate(event)"）から呼ばれる処理。
    * router.navigate()はAngularのRouterを使ったコード上での画面遷移で、第2引数のstateに
    * 渡した値は遷移先のComponent（AdminEventForm）がActivatedRouteやhistory.stateから読み取れる。
-   * 削除済み一覧（AP-06、複製に必要な項目を含む）はAPIを追加で呼ばずそのまま複製元にできる
+   * 削除済み一覧（AP-123、複製に必要な項目を含む）はAPIを追加で呼ばずそのまま複製元にできる
    */
   protected duplicate(event: DeletedEvent): void {
     // /admin/events/new へ遷移しつつ、選んだ削除済みイベントをstateとして渡す（APIは呼ばない）

@@ -2,6 +2,7 @@ package com.example.eventapp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.eventapp.common.RateLimitInterceptor;
 import com.example.eventapp.dto.ApplicationCreateRequest;
 import com.example.eventapp.dto.ApplicationResponse;
 import com.example.eventapp.dto.CommentModerationResponse;
@@ -21,6 +22,7 @@ import com.example.eventapp.dto.UserResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.RoleCode;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventCommentRepository;
 import com.example.eventapp.repository.EventRepository;
@@ -36,6 +38,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -54,7 +57,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Controller→Service→Repository→DB（テスト実行時はH2インメモリDB）まで実際に処理を通し、
  * TestRestTemplateで本物のHTTPリクエストを送信し、レスポンスとDBの状態を合わせて検証する
  * （ServiceやRepositoryをモック化しない点が、Serviceクラス単体の単体テストとの違い）。
- * 各テストメソッド名の先頭「apNN」等は、対応する要件定義書の機能ID（例: AP-04）を示す。
+ * 各テストメソッド名の先頭「apNN」等は、対応する要件定義書の機能ID（例: AP-020）を示す。
  */
 // 実行環境: サーバー側（JVM）。G-2: API/DB結合テスト。
 // Controller→Service→Repository→H2（インメモリDB）まで実際に通し、必須API 8本のうち代表7本を検証する。
@@ -66,6 +69,10 @@ class ApiIntegrationTest {
     // テスト全体で使い回す、一般ユーザー・管理者それぞれのユーザーID（seed.sqlと同じ値）
     private static final Long GENERAL_USER_ID = 1L;
     private static final Long ADMIN_USER_ID = 2L;
+
+    // テスト用の利用者に設定するパスワードと、そのハッシュ値（BCrypt）
+    private static final String PASSWORD = "Test1234";
+    private static final String PASSWORD_HASH = new BCryptPasswordEncoder(4).encode(PASSWORD);
 
     // @SpringBootTestがランダムに割り当てた実際のポート番号。TestRestTemplateでURLを組み立てる際に使う
     @LocalServerPort
@@ -95,9 +102,15 @@ class ApiIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // 回数制限（書き込み系APIは同一接続元から1分間に60回まで）の状態を、テストごとに初期化するために使う
+    @Autowired
+    private RateLimitInterceptor rateLimitInterceptor;
+
     // @BeforeEachが付いたメソッドは、このクラスの各@Testメソッドの実行前に毎回呼ばれる（テスト間でデータを独立させるための後始末）
     @BeforeEach
     void setUp() {
+        // 前のテストまでの書き込み回数を引き継ぐと、後半のテストが429（リクエスト過多）になるため初期化する
+        rateLimitInterceptor.reset();
         // 追加したお気に入り・コメント・参加区分関連テストがeventsを参照したまま残ると、
         // 後続テストのイベント削除がFK制約違反になるため先に消す
         // （子テーブル→親テーブルの順で削除し、外部キー制約に違反しないようにしている）
@@ -108,14 +121,23 @@ class ApiIntegrationTest {
         eventRepository.deleteAll();
         // Userは公開コンストラクタが無いためRepository経由で作れず、JdbcTemplateで直接INSERTする
         jdbcTemplate.update("DELETE FROM users");
+        // コードマスタ（利用者区分・申込状況）を初期データと同じ内容で用意する。
+        // テスト環境（H2）はエンティティからテーブルを自動生成するため、seed.sqlは実行されない
+        jdbcTemplate.update("DELETE FROM roles");
+        jdbcTemplate.update("DELETE FROM application_statuses");
+        jdbcTemplate.update("INSERT INTO roles (code, name, display_order) VALUES (1, '一般利用者', 1), (2, '管理者', 2)");
+        jdbcTemplate.update("INSERT INTO application_statuses (code, name, display_order)"
+                + " VALUES (1, '受付済', 1), (2, 'キャンセル待ち', 2), (9, 'キャンセル済', 3)");
         // テストで使う一般ユーザー（id=1）を登録する
         jdbcTemplate.update(
-                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
-                GENERAL_USER_ID, "一般ユーザー", "general@example.com", "general");
+                "INSERT INTO users (id, name, email, password_hash, role_code, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                GENERAL_USER_ID, "一般ユーザー", "general@example.com", PASSWORD_HASH, RoleCode.GENERAL);
         // テストで使う管理者（id=2）を登録する
         jdbcTemplate.update(
-                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
-                ADMIN_USER_ID, "管理者", "admin@example.com", "admin");
+                "INSERT INTO users (id, name, email, password_hash, role_code, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                ADMIN_USER_ID, "管理者", "admin@example.com", PASSWORD_HASH, RoleCode.ADMIN);
     }
 
     // 定員5のテスト用イベントを作るヘルパーメソッド（引数省略版）
@@ -136,7 +158,7 @@ class ApiIntegrationTest {
     }
 
     // 指定したユーザーIDとしてAPIを呼ぶためのHTTPヘッダーを組み立てるヘルパーメソッド。
-    // このアプリはダミー認証（AuthInterceptor）のため、X-User-IdヘッダーだけでログインユーザーをAPI側に伝える
+    // このアプリはX-User-Idヘッダで利用者を識別する（AuthInterceptor）ため、X-User-IdヘッダーだけでログインユーザーをAPI側に伝える
     private HttpHeaders authHeaders(Long userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-User-Id", String.valueOf(userId));
@@ -149,9 +171,9 @@ class ApiIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    // AP-04: 登録したイベントがDBから読み出されて一覧に含まれる
+    // AP-020: 登録したイベントがDBから読み出されて一覧に含まれる
     @Test
-    void ap04_イベント一覧取得() {
+    void ap020_イベント一覧取得() {
         // 準備: テスト用イベントを1件、実際にDBへ保存する
         Event event = openEvent();
 
@@ -165,9 +187,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).extracting(EventSummaryResponse::id).contains(event.getId());
     }
 
-    // AP-05: 指定したイベントの詳細がDBの内容通りに返る
+    // AP-021: 指定したイベントの詳細がDBの内容通りに返る
     @Test
-    void ap05_イベント詳細取得() {
+    void ap021_イベント詳細取得() {
         Event event = openEvent();
 
         // 作成したイベントのIDを指定して詳細取得APIを呼び出す
@@ -182,9 +204,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody().remaining()).isEqualTo(5);
     }
 
-    // AP-07: 管理者が登録したイベントが実際にDBへ保存される
+    // AP-120: 管理者が登録したイベントが実際にDBへ保存される
     @Test
-    void ap07_管理者はイベントを登録できる() {
+    void ap120_管理者はイベントを登録できる() {
         // イベント登録APIに渡すリクエストボディを組み立てる
         EventUpsertRequest request = new EventUpsertRequest(
                 "新規登録テスト", LocalDateTime.now().plusDays(20), "会議室B", 10,
@@ -203,9 +225,9 @@ class ApiIntegrationTest {
         assertThat(eventRepository.findById(createdId).get().getName()).isEqualTo("新規登録テスト");
     }
 
-    // AP-07の権限チェック: 一般ユーザーは登録できず、DBにも作られない
+    // AP-120の権限チェック: 一般ユーザーは登録できず、DBにも作られない
     @Test
-    void ap07_一般ユーザーはイベントを登録できない() {
+    void ap120_一般ユーザーはイベントを登録できない() {
         EventUpsertRequest request = new EventUpsertRequest(
                 "権限チェック用", LocalDateTime.now().plusDays(20), "会議室B", 10,
                 LocalDateTime.now().plusDays(15), null, null, null, null, null);
@@ -221,9 +243,9 @@ class ApiIntegrationTest {
         assertThat(eventRepository.count()).isZero();
     }
 
-    // AP-07（要件定義書§8）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
+    // AP-120（要件定義書§8）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
     @Test
-    void ap07_定員を指定せず参加区分のみで登録できる() {
+    void ap120_定員を指定せず参加区分のみで登録できる() {
         // capacity（4番目の引数）をnullにし、区分（一般枠7・会員枠3＝合計10）だけを指定したリクエストを作る
         EventUpsertRequest request = new EventUpsertRequest(
                 "区分のみ登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
@@ -240,9 +262,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody().capacity()).isEqualTo(10);
     }
 
-    // AP-07（要件定義書§8）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
+    // AP-120（要件定義書§8）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
     @Test
-    void ap07_定員も参加区分も未指定なら400() {
+    void ap120_定員も参加区分も未指定なら400() {
         // capacityも区分（最後の引数）も指定しないリクエストを作る
         EventUpsertRequest request = new EventUpsertRequest(
                 "定員無し登録テスト", LocalDateTime.now().plusDays(20), "会議室B", null,
@@ -258,9 +280,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("定員を入力してください");
     }
 
-    // AP-12: 申込がDBに実際に1件作成される
+    // AP-030: 申込がDBに実際に1件作成される
     @Test
-    void ap12_一般ユーザーは申込できる() {
+    void ap030_一般ユーザーは申込できる() {
         Event event = openEvent();
         ApplicationCreateRequest request = new ApplicationCreateRequest(event.getId(), null, null);
 
@@ -274,9 +296,9 @@ class ApiIntegrationTest {
         assertThat(applicationRepository.count()).isEqualTo(1);
     }
 
-    // AP-13: 自分が申し込んだ内容がDBから読み出されて一覧に反映される
+    // AP-031: 自分が申し込んだ内容がDBから読み出されて一覧に反映される
     @Test
-    void ap13_自分の申込一覧取得() {
+    void ap031_自分の申込一覧取得() {
         Event event = openEvent();
         ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(event.getId(), null, null);
         // まず1件申込んでおく（このテストの前提データ）
@@ -295,9 +317,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].eventId()).isEqualTo(event.getId());
     }
 
-    // AP-14: キャンセル後、DB上のステータスが実際に更新される
+    // AP-032: キャンセル後、DB上のステータスが実際に更新される
     @Test
-    void ap14_申込をキャンセルできる() {
+    void ap032_申込をキャンセルできる() {
         Event event = openEvent();
         // 先に申込を1件作成し、そのレスポンスから申込IDを取り出す
         ResponseEntity<ApplicationResponse> applyResponse = restTemplate.exchange(
@@ -315,7 +337,7 @@ class ApiIntegrationTest {
         assertThat(cancelResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         // DBから申込を再取得し、ステータスが実際に「キャンセル済」に変わっていることを確認する
         Application cancelled = applicationRepository.findById(applicationId).orElseThrow();
-        assertThat(cancelled.getStatus()).isEqualTo("キャンセル済");
+        assertThat(cancelled.getStatus()).isEqualTo(ApplicationStatus.CANCELLED);
     }
 
     // 同時申込時の排他制御（悲観ロック）。定員1のイベントに2人が同時に申込んでも、
@@ -326,11 +348,13 @@ class ApiIntegrationTest {
         Event event = openEvent(1); // 定員1
         // 同時に申込ませる利用者2人（id=3, 4）を追加登録する
         jdbcTemplate.update(
-                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
-                3L, "利用者3", "user3@example.com", "general");
+                "INSERT INTO users (id, name, email, password_hash, role_code, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                3L, "利用者3", "user3@example.com", PASSWORD_HASH, RoleCode.GENERAL);
         jdbcTemplate.update(
-                "INSERT INTO users (id, name, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
-                4L, "利用者4", "user4@example.com", "general");
+                "INSERT INTO users (id, name, email, password_hash, role_code, created_at, updated_at)"
+                        + " VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                4L, "利用者4", "user4@example.com", PASSWORD_HASH, RoleCode.GENERAL);
 
         // 2スレッドの実行環境（スレッドプール）を用意し、2人分の申込を本当に同時に実行させる
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -346,9 +370,9 @@ class ApiIntegrationTest {
             // invokeAll()で2つの申込処理を同時に実行し、両方の完了を待つ
             List<Future<ResponseEntity<ApplicationResponse>>> futures = pool.invokeAll(tasks);
             // 各申込結果からステータス文字列だけを取り出す
-            List<String> statuses = futures.stream().map(f -> {
+            List<Integer> statuses = futures.stream().map(f -> {
                 try {
-                    return f.get().getBody().status();
+                    return f.get().getBody().statusCode();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -366,9 +390,9 @@ class ApiIntegrationTest {
         }
     }
 
-    // AP-23: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる
+    // AP-014: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる
     @Test
-    void ap23_whoamiはadminフィールドを含む() {
+    void ap014_whoamiはadminフィールドを含む() {
         // 管理者として自分自身の情報を返すwhoami APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/whoami"), HttpMethod.GET, new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -378,10 +402,10 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("\"admin\":true");
     }
 
-    // AP-25: 既存の管理者は新たな管理者アカウントを登録でき、実際にDBへ管理者として保存される
+    // AP-145: 既存の管理者は新たな管理者アカウントを登録でき、実際にDBへ管理者として保存される
     @Test
-    void ap25_管理者は管理者アカウントを登録できる() {
-        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin@example.com");
+    void ap145_管理者は管理者アカウントを登録できる() {
+        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin@example.com", PASSWORD);
 
         // 既存の管理者として、新しい管理者アカウントを登録するAPIを呼び出す
         ResponseEntity<UserResponse> response = restTemplate.exchange(
@@ -390,17 +414,17 @@ class ApiIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         // レスポンスのroleが"admin"であることを確認する
-        assertThat(response.getBody().role()).isEqualTo("admin");
+        assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.ADMIN);
         // DBから直接SELECTしても、保存されたroleが"admin"であることを確認する
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT role FROM users WHERE email = ?", String.class, "new-admin@example.com"))
-                .isEqualTo("admin");
+                "SELECT role_code FROM users WHERE email = ?", Integer.class, "new-admin@example.com"))
+                .isEqualTo(RoleCode.ADMIN);
     }
 
-    // AP-25の権限チェック: 一般ユーザーは管理者アカウントを登録できない
+    // AP-145の権限チェック: 一般ユーザーは管理者アカウントを登録できない
     @Test
-    void ap25_一般ユーザーは管理者アカウントを登録できない() {
-        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin2@example.com");
+    void ap145_一般ユーザーは管理者アカウントを登録できない() {
+        UserRegisterRequest request = new UserRegisterRequest("新管理者", "new-admin2@example.com", PASSWORD);
 
         // 一般ユーザーとして（管理者専用の）管理者登録APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
@@ -413,11 +437,11 @@ class ApiIntegrationTest {
                 Integer.class, "new-admin2@example.com")).isZero();
     }
 
-    // AP-33: 管理者が2人以上いる状態なら、一方をもう一方が降格できる
+    // AP-146: 管理者が2人以上いる状態なら、一方をもう一方が降格できる
     @Test
-    void ap33_管理者は他の管理者を降格できる() {
+    void ap146_管理者は他の管理者を降格できる() {
         // 降格対象となる、2人目の管理者を先に作っておく
-        UserRegisterRequest newAdmin = new UserRegisterRequest("新管理者", "new-admin3@example.com");
+        UserRegisterRequest newAdmin = new UserRegisterRequest("新管理者", "new-admin3@example.com", PASSWORD);
         ResponseEntity<UserResponse> created = restTemplate.exchange(
                 url("/api/admins"), HttpMethod.POST, new HttpEntity<>(newAdmin, authHeaders(ADMIN_USER_ID)),
                 UserResponse.class);
@@ -430,15 +454,15 @@ class ApiIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         // レスポンス上のroleが"general"に変わったことを確認する
-        assertThat(response.getBody().role()).isEqualTo("general");
+        assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.GENERAL);
         // DB上でも実際にroleが更新されていることを確認する
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT role FROM users WHERE id = ?", String.class, newAdminId)).isEqualTo("general");
+                "SELECT role_code FROM users WHERE id = ?", Integer.class, newAdminId)).isEqualTo(RoleCode.GENERAL);
     }
 
-    // AP-33の業務ルール（R-17）: 管理者が1人のみの状態では、その管理者を降格できない
+    // AP-146の業務ルール（R-17）: 管理者が1人のみの状態では、その管理者を降格できない
     @Test
-    void ap33_最後の管理者は降格できない() {
+    void ap146_最後の管理者は降格できない() {
         // 管理者が1人（ADMIN_USER_IDのみ）の状態で、自分自身を降格しようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
@@ -448,12 +472,12 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         // 拒否されたのでroleは変わっていないことを確認する
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
+                "SELECT role_code FROM users WHERE id = ?", Integer.class, ADMIN_USER_ID)).isEqualTo(RoleCode.ADMIN);
     }
 
-    // AP-33の業務ルール（R-16）: 既に一般利用者の対象は降格できない
+    // AP-146の業務ルール（R-16）: 既に一般利用者の対象は降格できない
     @Test
-    void ap33_既に一般利用者の対象は降格できない() {
+    void ap146_既に一般利用者の対象は降格できない() {
         // すでに一般ユーザーであるGENERAL_USER_IDを降格しようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID + "/demote"), HttpMethod.PUT,
@@ -462,9 +486,9 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    // AP-33の権限チェック: 一般ユーザーは降格を実行できない
+    // AP-146の権限チェック: 一般ユーザーは降格を実行できない
     @Test
-    void ap33_一般ユーザーは降格を実行できない() {
+    void ap146_一般ユーザーは降格を実行できない() {
         // 一般ユーザーとして（管理者専用の）降格APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID + "/demote"), HttpMethod.PUT,
@@ -473,12 +497,12 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         // 拒否されたので管理者のroleは変わっていないことを確認する
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT role FROM users WHERE id = ?", String.class, ADMIN_USER_ID)).isEqualTo("admin");
+                "SELECT role_code FROM users WHERE id = ?", Integer.class, ADMIN_USER_ID)).isEqualTo(RoleCode.ADMIN);
     }
 
-    // AP-33: 対象の利用者が存在しない場合は404
+    // AP-146: 対象の利用者が存在しない場合は404
     @Test
-    void ap33_対象の利用者が存在しない場合は404() {
+    void ap146_対象の利用者が存在しない場合は404() {
         // 存在しないユーザーID(9999)を指定して降格APIを呼び出す
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/9999/demote"), HttpMethod.PUT,
@@ -487,9 +511,9 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // AP-34: 本人は自分のアカウントを退会（匿名化）できる
+    // AP-013: 本人は自分のアカウントを退会（匿名化）できる
     @Test
-    void ap34_本人は自分のアカウントを退会できる() {
+    void ap013_本人は自分のアカウントを退会できる() {
         // 本人として自分自身の退会（削除）APIを呼び出す
         ResponseEntity<UserResponse> deleteResponse = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
@@ -506,9 +530,9 @@ class ApiIntegrationTest {
                 .isEqualTo("withdrawn-" + GENERAL_USER_ID + "@invalid.example");
     }
 
-    // AP-34: 管理者は一般利用者を退会させられる
+    // AP-013: 管理者は一般利用者を退会させられる
     @Test
-    void ap34_管理者は一般利用者を退会させられる() {
+    void ap013_管理者は一般利用者を退会させられる() {
         // 管理者として、一般ユーザーの退会APIを呼び出す
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
@@ -518,11 +542,11 @@ class ApiIntegrationTest {
         assertThat(response.getBody().anonymizedAt()).isNotNull();
     }
 
-    // AP-34の権限チェック: 一般利用者は他人のアカウントを退会させられない
+    // AP-013の権限チェック: 一般利用者は他人のアカウントを退会させられない
     @Test
-    void ap34_一般利用者は他人を退会させられない() {
+    void ap013_一般利用者は他人を退会させられない() {
         // 退会させようとする対象の、別の一般ユーザーを先に登録する
-        UserRegisterRequest otherUser = new UserRegisterRequest("別の利用者", "other-user@example.com");
+        UserRegisterRequest otherUser = new UserRegisterRequest("別の利用者", "other-user@example.com", PASSWORD);
         ResponseEntity<UserResponse> created = restTemplate.exchange(
                 url("/api/users"), HttpMethod.POST, new HttpEntity<>(otherUser), UserResponse.class);
         Long otherUserId = created.getBody().userId();
@@ -538,9 +562,9 @@ class ApiIntegrationTest {
                 "SELECT anonymized_at IS NULL FROM users WHERE id = ?", Boolean.class, otherUserId)).isTrue();
     }
 
-    // AP-34の業務ルール（R-18）: 管理者は退会できない（先にAP-33で降格する必要がある）
+    // AP-013の業務ルール（R-18）: 管理者は退会できない（先にAP-146で降格する必要がある）
     @Test
-    void ap34_管理者は退会できない() {
+    void ap013_管理者は退会できない() {
         // 管理者が自分自身を退会させようとする
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/" + ADMIN_USER_ID), HttpMethod.DELETE,
@@ -551,9 +575,9 @@ class ApiIntegrationTest {
                 "SELECT anonymized_at IS NULL FROM users WHERE id = ?", Boolean.class, ADMIN_USER_ID)).isTrue();
     }
 
-    // AP-34の業務ルール（R-19）: 既に退会済みの利用者を再度退会させることはできない
+    // AP-013の業務ルール（R-19）: 既に退会済みの利用者を再度退会させることはできない
     @Test
-    void ap34_既に退会済みの利用者は再度退会できない() {
+    void ap013_既に退会済みの利用者は再度退会できない() {
         // 1回目の退会を実行する（これは成功するはず）
         restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
@@ -567,9 +591,9 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    // AP-34: 対象の利用者が存在しない場合は404
+    // AP-013: 対象の利用者が存在しない場合は404
     @Test
-    void ap34_対象の利用者が存在しない場合は404() {
+    void ap013_対象の利用者が存在しない場合は404() {
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users/9999"), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), String.class);
@@ -577,10 +601,10 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // AP-34実行後の認証: 退会済み（匿名化済み）のuserIdは、以後のリクエストで認証エラーになる
-    // （AuthInterceptorがAP-34の効果を継続中のアクセスにも及ぼす）
+    // AP-013実行後の認証: 退会済み（匿名化済み）のuserIdは、以後のリクエストで認証エラーになる
+    // （AuthInterceptorがAP-013の効果を継続中のアクセスにも及ぼす）
     @Test
-    void ap34_退会済みの利用者は以後のリクエストで認証エラーになる() {
+    void ap013_退会済みの利用者は以後のリクエストで認証エラーになる() {
         // 本人が退会する
         restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), UserResponse.class);
@@ -594,9 +618,9 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
-    // AP-09 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
+    // AP-122 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
     @Test
-    void ap09_csv出力は削除済みイベントの申込を含まない() {
+    void ap122_csv出力は削除済みイベントの申込を含まない() {
         Event deletedEvent = openEvent();
         ApplicationCreateRequest applyRequest = new ApplicationCreateRequest(deletedEvent.getId(), null, null);
         // このイベントに申込を1件作っておく
@@ -616,9 +640,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).doesNotContain(deletedEvent.getName());
     }
 
-    // AP-04: favoriteCountがお気に入り登録件数を反映する。全利用者に返す項目のため一般ユーザーで確認する
+    // AP-020: favoriteCountがお気に入り登録件数を反映する。全利用者に返す項目のため一般ユーザーで確認する
     @Test
-    void ap04_favoriteCountはお気に入り登録件数を反映する() {
+    void ap020_favoriteCountはお気に入り登録件数を反映する() {
         Event event = openEvent();
         // このイベントをお気に入り登録する
         restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
@@ -637,9 +661,9 @@ class ApiIntegrationTest {
                 .containsExactly(1L);
     }
 
-    // AP-22: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
+    // AP-130: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
     @Test
-    void ap22_csv出力にアンケート回答列が含まれる() {
+    void ap130_csv出力にアンケート回答列が含まれる() {
         // アンケート（extra_question）付きのイベントを作る
         Event event = eventRepository.save(new Event(
                 "アンケート付きイベント",
@@ -666,9 +690,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("業務で必要なため");
     }
 
-    // AP-26: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
+    // AP-141: 管理者は利用者情報を取得できる。一般ユーザーは403、存在しないIDは404
     @Test
-    void ap26_利用者情報取得は管理者のみ() {
+    void ap141_利用者情報取得は管理者のみ() {
         // ケース1: 管理者が一般ユーザーの情報を取得する（成功するはず）
         ResponseEntity<UserResponse> adminResponse = restTemplate.exchange(
                 url("/api/users/" + GENERAL_USER_ID), HttpMethod.GET,
@@ -689,9 +713,9 @@ class ApiIntegrationTest {
         assertThat(notFoundResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
-    // AP-27: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
+    // AP-142: 管理者は対象利用者の申込一覧を取得できる。一般ユーザーは403
     @Test
-    void ap27_利用者の申込一覧取得() {
+    void ap142_利用者の申込一覧取得() {
         Event event = openEvent();
         // 一般ユーザーが1件申込んでおく
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
@@ -714,9 +738,9 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-28: 管理者は対象利用者のお気に入り一覧を取得できる
+    // AP-143: 管理者は対象利用者のお気に入り一覧を取得できる
     @Test
-    void ap28_利用者のお気に入り一覧取得() {
+    void ap143_利用者のお気に入り一覧取得() {
         Event event = openEvent();
         restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
@@ -732,9 +756,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].id()).isEqualTo(event.getId());
     }
 
-    // AP-22: CSV明細に参加区分列が追加され、区分名がそのまま出力される
+    // AP-130: CSV明細に参加区分列が追加され、区分名がそのまま出力される
     @Test
-    void ap22_csv出力に参加区分列が含まれる() {
+    void ap130_csv出力に参加区分列が含まれる() {
         Event event = eventRepository.save(new Event(
                 "区分付きイベント",
                 LocalDateTime.now().plusDays(10),
@@ -772,9 +796,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("一般枠");
     }
 
-    // AP-29: お気に入り総数取得は管理者のみ実行できる
+    // AP-131: お気に入り総数取得は管理者のみ実行できる
     @Test
-    void ap29_お気に入り総数取得は管理者のみ() {
+    void ap131_お気に入り総数取得は管理者のみ() {
         Event event = openEvent();
         restTemplate.exchange(url("/api/favorites"), HttpMethod.POST,
                 new HttpEntity<>(new FavoriteCreateRequest(event.getId()), authHeaders(GENERAL_USER_ID)),
@@ -795,9 +819,9 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-30: コメント総数は論理削除済みを除外し、管理者のみ実行できる
+    // AP-132: コメント総数は論理削除済みを除外し、管理者のみ実行できる
     @Test
-    void ap30_コメント総数取得は論理削除済みを除外する() {
+    void ap132_コメント総数取得は論理削除済みを除外する() {
         Event event = openEvent();
         // 1件目: 後で削除される予定のコメント（投稿内容はコメントIDを後で使うためだけの目的）
         ResponseEntity<EventCommentResponse> commentResponse = restTemplate.exchange(
@@ -826,9 +850,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody().count()).isEqualTo(2L);
     }
 
-    // AP-31: 利用者のコメント履歴は、論理削除済みも含めイベント名付きで取得できる
+    // AP-144: 利用者のコメント履歴は、論理削除済みも含めイベント名付きで取得できる
     @Test
-    void ap31_利用者のコメント履歴取得() {
+    void ap144_利用者のコメント履歴取得() {
         Event event = openEvent();
         restTemplate.exchange(url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
                 new HttpEntity<>(new EventCommentCreateRequest("履歴確認用コメント", null), authHeaders(GENERAL_USER_ID)),
@@ -853,9 +877,9 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-32: 全コメント一覧は有効なコメントのみを対象とし、イベント名・投稿者名を含む
+    // AP-150: 全コメント一覧は有効なコメントのみを対象とし、イベント名・投稿者名を含む
     @Test
-    void ap32_全コメント一覧取得は有効なコメントのみ() {
+    void ap150_全コメント一覧取得は有効なコメントのみ() {
         Event event = openEvent();
         ResponseEntity<EventCommentResponse> commentResponse = restTemplate.exchange(
                 url("/api/events/" + event.getId() + "/comments"), HttpMethod.POST,
@@ -889,13 +913,13 @@ class ApiIntegrationTest {
         assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // AP-01（Issue #9の再発防止）: メールアドレスの前後に空白・大文字が混ざっていても、正規化してログインできる。
+    // AP-010（Issue #9の再発防止）: メールアドレスの前後に空白・大文字が混ざっていても、正規化してログインできる。
     // DTO（LoginRequest）をテスト側で生成すると送信前に空白が除去されてしまうため、Mapで生のJSONを送る
     @Test
-    void ap01_前後に空白のあるメールアドレスでもログインできる() {
+    void ap010_前後に空白のあるメールアドレスでもログインできる() {
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/login"), HttpMethod.POST,
-                new HttpEntity<>(Map.of("email", "  ADMIN@example.com "), authHeaders(ADMIN_USER_ID)),
+                new HttpEntity<>(Map.of("email", "  ADMIN@example.com ", "password", PASSWORD), authHeaders(ADMIN_USER_ID)),
                 UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -903,12 +927,12 @@ class ApiIntegrationTest {
         assertThat(response.getBody().userId()).isEqualTo(ADMIN_USER_ID);
     }
 
-    // AP-02（Issue #9の再発防止）: 前後に空白のあるメールアドレスは、空白除去＋小文字化して登録される
+    // AP-011（Issue #9の再発防止）: 前後に空白のあるメールアドレスは、空白除去＋小文字化して登録される
     @Test
-    void ap02_前後に空白のあるメールアドレスは正規化して登録される() {
+    void ap011_前後に空白のあるメールアドレスは正規化して登録される() {
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/users"), HttpMethod.POST,
-                new HttpEntity<>(Map.of("name", "空白確認", "email", " New-User@Example.com "), authHeaders(GENERAL_USER_ID)),
+                new HttpEntity<>(Map.of("name", "空白確認", "email", " New-User@Example.com ", "password", PASSWORD), authHeaders(GENERAL_USER_ID)),
                 UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -919,12 +943,12 @@ class ApiIntegrationTest {
                 .isEqualTo(1);
     }
 
-    // AP-02（Issue #9の再発防止）: 登録済みのメールアドレスに空白を付けただけのものは、重複として拒否される
+    // AP-011（Issue #9の再発防止）: 登録済みのメールアドレスに空白を付けただけのものは、重複として拒否される
     @Test
-    void ap02_登録済みのメールアドレスに空白を付けても重複として拒否される() {
+    void ap011_登録済みのメールアドレスに空白を付けても重複として拒否される() {
         ResponseEntity<String> response = restTemplate.exchange(
                 url("/api/users"), HttpMethod.POST,
-                new HttpEntity<>(Map.of("name", "重複確認", "email", " GENERAL@example.com "), authHeaders(GENERAL_USER_ID)),
+                new HttpEntity<>(Map.of("name", "重複確認", "email", " GENERAL@example.com ", "password", PASSWORD), authHeaders(GENERAL_USER_ID)),
                 String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -932,22 +956,22 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).contains("この内容では登録できませんでした。ログインをお試しください");
     }
 
-    // AP-25（Issue #9の再発防止）: 管理者アカウント登録でも、前後に空白のあるメールアドレスを正規化して登録できる
+    // AP-145（Issue #9の再発防止）: 管理者アカウント登録でも、前後に空白のあるメールアドレスを正規化して登録できる
     @Test
-    void ap25_前後に空白のあるメールアドレスでも管理者アカウントを登録できる() {
+    void ap145_前後に空白のあるメールアドレスでも管理者アカウントを登録できる() {
         ResponseEntity<UserResponse> response = restTemplate.exchange(
                 url("/api/admins"), HttpMethod.POST,
-                new HttpEntity<>(Map.of("name", "空白確認管理者", "email", " Space-Admin@Example.com "), authHeaders(ADMIN_USER_ID)),
+                new HttpEntity<>(Map.of("name", "空白確認管理者", "email", " Space-Admin@Example.com ", "password", PASSWORD), authHeaders(ADMIN_USER_ID)),
                 UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody().role()).isEqualTo("admin");
+        assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.ADMIN);
         assertThat(response.getBody().email()).isEqualTo("space-admin@example.com");
     }
 
-    // AP-07（Issue #10の再発防止）: 申込締切が開催日時と同じ日時のイベントは登録できない（締切は開催日時より前であること）
+    // AP-120（Issue #10の再発防止）: 申込締切が開催日時と同じ日時のイベントは登録できない（締切は開催日時より前であること）
     @Test
-    void ap07_申込締切と開催日時が同じ日時なら400() {
+    void ap120_申込締切と開催日時が同じ日時なら400() {
         LocalDateTime sameTime = LocalDateTime.now().plusDays(20).withNano(0);
         EventUpsertRequest request = new EventUpsertRequest(
                 "締切同時刻テスト", sameTime, "会議室B", 10, sameTime, null, null, null, null, null);
@@ -963,9 +987,9 @@ class ApiIntegrationTest {
         assertThat(eventRepository.count()).isZero();
     }
 
-    // AP-07（Issue #10の補足）: 申込締切が開催日時の1秒前なら、これまでどおり登録できる
+    // AP-120（Issue #10の補足）: 申込締切が開催日時の1秒前なら、これまでどおり登録できる
     @Test
-    void ap07_申込締切が開催日時の1秒前なら登録できる() {
+    void ap120_申込締切が開催日時の1秒前なら登録できる() {
         LocalDateTime startAt = LocalDateTime.now().plusDays(20).withNano(0);
         EventUpsertRequest request = new EventUpsertRequest(
                 "締切1秒前テスト", startAt, "会議室B", 10, startAt.minusSeconds(1), null, null, null, null, null);
@@ -977,9 +1001,9 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
-    // AP-08（Issue #10の再発防止）: 申込締切が開催日時と同じ日時になる更新はできない
+    // AP-121（Issue #10の再発防止）: 申込締切が開催日時と同じ日時になる更新はできない
     @Test
-    void ap08_申込締切と開催日時が同じ日時には更新できない() {
+    void ap121_申込締切と開催日時が同じ日時には更新できない() {
         Event event = openEvent();
         LocalDateTime sameTime = LocalDateTime.now().plusDays(20).withNano(0);
         EventUpsertRequest request = new EventUpsertRequest(
@@ -995,10 +1019,10 @@ class ApiIntegrationTest {
         assertThat(eventRepository.findById(event.getId()).orElseThrow().getName()).isEqualTo("結合テスト用イベント");
     }
 
-    // AP-08（Issue #15の再発防止）: 区分のあるイベントを、既存と同じ区分名のまま更新できる。
+    // AP-121（Issue #15の再発防止）: 区分のあるイベントを、既存と同じ区分名のまま更新できる。
     // 編集画面は区分を変更していなくても既存の区分を毎回送るため、これが失敗すると画面から編集できなくなる
     @Test
-    void ap08_既存と同じ区分名を送り直しても更新できる() {
+    void ap121_既存と同じ区分名を送り直しても更新できる() {
         EventUpsertRequest create = new EventUpsertRequest(
                 "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室B", null,
                 LocalDateTime.now().plusDays(15), null, null, null, null,
@@ -1024,9 +1048,9 @@ class ApiIntegrationTest {
         assertThat(response.getBody().capacity()).isEqualTo(5);
     }
 
-    // AP-08（Issue #15の再発防止）: 区分名を一部残したまま、区分を追加・定員変更する更新ができる
+    // AP-121（Issue #15の再発防止）: 区分名を一部残したまま、区分を追加・定員変更する更新ができる
     @Test
-    void ap08_区分名を一部残したまま区分を変更できる() {
+    void ap121_区分名を一部残したまま区分を変更できる() {
         EventUpsertRequest create = new EventUpsertRequest(
                 "区分付きイベント", LocalDateTime.now().plusDays(20), "会議室B", null,
                 LocalDateTime.now().plusDays(15), null, null, null, null,
@@ -1049,5 +1073,163 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().ticketTypes()).extracting(t -> t.name()).containsExactlyInAnyOrder("午前", "夜");
         assertThat(response.getBody().capacity()).isEqualTo(5);
+    }
+
+    // AP-010: 正しいメールアドレスとパスワードでログインでき、利用者区分がコードと表示名の両方で返る
+    @Test
+    void ap010_正しいパスワードでログインでき利用者区分のコードと表示名が返る() {
+        ResponseEntity<UserResponse> response = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "admin@example.com", "password", PASSWORD)), UserResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().userId()).isEqualTo(ADMIN_USER_ID);
+        assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.ADMIN);
+        // 表示名はコードマスタ（roles）から取得した値であることを確認する
+        assertThat(response.getBody().roleName()).isEqualTo("管理者");
+    }
+
+    // AP-010（R-22）: パスワードが一致しない場合と、メールアドレスが未登録の場合は、同じ401・同じメッセージになる
+    @Test
+    void ap010_パスワード不一致と未登録は同じ401になる() {
+        ResponseEntity<String> wrongPassword = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "admin@example.com", "password", "Wrong1234")), String.class);
+        ResponseEntity<String> unknownEmail = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "nobody@example.com", "password", PASSWORD)), String.class);
+
+        assertThat(wrongPassword.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(unknownEmail.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // どちらの理由で失敗したかを区別できないよう、メッセージが同一であることを確認する
+        assertThat(wrongPassword.getBody()).contains("ログインできませんでした");
+        assertThat(unknownEmail.getBody()).contains("ログインできませんでした");
+        // レスポンスにパスワードやハッシュ値が含まれないことを確認する
+        assertThat(wrongPassword.getBody()).doesNotContain("Wrong1234").doesNotContain("password");
+    }
+
+    // AP-010（E-V-024）: パスワードが未入力の場合は入力エラー（400）になる
+    @Test
+    void ap010_パスワード未入力は400になる() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "admin@example.com")), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("\"field\":\"password\"");
+    }
+
+    // AP-011（E-V-025）: パスワードが条件（8文字以上、英字と数字を含む）を満たさない場合は登録できない
+    @Test
+    void ap011_条件を満たさないパスワードでは登録できない() {
+        for (String weak : new String[] {"Short1", "onlyletters", "12345678"}) {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url("/api/users"), HttpMethod.POST,
+                    new HttpEntity<>(Map.of("name", "弱いパスワード", "email", "weak@example.com", "password", weak)),
+                    String.class);
+
+            assertThat(response.getStatusCode()).as(weak).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+        // いずれも登録されていないことをDBで確認する
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = ?", Integer.class, "weak@example.com")).isZero();
+    }
+
+    // AP-011: 登録時、パスワードはそのままではなくハッシュ化した値で保存される
+    @Test
+    void ap011_パスワードはハッシュ化して保存される() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/users"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("name", "新規利用者", "email", "hash-check@example.com", "password", PASSWORD)),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // レスポンスにパスワード・ハッシュ値が含まれないことを確認する
+        assertThat(response.getBody()).doesNotContain(PASSWORD).doesNotContain("password");
+        String stored = jdbcTemplate.queryForObject(
+                "SELECT password_hash FROM users WHERE email = ?", String.class, "hash-check@example.com");
+        assertThat(stored).isNotEqualTo(PASSWORD);
+        assertThat(new BCryptPasswordEncoder().matches(PASSWORD, stored)).isTrue();
+    }
+
+    // AP-012: パスワードを変更すると、新しいパスワードでログインでき、古いパスワードではログインできなくなる
+    @Test
+    void ap012_パスワードを変更すると新しいパスワードでログインできる() {
+        ResponseEntity<Void> change = restTemplate.exchange(
+                url("/api/my/password"), HttpMethod.PUT,
+                new HttpEntity<>(Map.of("currentPassword", PASSWORD, "newPassword", "NewPass5678"),
+                        authHeaders(GENERAL_USER_ID)), Void.class);
+        assertThat(change.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<String> withNew = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "general@example.com", "password", "NewPass5678")), String.class);
+        ResponseEntity<String> withOld = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "general@example.com", "password", PASSWORD)), String.class);
+
+        assertThat(withNew.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(withOld.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    // AP-012（E-B-023）: 現在のパスワードが一致しない場合は変更できない
+    @Test
+    void ap012_現在のパスワードが一致しなければ変更できない() {
+        ResponseEntity<String> change = restTemplate.exchange(
+                url("/api/my/password"), HttpMethod.PUT,
+                new HttpEntity<>(Map.of("currentPassword", "Wrong1234", "newPassword", "NewPass5678"),
+                        authHeaders(GENERAL_USER_ID)), String.class);
+
+        assertThat(change.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(change.getBody()).contains("現在のパスワードが正しくありません");
+        // 拒否されたので、元のパスワードのままログインできることを確認する
+        ResponseEntity<String> login = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "general@example.com", "password", PASSWORD)), String.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    // AP-012: 未ログイン（X-User-Id無し）ではパスワードを変更できない
+    @Test
+    void ap012_未ログインではパスワードを変更できない() {
+        ResponseEntity<String> change = restTemplate.exchange(
+                url("/api/my/password"), HttpMethod.PUT,
+                new HttpEntity<>(Map.of("currentPassword", PASSWORD, "newPassword", "NewPass5678")), String.class);
+
+        assertThat(change.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    // AP-013（R-24）: 退会するとパスワードが無効化され、退会前のメールアドレス・パスワードではログインできない
+    @Test
+    void ap013_退会後は元のメールアドレスとパスワードでログインできない() {
+        restTemplate.exchange(url("/api/users/" + GENERAL_USER_ID), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+
+        ResponseEntity<String> login = restTemplate.exchange(
+                url("/api/login"), HttpMethod.POST,
+                new HttpEntity<>(Map.of("email", "general@example.com", "password", PASSWORD)), String.class);
+
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT password_hash FROM users WHERE id = ?", String.class, GENERAL_USER_ID)).isNull();
+    }
+
+    // AP-030・AP-031: 申込状況がコードと表示名（コードマスタの値）の両方で返る
+    @Test
+    void ap030_申込状況がコードと表示名の両方で返る() {
+        Event event = openEvent(1);
+        ResponseEntity<ApplicationResponse> applied = restTemplate.exchange(
+                url("/api/applications"), HttpMethod.POST,
+                new HttpEntity<>(new ApplicationCreateRequest(event.getId(), null, null), authHeaders(GENERAL_USER_ID)),
+                ApplicationResponse.class);
+
+        assertThat(applied.getBody().statusCode()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(applied.getBody().statusName()).isEqualTo("受付済");
+
+        ResponseEntity<MyApplicationResponse[]> mine = restTemplate.exchange(
+                url("/api/my/applications"), HttpMethod.GET, new HttpEntity<>(authHeaders(GENERAL_USER_ID)),
+                MyApplicationResponse[].class);
+        assertThat(mine.getBody()[0].statusCode()).isEqualTo(ApplicationStatus.ACCEPTED);
+        assertThat(mine.getBody()[0].statusName()).isEqualTo("受付済");
     }
 }

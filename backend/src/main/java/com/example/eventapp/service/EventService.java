@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。イベント一覧・詳細、登録・編集・削除・復元の業務ロジック。
 /**
- * イベント一覧・詳細取得（AP-04・AP-05）、削除済み一覧（AP-06）、登録・更新・削除・復元（AP-07〜10）の業務ロジックを
+ * イベント一覧・詳細取得（AP-020・AP-021）、削除済み一覧（AP-123）、登録・更新・削除・復元（AP-120〜10）の業務ロジックを
  * 担当するService。EventController（list／getDetail／listDeleted／create／update／delete／restore）から呼ばれ、
  * DBアクセスにはEventRepository・ApplicationRepository・TicketTypeRepository・FavoriteRepositoryを使う。
  */
@@ -51,9 +51,9 @@ public class EventService {
         this.authContext = authContext;
     }
 
-    // AP-04: status=all(既定)は全件、status=openは申込受付中のみ（docs/03_API設計書.md AP-04）
+    // AP-020: status=all(既定)は全件、status=openは申込受付中のみ（docs/30_詳細設計/31_API詳細設計書.md AP-020）
     /**
-     * イベント一覧を取得する（AP-04）。EventController#listから呼ばれる。
+     * イベント一覧を取得する（AP-020）。EventController#listから呼ばれる。
      *
      * @param status "all"（既定、全件）または"open"（受付中のみ）
      * @return イベント一覧（開催日時昇順）
@@ -72,10 +72,10 @@ public class EventService {
                 .toList();
     }
 
-    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-06）
-    // description〜ticketTypesは、SC-10からのイベント複製に必要な項目として追加
+    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-123）
+    // description〜ticketTypesは、SC-122からのイベント複製に必要な項目として追加
     /**
-     * 削除済み（論理削除）のイベント一覧を取得する（AP-06）。EventController#listDeletedから呼ばれる
+     * 削除済み（論理削除）のイベント一覧を取得する（AP-123）。EventController#listDeletedから呼ばれる
      * （管理者権限の確認はController側で完了済み）。
      *
      * @return 削除済みイベント一覧
@@ -101,9 +101,9 @@ public class EventService {
                 .toList();
     }
 
-    // AP-05: 指定IDのイベントが無ければ404（docs/03_API設計書.md AP-05）
+    // AP-021: 指定IDのイベントが無ければ404（docs/30_詳細設計/31_API詳細設計書.md AP-021）
     /**
-     * 指定したイベントの詳細を取得する（AP-05）。EventController#detailから呼ばれる。
+     * 指定したイベントの詳細を取得する（AP-021）。EventController#detailから呼ばれる。
      *
      * @param id 対象イベントID
      * @return イベント詳細
@@ -114,9 +114,9 @@ public class EventService {
         return toDetail(event);
     }
 
-    // AP-07: イベント登録（管理者のみ。権限チェックはController側）
+    // AP-120: イベント登録（管理者のみ。権限チェックはController側）
     /**
-     * イベントを新規登録する（AP-07）。EventController#createから呼ばれる（管理者権限の確認はController側で完了済み）。
+     * イベントを新規登録する（AP-120）。EventController#createから呼ばれる（管理者権限の確認はController側で完了済み）。
      *
      * @param request 登録するイベント情報・参加区分（任意）
      * @return 登録されたイベントの詳細
@@ -136,14 +136,13 @@ public class EventService {
         );
         Event saved = eventRepository.save(event);
         List<TicketType> ticketTypes = saveTicketTypes(saved, request.ticketTypes());
-        log.info("イベント登録完了 userId={} eventId={} name={} capacity={}",
-                authContext.getCurrentUser().userId(), saved.getId(), saved.getName(), saved.getCapacity());
+        log.info("イベント登録完了 eventId={} 実行者userId={}", saved.getId(), authContext.getCurrentUser().userId());
         return toDetail(saved, ticketTypes);
     }
 
-    // AP-08: イベント編集。指定IDが無ければ404
+    // AP-121: イベント編集。指定IDが無ければ404
     /**
-     * イベント情報・参加区分を編集する（AP-08）。EventController#updateから呼ばれる。
+     * イベント情報・参加区分を編集する（AP-121）。EventController#updateから呼ばれる。
      *
      * @param id      編集対象イベントID
      * @param request 編集後の内容
@@ -164,7 +163,7 @@ public class EventService {
                 request.extraQuestion()
         );
         List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
-        log.info("イベント更新完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
+        log.info("イベント更新完了 eventId={} 実行者userId={}", event.getId(), authContext.getCurrentUser().userId());
         return toDetail(event, ticketTypes);
     }
 
@@ -188,10 +187,10 @@ public class EventService {
         throw new BusinessException("定員を入力してください");
     }
 
-    // AP-09: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
+    // AP-122: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
     // 機能追加（ソフトデリート）: 物理削除ではなくdeleted_atを立てるのみ。「削除済みイベント」画面から復元できる。
     /**
-     * イベントを削除（論理削除）する（AP-09）。EventController#deleteから呼ばれる。
+     * イベントを削除（論理削除）する（AP-122）。EventController#deleteから呼ばれる。
      *
      * @param id 削除対象イベントID
      */
@@ -202,12 +201,12 @@ public class EventService {
             throw new BusinessException("申込があるため削除できません");
         }
         event.softDelete();
-        log.info("イベント削除完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
+        log.info("イベント削除完了 eventId={} 実行者userId={}", event.getId(), authContext.getCurrentUser().userId());
     }
 
     // 機能追加（ソフトデリートの復元）。削除済みでなければ404。
     /**
-     * 削除済みのイベントを復元する（AP-10）。EventController#restoreから呼ばれる。
+     * 削除済みのイベントを復元する（AP-124）。EventController#restoreから呼ばれる。
      *
      * @param id 復元対象イベントID
      * @return 復元後のイベント詳細
@@ -217,17 +216,17 @@ public class EventService {
         Event event = eventRepository.findByIdAndDeletedAtIsNotNull(id)
                 .orElseThrow(() -> new NotFoundException("削除済みイベントが見つかりません"));
         event.restore();
-        log.info("イベント復元完了 userId={} eventId={}", authContext.getCurrentUser().userId(), event.getId());
+        log.info("イベント復元完了 eventId={} 実行者userId={}", event.getId(), authContext.getCurrentUser().userId());
         return toDetail(event);
     }
 
     // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
     // 戻り値は更新後の区分一覧（呼び出し側がtoDetail()で再度クエリしなくて済むように）。
-    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（docs/06_詳細設計書.md 7-4 AP-07／AP-08 No.6参照）。
+    // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（docs/30_詳細設計/32_処理詳細設計書.md AP-120／AP-121 No.6参照）。
     private List<TicketType> saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
         if (requests == null) {
             // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
-            // （docs/02_テーブル定義書.md §4.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
+            // （docs/20_基本設計/22_テーブル定義書.md「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
             // リクエストのcapacityは区分の無いイベントの場合のみ有効に使われる）
             List<TicketType> existing = ticketTypeRepository.findByEvent_Id(event.getId());
             if (!existing.isEmpty()) {

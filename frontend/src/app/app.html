@@ -5,8 +5,8 @@
 <nav>
   <span class="brand">イベント申込システム</span>
   <!-- ログイン中（currentUserIdがnullでない）の場合だけナビとログアウトボタンを表示する -->
-  @if (dummyUserStore.currentUserId()) {
-    @if (dummyUserStore.isAdmin()) {
+  @if (loginUserStore.currentUserId()) {
+    @if (loginUserStore.isAdmin()) {
       <!-- 画面設計書§2 共通仕様: 管理者＝［ダッシュボード／イベント管理／申込状況・実績／利用者管理／コメント管理／ログアウト］ -->
       <a routerLink="/admin/dashboard">ダッシュボード</a>
       <a routerLink="/admin/events">イベント管理</a>
@@ -19,6 +19,8 @@
       <a routerLink="/events/search">イベント検索</a>
       <a routerLink="/my/applications">マイページ</a>
     }
+    <!-- パスワード変更（SC-011）は一般利用者・管理者の両方に表示する -->
+    <a routerLink="/my/password">パスワード変更</a>
     <button type="button" (click)="logout()">ログアウト</button>
   }
 </nav>

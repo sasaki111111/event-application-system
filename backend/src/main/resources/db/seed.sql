@@ -1,23 +1,33 @@
--- C-2: 初期データ投入（docs/01_要件定義書.md §7「管理者アカウント」に対応）
+-- C-2: 初期データ投入（docs/20_基本設計/22_テーブル定義書.md 7章、docs/20_基本設計/24_方式設計書.md 3.4）
 -- 実行環境: MySQLサーバー。schema.sql適用後に一度だけ実行する（毎起動では実行しない）。
 --
 -- 実行例:
---   mysql -u eventapp_app -p eventapp < backend/src/main/resources/db/seed.sql
---
--- userId・role（1=general, 2=admin）は AuthInterceptor が X-User-Id ヘッダから
--- ダミー認証するときにそのまま参照するID。ログイン画面（SC-01）もこのidを使う（機能追加：ID入力方式）。
+--   mysql --default-character-set=utf8mb4 -u eventapp_app -p eventapp < backend/src/main/resources/db/seed.sql
 
--- ロール2種のダミーユーザー
-INSERT INTO users (id, name, email, role) VALUES
-    (1, '一般ユーザー', 'general@example.com', 'general'),
-    (2, '管理者',       'admin@example.com',   'admin');
+-- コードマスタ（利用者区分）。コードの意味は変更・再利用しない。表示名・表示順のみ変更できる
+INSERT INTO roles (code, name, display_order) VALUES
+    (1, '一般利用者', 1),
+    (2, '管理者',     2);
 
--- AP-34（利用者の退会＝匿名化）の動作確認用。general@example.comを退会させてしまうと
+-- コードマスタ（申込状況）。取消を表す値は、途中の状態を後から追加しても並びが崩れないよう9とする
+INSERT INTO application_statuses (code, name, display_order) VALUES
+    (1, '受付済',         1),
+    (2, 'キャンセル待ち', 2),
+    (9, 'キャンセル済',   3);
+
+-- 初期利用者。初期パスワードはいずれも「Test1234」（動作確認用。ログイン後にパスワード変更画面から変更できる）。
+-- password_hashにはBCryptでハッシュ化した値を記載する（パスワードそのものは保存しない）。
+-- role_code: 1=一般利用者、2=管理者。idはAuthInterceptorがX-User-Idヘッダから利用者を特定する際のID
+INSERT INTO users (id, name, email, password_hash, role_code) VALUES
+    (1, '一般ユーザー', 'general@example.com', '$2a$10$8Rn8vS9zkbWCMpHFdTrSveCAAUcB5T2srW0rYf.478IWwMuH3OTfO', 1),
+    (2, '管理者',       'admin@example.com',   '$2a$10$8Rn8vS9zkbWCMpHFdTrSveCAAUcB5T2srW0rYf.478IWwMuH3OTfO', 2);
+
+-- 退会（匿名化）の動作確認用。general@example.comを退会させてしまうと
 -- 上記の基本ログイン確認ができなくなるため、使い捨て用に別アカウントを用意する。
-INSERT INTO users (id, name, email, role) VALUES
-    (3, '退会確認用ユーザー', 'withdraw-test@example.com', 'general');
+INSERT INTO users (id, name, email, password_hash, role_code) VALUES
+    (3, '退会確認用ユーザー', 'withdraw-test@example.com', '$2a$10$8Rn8vS9zkbWCMpHFdTrSveCAAUcB5T2srW0rYf.478IWwMuH3OTfO', 1);
 
--- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/01_要件定義書.md「3. 想定利用者」「4. 利用シーン」参照）。
+-- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/10_要件定義/10_要件定義書.md「3. 想定利用者」「4. 利用シーン」参照）。
 -- 開催日時の異なる複数件。1件は申込締切・開催日時とも過去＝「受付終了」表示の確認用。
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
     ('ボードゲーム交流会', '2026-10-01 12:00:00', 'コミュニティスペースあおば', 20,

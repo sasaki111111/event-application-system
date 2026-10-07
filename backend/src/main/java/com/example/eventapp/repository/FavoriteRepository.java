@@ -8,15 +8,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 // 実行環境: サーバー側（JVM）。favoritesテーブルへの問い合わせ口。
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
-    // AP-16: 既に登録済みならそれをそのまま返す（冪等、要件定義書§8 E9）
+    // AP-040: 既に登録済みならそれをそのまま返す（冪等、要件定義書§8 E9）
     // user_id = ? AND event_id = ? に一致する1件を取得する
     Optional<Favorite> findByUser_IdAndEvent_Id(Long userId, Long eventId);
 
-    // AP-17: 解除。未登録でも0件削除で正常終了する（冪等）
+    // AP-041: 解除。未登録でも0件削除で正常終了する（冪等）
     // deleteBy... = DELETE文に相当するクエリメソッド。対象が0件でも例外にはならない
     void deleteByUser_IdAndEvent_Id(Long userId, Long eventId);
 
-    // AP-18: 自分のお気に入り一覧（登録日時の降順）
+    // AP-042: 自分のお気に入り一覧（登録日時の降順）
     List<Favorite> findByUser_IdOrderByCreatedAtDesc(Long userId);
 
     // （機能追加）: イベント一覧・詳細のfavoriteCount集計に使う

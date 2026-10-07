@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-04のイベント登録・編集フォーム（E-5）。
+// 実行環境: ブラウザ側。SC-022のイベント登録・編集フォーム（E-5）。
 // ルートに:idがあれば編集モード（PUT）、無ければ新規登録モード（POST）として動く。
 // 機能追加: 主催者名・画像URL・アンケート文言・定員区分（複数、追加/削除可能）の入力欄。
 import { CommonModule } from '@angular/common';
@@ -15,7 +15,7 @@ interface FieldError {
 // クライアント側バリデーション（Angular Validators）が引っかかった時のメッセージ。
 // バックエンドのEventUpsertRequestのバリデーションメッセージと表現を揃えている。
 const REQUIRED_MESSAGES: Record<string, string> = {
-  name: '名前を入力してください',
+  name: 'イベント名を入力してください',
   startAt: '開催日時を入力してください',
   place: '場所を入力してください',
   capacity: '定員を入力してください',
@@ -29,7 +29,7 @@ const REQUIRED_MESSAGES: Record<string, string> = {
   styleUrl: './admin-event-form.css',
 })
 /**
- * SC-04 イベント登録・編集フォーム画面を担当するComponent。
+ * SC-022 イベント登録・編集フォーム画面を担当するComponent。
  * ルート（app.routes.ts）に:idがある場合（/admin/events/:id/edit）は編集モード、
  * 無い場合（/admin/events/new）は新規登録モードとして同じComponent・同じ画面で動く。
  *
@@ -132,7 +132,7 @@ export class AdminEventForm implements OnInit {
     this.ticketTypesArray.removeAt(index);
   }
 
-  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、docs/02_テーブル定義書.md §4.2）
+  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、docs/20_基本設計/22_テーブル定義書.md）
   protected get ticketTypesCapacitySum(): number {
     // reduceで各区分（group）のcapacity値を順番に足し合わせ、合計値を求める
     return this.ticketTypesArray.controls.reduce((sum, group) => sum + (group.value.capacity ?? 0), 0);

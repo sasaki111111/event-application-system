@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 // 実行環境: サーバー側（JVM）。event_commentsテーブルへの問い合わせ口。
 public interface EventCommentRepository extends JpaRepository<EventComment, Long> {
 
-    // AP-19: イベント詳細のコメント一覧（投稿日時の昇順、テーブル定義書のidx_event_comments_event_createdを使う想定）。
+    // AP-050: イベント詳細のコメント一覧（投稿日時の昇順、テーブル定義書のidx_event_comments_event_createdを使う想定）。
     // created_atは秒単位のため、同一秒内の投稿順が不定にならないようidを第2キーにする
     // OrderByCreatedAtAscIdAsc = ORDER BY created_at ASC, id ASC（第1キー・第2キーの順に並べる）に相当
     List<EventComment> findByEvent_IdOrderByCreatedAtAscIdAsc(Long eventId);
@@ -21,13 +21,13 @@ public interface EventCommentRepository extends JpaRepository<EventComment, Long
     // parent_comment_id = ? の行が1件でも存在するかを判定する
     boolean existsByParentComment_Id(Long parentCommentId);
 
-    // 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-30）
+    // 管理者ダッシュボードのコメント総数（論理削除済みは除外、AP-132）
     // deleted_at IS NULL の件数を数える
     long countByDeletedAtIsNull();
 
-    // 利用者詳細（SC-15）のコメント履歴（AP-31、投稿日時降順。論理削除済みも含む）
+    // 利用者詳細（SC-141）のコメント履歴（AP-144、投稿日時降順。論理削除済みも含む）
     List<EventComment> findByUser_IdOrderByCreatedAtDescIdDesc(Long userId);
 
-    // 全コメント一覧（SC-16コメントモデレーション、AP-32、有効なコメントのみ・投稿日時降順）
+    // 全コメント一覧（SC-150コメントモデレーション、AP-150、有効なコメントのみ・投稿日時降順）
     List<EventComment> findByDeletedAtIsNullOrderByCreatedAtDesc();
 }

@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。event_commentsテーブル（docs/02_テーブル定義書.md §4.6）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。event_commentsテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "event_comments")
 public class EventComment {
@@ -40,7 +40,7 @@ public class EventComment {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // AP-19/20のレスポンスに即値が必要なためDB任せにせずJava側で設定する
+    // AP-050/20のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Favorite.createdAtと同じ考え方。コメントは編集不可のため業務上はこれが唯一のタイムスタンプ）
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -53,12 +53,12 @@ public class EventComment {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // AP-20: コメント投稿用（通常の投稿）
+    // AP-051: コメント投稿用（通常の投稿）
     public EventComment(Event event, User user, String body) {
         this(event, user, body, null);
     }
 
-    // AP-20: コメント投稿用（parentCommentを指定すると返信になる）
+    // AP-051: コメント投稿用（parentCommentを指定すると返信になる）
     public EventComment(Event event, User user, String body, EventComment parentComment) {
         this.event = event;
         this.user = user;

@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。favoritesテーブル（docs/02_テーブル定義書.md §4.5）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。favoritesテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "favorites")
 public class Favorite {
@@ -28,21 +28,18 @@ public class Favorite {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    // AP-16のレスポンスに即値が必要なためDB任せにせずJava側で設定する
+    // AP-040のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Application.appliedAtと同じ考え方。favoritesにはcreated_at以外の業務用タイムスタンプが無いため
     // created_at自体をJava管理にしている）
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false,
-            columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime updatedAt;
 
     protected Favorite() {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // AP-16: お気に入り登録用
+    // AP-040: お気に入り登録用
     public Favorite(User user, Event event) {
         this.user = user;
         this.event = event;

@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-02の一覧部分（イベント一覧）。
+// 実行環境: ブラウザ側。SC-020の一覧部分（イベント一覧）。
 // 各行を展開すると詳細（API-02）を取得して表示し、その場で申込（API-03）もできる（機能追加）。
 // 機能追加: 一覧表示／開催カレンダー表示の切替。
 // `computed()`は、他のsignalの値から自動的に導き出される「計算結果のsignal」を作るAngularの機能。
@@ -7,9 +7,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventApiService, EventDetail, EventSummary } from '../../core/event-api';
+import { moveHeldEventsLast } from '../../core/event-order';
 import { ApplicationApiService } from '../../core/application-api';
 import { FavoriteStore } from '../../core/favorite-store';
-import { DummyUserStore } from '../../core/dummy-user-store';
+import { LoginUserStore } from '../../core/login-user-store';
 
 // カレンダー1マス分（当月外の日も前後の穴埋めとして含む）
 interface CalendarDay {
@@ -20,7 +21,7 @@ interface CalendarDay {
 }
 
 /**
- * SC-02イベント一覧画面を担当するComponent。カード形式の一覧表示と、
+ * SC-020イベント一覧画面を担当するComponent。カード形式の一覧表示と、
  * 開催カレンダー表示（機能追加）の2つの表示モードを切り替えられる。
  * 一覧の各カードは「▼詳細を見る」で展開でき、展開したカード内でその場で申込もできる。
  *
@@ -30,7 +31,7 @@ interface CalendarDay {
  * - `FavoriteStore`: お気に入り登録状態を画面間で共有する状態管理。
  * - `Router`: 申込成功後に申込完了画面へ遷移するために使う。
  * - `ActivatedRoute`: カレンダー表示から戻ってきた場合の表示モード・表示月（?view=calendar&month=…）を読み取る。
- * - `DummyUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
+ * - `LoginUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
  *
  * 画面遷移: カードのタイトル／カレンダーの日付リンクからevent-detail.ts（イベント詳細）へ遷移する。
  * 申込成功時はapply-done.ts（申込完了画面）へ遷移する。
@@ -65,19 +66,29 @@ export class EventList implements OnInit {
   // （機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
-  /** sortOrderの値に応じて、取得済みのeventsを並び替えた結果。sortOrderが変わると自動的に再計算される。 */
+  /**
+   * sortOrderの値に応じて、取得済みのeventsを並び替えた結果。sortOrderが変わると自動的に再計算される。
+   * どの並び順でも、開催済み（開催日時が現在時刻以前）のイベントは末尾にまとめて表示する
+   * （これから開催されるイベントを先に見せるため。docs/30_詳細設計/30_画面詳細設計書.md SC-020）。
+   * 開催前・開催済みそれぞれの中では、選択された並び順に従う。
+   */
   protected readonly sortedEvents = computed(() => {
     const events = [...this.events()];
     switch (this.sortOrder()) {
       case 'accepted_desc':
-        return events.sort((a, b) => b.acceptedCount - a.acceptedCount);
+        events.sort((a, b) => b.acceptedCount - a.acceptedCount);
+        break;
       case 'favorite_desc':
-        return events.sort((a, b) => b.favoriteCount - a.favoriteCount);
+        events.sort((a, b) => b.favoriteCount - a.favoriteCount);
+        break;
       case 'deadline_asc':
-        return events.sort((a, b) => a.applicationDeadline.localeCompare(b.applicationDeadline));
+        events.sort((a, b) => a.applicationDeadline.localeCompare(b.applicationDeadline));
+        break;
       default:
-        return events.sort((a, b) => a.startAt.localeCompare(b.startAt));
+        events.sort((a, b) => a.startAt.localeCompare(b.startAt));
     }
+    // 並び替えた順序を保ったまま、開催前のイベントを前、開催済みのイベントを後ろに分ける（SC-021と共通の処理）
+    return moveHeldEventsLast(events);
   });
 
   /** カレンダー見出しに表示する「2027年3月」のような文字列。calendarMonthから導き出す。 */
@@ -142,12 +153,12 @@ export class EventList implements OnInit {
     protected readonly favoriteStore: FavoriteStore,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
-    protected readonly dummyUserStore: DummyUserStore,
+    protected readonly loginUserStore: LoginUserStore,
   ) {}
 
   // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）。role基準で判定する
   protected get isAdmin(): boolean {
-    return this.dummyUserStore.isAdmin();
+    return this.loginUserStore.isAdmin();
   }
 
   /**

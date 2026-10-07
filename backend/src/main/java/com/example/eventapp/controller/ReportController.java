@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-// 実行環境: サーバー側（JVM、localhost:8080）。申込実績出力API（AP-22、管理者のみ）。
+// 実行環境: サーバー側（JVM、localhost:8080）。申込実績出力API（AP-130、管理者のみ）。
 /**
- * 申込実績の集計取得・CSV出力（AP-22）のHTTP入口を担当するController。
+ * 申込実績の集計取得・CSV出力（AP-130）のHTTP入口を担当するController。
  * フロントエンドのcore/report-api.ts（ReportApiService#summary／#downloadCsv）から呼ばれ、
  * 内部ではReportServiceの各メソッド（summarize／toCsv）に処理を委譲する。
  */
-@Tag(name = "申込実績", description = "申込実績の集計取得・CSV出力（AP-22）")
+@Tag(name = "申込実績", description = "申込実績の集計取得・CSV出力（AP-130）")
 @RestController
 public class ReportController {
 
@@ -31,9 +31,9 @@ public class ReportController {
         this.authContext = authContext;
     }
 
-    // AP-22 GET /api/reports/applications?format=json|csv&sort=startAt|accepted_desc（管理者のみ）
+    // AP-130 GET /api/reports/applications?format=json|csv&sort=startAt|accepted_desc（管理者のみ）
     /**
-     * 申込実績を取得する（AP-22）。フロントエンドのcore/report-api.ts（ReportApiService#summary／#downloadCsv）から呼ばれる。
+     * 申込実績を取得する（AP-130）。フロントエンドのcore/report-api.ts（ReportApiService#summary／#downloadCsv）から呼ばれる。
      * authContext.requireAdmin()により管理者以外は403になる。
      * formatの値によって戻り値の型（JSON一覧／CSV文字列）が変わるため、戻り値の型を{@code ResponseEntity<Object>}として、
      * メソッド内でcontentTypeやContent-Dispositionヘッダーを組み立てている。
@@ -46,7 +46,7 @@ public class ReportController {
      * @param sort   format=jsonの場合の並び順（startAt＝開催日時順、accepted_desc＝受付数降順）
      * @return format=jsonならイベント別集計一覧、format=csvならCSVファイルのダウンロードレスポンス
      */
-    @Operation(summary = "AP-22 申込実績取得",
+    @Operation(summary = "AP-130 申込実績取得",
             description = "format=json（既定）はイベントごとの受付数・充足率の一覧（sortでstartAt順／accepted_desc順を選択）。"
                     + "format=csvはBOM付きUTF-8の申込明細（イベント名・申込者名・申込日時・ステータス・アンケート回答）をダウンロードする。"
                     + "いずれも削除済みイベントは対象外。管理者のみ実行できる。")

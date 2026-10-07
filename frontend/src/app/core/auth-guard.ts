@@ -6,7 +6,7 @@ import { inject } from '@angular/core';
 // CanActivateFn: ルートガードの型。Router: UrlTree生成・画面遷移を行うサービス
 import { CanActivateFn, Router } from '@angular/router';
 // ログイン中ユーザーの状態（userId・role）を保持するストア
-import { DummyUserStore } from './dummy-user-store';
+import { LoginUserStore } from './login-user-store';
 
 /**
  * ログイン必須ルート用のガード。app.routes.tsのほぼ全ルートでcanActivateの先頭に登録されており、
@@ -16,9 +16,9 @@ import { DummyUserStore } from './dummy-user-store';
  *          （/login）へ遷移先を差し替えるUrlTreeを返す。
  */
 export const authGuard: CanActivateFn = () => {
-  const dummyUserStore = inject(DummyUserStore);
+  const loginUserStore = inject(LoginUserStore);
   // currentUserIdがnull以外＝ログイン済みなので、遷移を許可する
-  if (dummyUserStore.currentUserId() !== null) {
+  if (loginUserStore.currentUserId() !== null) {
     return true;
   }
   // 未ログインの場合は、遷移先をログイン画面（/login）に差し替えるUrlTreeを返す

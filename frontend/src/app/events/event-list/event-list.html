@@ -117,10 +117,6 @@
               <p class="error">{{ expandedError() }}</p>
             } @else if (expandedDetail(); as detail) {
               <dl>
-                @if (detail.organizerName) {
-                  <dt>主催者</dt>
-                  <dd>{{ detail.organizerName }}</dd>
-                }
                 <dt>定員</dt>
                 <dd>{{ detail.capacity }}名</dd>
 

@@ -17,10 +17,10 @@
     <dd>{{ u.email }}</dd>
     <dt>利用者区分</dt>
     <dd>
-      @if (u.role === 'admin') {
-        <span class="badge badge-neutral">管理者</span>
+      @if (u.roleCode === RoleCode.ADMIN) {
+        <span class="badge badge-neutral">{{ u.roleName }}</span>
       } @else {
-        <span class="badge badge-positive">一般</span>
+        <span class="badge badge-positive">{{ u.roleName }}</span>
       }
       @if (u.anonymizedAt) {
         <span class="badge badge-neutral">退会済み</span>
@@ -29,7 +29,7 @@
   </dl>
 
   <!-- 管理者権限の降格・退会（匿名化）ボタン。対象の区分・状態に応じてどちらか一方だけ表示する -->
-  @if (u.role === 'admin') {
+  @if (u.roleCode === RoleCode.ADMIN) {
     <button type="button" (click)="demote()" [disabled]="demoting()">管理者権限を外す</button>
   } @else if (!u.anonymizedAt) {
     <button type="button" (click)="anonymize()" [disabled]="anonymizing()">退会させる</button>
@@ -56,14 +56,14 @@
             <!-- 申込ステータスに応じてバッジを切り替える。キャンセル待ちの場合は、順番（waitlistRank）が
                  わかっていれば「（n番目）」を追記する -->
             <td>
-              @if (application.status === '受付済') {
-                <span class="badge badge-positive">受付済</span>
-              } @else if (application.status === 'キャンセル待ち') {
+              @if (application.statusCode === StatusCode.ACCEPTED) {
+                <span class="badge badge-positive">{{ application.statusName }}</span>
+              } @else if (application.statusCode === StatusCode.WAITLISTED) {
                 <span class="badge badge-waiting">
-                  キャンセル待ち @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
+                  {{ application.statusName }} @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
                 </span>
               } @else {
-                <span class="badge badge-neutral">キャンセル済</span>
+                <span class="badge badge-neutral">{{ application.statusName }}</span>
               }
             </td>
             <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>

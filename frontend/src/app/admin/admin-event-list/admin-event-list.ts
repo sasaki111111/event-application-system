@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-04のイベント管理一覧（E-5）。
-// GET /api/eventsはSC-02と同じAPIを流用する（API設計書の備考の通り）。
+// 実行環境: ブラウザ側。SC-022のイベント管理一覧（E-5）。
+// GET /api/eventsはSC-020と同じAPIを流用する（API設計書の備考の通り）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -12,7 +12,7 @@ import { EventApiService, EventSummary } from '../../core/event-api';
   styleUrl: './admin-event-list.css',
 })
 /**
- * SC-04 イベント管理一覧画面（/admin/events）を担当するComponent。
+ * SC-022 イベント管理一覧画面（/admin/events）を担当するComponent。
  * 管理者が主催する全イベント（受付中・受付終了を含む）をカード形式で一覧表示する。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
@@ -39,7 +39,7 @@ export class AdminEventList implements OnInit {
 
   /**
    * 各カードの「複製」ボタン（(click)="duplicate(event)"）から呼ばれる処理。
-   * 複製元イベントの詳細（AP-05）を取得し、新規登録フォームへ値を持って遷移する。
+   * 複製元イベントの詳細（AP-021）を取得し、新規登録フォームへ値を持って遷移する。
    * バックエンドAPIは呼ばない（開催日時・申込締切は複製対象外のため、新規登録と同じ入力チェックを通す）
    */
   protected duplicate(event: EventSummary): void {

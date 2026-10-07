@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { ApplicationApiService } from '../../core/application-api';
-import { DummyUserStore } from '../../core/dummy-user-store';
+import { LoginUserStore } from '../../core/login-user-store';
 import { EventApiService, EventDetail, EventSummary } from '../../core/event-api';
 import { FavoriteStore } from '../../core/favorite-store';
 import { EventList } from './event-list';
@@ -37,7 +37,7 @@ describe('EventList', () => {
   let applicationApi: { apply: ReturnType<typeof vi.fn> };
   let favoriteStore: { favoriteEventIds: ReturnType<typeof vi.fn>; ensureLoaded: ReturnType<typeof vi.fn>; toggle: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
-  let dummyUserStore: { isAdmin: ReturnType<typeof vi.fn> };
+  let loginUserStore: { isAdmin: ReturnType<typeof vi.fn> };
   let activatedRoute: { snapshot: { queryParamMap: { get: ReturnType<typeof vi.fn> } } };
 
   function createComponent(): EventList {
@@ -48,7 +48,7 @@ describe('EventList', () => {
         { provide: FavoriteStore, useValue: favoriteStore },
         { provide: Router, useValue: router },
         { provide: ActivatedRoute, useValue: activatedRoute },
-        { provide: DummyUserStore, useValue: dummyUserStore },
+        { provide: LoginUserStore, useValue: loginUserStore },
       ],
     });
     const component = TestBed.createComponent(EventList).componentInstance;
@@ -61,14 +61,14 @@ describe('EventList', () => {
       list: vi.fn(() => of(events)),
       detail: vi.fn((id: number) => of({ ...events.find((e) => e.id === id), description: '説明', remaining: 5, extraQuestion: null, ticketTypes: [] } as EventDetail)),
     };
-    applicationApi = { apply: vi.fn(() => of({ id: 1, eventId: 1, ticketTypeId: null, userId: 1, status: '受付済', appliedAt: '2026-12-01T00:00:00' })) };
+    applicationApi = { apply: vi.fn(() => of({ id: 1, eventId: 1, ticketTypeId: null, userId: 1, statusCode: 1, statusName: '受付済', appliedAt: '2026-12-01T00:00:00' })) };
     favoriteStore = {
       favoriteEventIds: vi.fn(() => new Set<number>()),
       ensureLoaded: vi.fn(() => of(new Set<number>())),
       toggle: vi.fn(() => of(true)),
     };
     router = { navigate: vi.fn() };
-    dummyUserStore = { isAdmin: vi.fn(() => false) };
+    loginUserStore = { isAdmin: vi.fn(() => false) };
     activatedRoute = { snapshot: { queryParamMap: { get: vi.fn(() => null) } } };
   });
 
@@ -115,6 +115,48 @@ describe('EventList', () => {
   });
 
   // toggleExpand(id)で、該当イベントのEventApiService.detail()が呼ばれ、展開状態・詳細が設定されることを確認
+  // 開催済み（開催日時が過去）のイベントは、開催日時が最も古くても一覧の末尾に並ぶことを確認
+  it('並び替え: 開催済みのイベントは末尾に並ぶ（既定の開催日時順）', () => {
+    eventApi.list.mockReturnValue(
+      of([
+        makeEvent({ id: 9, name: '開催済み', startAt: '2020-01-01T10:00:00', applicationDeadline: '2019-12-25T00:00:00', open: false }),
+        ...events,
+      ]),
+    );
+    const component = createComponent() as any;
+
+    expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([2, 3, 1, 9]);
+  });
+
+  // 開催日時順以外の並び順でも、開催済みのイベントは末尾に並ぶことを確認（申込数が最も多くても先頭にならない）
+  it('並び替え: 申込数の多い順でも開催済みのイベントは末尾に並ぶ', () => {
+    eventApi.list.mockReturnValue(
+      of([
+        makeEvent({ id: 9, name: '開催済み', startAt: '2020-01-01T10:00:00', acceptedCount: 99, open: false }),
+        makeEvent({ id: 8, name: '開催済み2', startAt: '2021-01-01T10:00:00', acceptedCount: 50, open: false }),
+        ...events,
+      ]),
+    );
+    const component = createComponent() as any;
+    component.onSortOrderChange('accepted_desc');
+
+    // 開催前（2, 1, 3）が申込数の多い順に並び、その後ろに開催済み（9, 8）が申込数の多い順に並ぶ
+    expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([2, 1, 3, 9, 8]);
+  });
+
+  // 申込締切を過ぎただけ（開催前）のイベントは受付終了だが、末尾には移動しないことを確認
+  it('並び替え: 受付終了でも開催前のイベントは末尾に移動しない', () => {
+    eventApi.list.mockReturnValue(
+      of([
+        makeEvent({ id: 7, name: '締切済・開催前', startAt: '2026-12-31T10:00:00', open: false }),
+        ...events,
+      ]),
+    );
+    const component = createComponent() as any;
+
+    expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([7, 2, 3, 1]);
+  });
+
   it('詳細展開: toggleExpandでイベント詳細を取得する', () => {
     const component = createComponent() as any;
 
@@ -176,9 +218,9 @@ describe('EventList', () => {
     expect(component.events().find((e: EventSummary) => e.id === 1).favoriteCount).toBe(Math.max(0, before - 1));
   });
 
-  // DummyUserStore.isAdmin()がtrueを返す時、Componentのget isAdmin()もtrueを返すことを確認
+  // LoginUserStore.isAdmin()がtrueを返す時、Componentのget isAdmin()もtrueを返すことを確認
   it('管理者の場合isAdminがtrueになる', () => {
-    dummyUserStore.isAdmin.mockReturnValue(true);
+    loginUserStore.isAdmin.mockReturnValue(true);
 
     const component = createComponent() as any;
 

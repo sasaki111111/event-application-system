@@ -9,7 +9,7 @@
   <button type="button" class="btn-toggle" [class.active]="activeTab() === 'favorites'" (click)="setTab('favorites')">
     お気に入り
   </button>
-  <!-- 機能追加（AP-34）: 自分のアカウントの退会（匿名化）。表示タブ切替ボタンと並べて配置する -->
+  <!-- 機能追加（AP-013）: 自分のアカウントの退会（匿名化）。表示タブ切替ボタンと並べて配置する -->
   <button type="button" class="btn-toggle" (click)="withdraw()" [disabled]="withdrawing()">
     {{ withdrawing() ? '退会処理中...' : '退会する' }}
   </button>
@@ -25,17 +25,17 @@
   } @else {
     <div class="card-grid">
       @for (application of applications(); track application.id) {
-        <div class="card" [class.closed]="application.status === 'キャンセル済'">
+        <div class="card" [class.closed]="application.statusCode === StatusCode.CANCELLED">
           <div class="card-header">
             <a class="card-title" [routerLink]="['/events', application.eventId]">{{ application.eventName }}</a>
-            @if (application.status === '受付済') {
-              <span class="badge badge-positive">受付済</span>
-            } @else if (application.status === 'キャンセル待ち') {
+            @if (application.statusCode === StatusCode.ACCEPTED) {
+              <span class="badge badge-positive">{{ application.statusName }}</span>
+            } @else if (application.statusCode === StatusCode.WAITLISTED) {
               <span class="badge badge-waiting">
-                キャンセル待ち @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
+                {{ application.statusName }} @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
               </span>
             } @else {
-              <span class="badge badge-neutral">キャンセル済</span>
+              <span class="badge badge-neutral">{{ application.statusName }}</span>
             }
           </div>
 
@@ -46,7 +46,7 @@
             <dd>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
           </dl>
 
-          @if (application.status === '受付済' || application.status === 'キャンセル待ち') {
+          @if (application.statusCode === StatusCode.ACCEPTED || application.statusCode === StatusCode.WAITLISTED) {
             <div class="card-actions">
               <button type="button" class="btn-danger" (click)="cancel(application)" [disabled]="cancellingId() === application.id">
                 {{ cancellingId() === application.id ? 'キャンセル中...' : 'キャンセル' }}

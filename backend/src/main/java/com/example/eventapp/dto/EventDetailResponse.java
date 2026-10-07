@@ -3,8 +3,8 @@ package com.example.eventapp.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// 実行環境: サーバー側（JVM）。AP-05 GET /api/events/{id} のレスポンス
-// （AP-04の全フィールド＋description・remaining等、docs/03_API設計書.md AP-05）。
+// 実行環境: サーバー側（JVM）。AP-021 GET /api/events/{id} のレスポンス
+// （AP-020の全フィールド＋description・remaining等、docs/30_詳細設計/31_API詳細設計書.md AP-021）。
 public record EventDetailResponse(
         Long id,
         String name,

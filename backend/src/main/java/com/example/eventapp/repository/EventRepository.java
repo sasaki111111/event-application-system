@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param;
 // 実行環境: サーバー側（JVM）。eventsテーブルへの問い合わせ口。
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-    // AP-04: GET /api/events は開催日時の昇順で固定（docs/03_API設計書.md AP-04）。ソフトデリート済みは除外する。
+    // AP-020: GET /api/events は開催日時の昇順で固定（docs/30_詳細設計/31_API詳細設計書.md AP-020）。ソフトデリート済みは除外する。
     // DeletedAtIsNull = deleted_at IS NULL（未削除）、OrderByStartAtAsc = ORDER BY start_at ASC
     List<Event> findAllByDeletedAtIsNullOrderByStartAtAsc();
 

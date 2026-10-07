@@ -2,8 +2,8 @@ package com.example.eventapp.dto;
 
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。AP-31 GET /api/users/{id}/comments のレスポンス1件分。
-// 複数イベントを横断する履歴のため、AP-19（EventCommentResponse）と異なりeventId/eventNameを含む。
+// 実行環境: サーバー側（JVM）。AP-144 GET /api/users/{id}/comments のレスポンス1件分。
+// 複数イベントを横断する履歴のため、AP-050（EventCommentResponse）と異なりeventId/eventNameを含む。
 public record UserCommentResponse(
         Long id,
         Long eventId,

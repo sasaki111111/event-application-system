@@ -1,5 +1,5 @@
 // 実行環境: ブラウザ側。backendの/api/users（GET、管理者専用のユーザー一覧）・
-// /api/admins（POST、AP-25：管理者アカウント登録）を呼び出す窓口。
+// /api/admins（POST、AP-145：管理者アカウント登録）を呼び出す窓口。
 // ログイン・一般ユーザー登録用のPOST呼び出しはcore/login-api.tsが担当する（そちらは認証不要のため分けている）。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
@@ -12,8 +12,11 @@ export interface UserSummary {
   userId: number;
   name: string;
   email: string;
-  role: string;
-  // AP-34: 匿名化（退会）済みかどうか。未退会はnull
+  /** 利用者区分コード（ROLE_CODE参照）。 */
+  roleCode: number;
+  /** 利用者区分の表示名（コードマスタの値）。 */
+  roleName: string;
+  // AP-013: 匿名化（退会）済みかどうか。未退会はnull
   anonymizedAt: string | null;
 }
 
@@ -33,39 +36,39 @@ export class UserApiService {
     return this.http.get<UserSummary[]>(`${API_BASE_URL}/users`);
   }
 
-  /** 管理者アカウントを登録する（AP-25、管理者のみ。作成されるのは常に管理者）。 */
-  registerAdmin(name: string, email: string): Observable<UserSummary> {
-    return this.http.post<UserSummary>(`${API_BASE_URL}/admins`, { name, email });
+  /** 管理者アカウントを登録する（AP-145、管理者のみ。作成されるのは常に管理者）。 */
+  registerAdmin(name: string, email: string, password: string): Observable<UserSummary> {
+    return this.http.post<UserSummary>(`${API_BASE_URL}/admins`, { name, email, password });
   }
 
-  /** 利用者の基本情報を取得する（AP-26、管理者専用、SC-15利用者詳細）。 */
+  /** 利用者の基本情報を取得する（AP-141、管理者専用、SC-141利用者詳細）。 */
   getById(userId: number): Observable<UserSummary> {
     return this.http.get<UserSummary>(`${API_BASE_URL}/users/${userId}`);
   }
 
-  /** 指定利用者の申込一覧を取得する（AP-27、管理者専用、SC-15利用者詳細。AP-13と同形式）。 */
+  /** 指定利用者の申込一覧を取得する（AP-142、管理者専用、SC-141利用者詳細。AP-031と同形式）。 */
   applicationsOf(userId: number): Observable<MyApplication[]> {
     return this.http.get<MyApplication[]>(`${API_BASE_URL}/users/${userId}/applications`);
   }
 
-  /** 指定利用者のお気に入り一覧を取得する（AP-28、管理者専用、SC-15利用者詳細。AP-18と同形式）。 */
+  /** 指定利用者のお気に入り一覧を取得する（AP-143、管理者専用、SC-141利用者詳細。AP-042と同形式）。 */
   favoritesOf(userId: number): Observable<FavoriteEvent[]> {
     return this.http.get<FavoriteEvent[]>(`${API_BASE_URL}/users/${userId}/favorites`);
   }
 
-  /** 指定利用者のコメント履歴を取得する（AP-31、管理者専用、SC-15利用者詳細）。 */
+  /** 指定利用者のコメント履歴を取得する（AP-144、管理者専用、SC-141利用者詳細）。 */
   commentsOf(userId: number): Observable<UserComment[]> {
     return this.http.get<UserComment[]>(`${API_BASE_URL}/users/${userId}/comments`);
   }
 
-  /** 対象の管理者を一般利用者に変更する（AP-33、管理者専用、SC-15利用者詳細から呼び出す）。 */
+  /** 対象の管理者を一般利用者に変更する（AP-146、管理者専用、SC-141利用者詳細から呼び出す）。 */
   demote(userId: number): Observable<UserSummary> {
     return this.http.put<UserSummary>(`${API_BASE_URL}/users/${userId}/demote`, {});
   }
 
   /**
-   * 利用者を匿名化（退会）する（AP-34、本人または管理者）。本人の場合はSC-06（マイページ）から、
-   * 管理者が他の利用者を対象にする場合はSC-15（利用者詳細）から呼び出す。
+   * 利用者を匿名化（退会）する（AP-013、本人または管理者）。本人の場合はSC-030（マイページ）から、
+   * 管理者が他の利用者を対象にする場合はSC-141（利用者詳細）から呼び出す。
    */
   anonymize(userId: number): Observable<UserSummary> {
     return this.http.delete<UserSummary>(`${API_BASE_URL}/users/${userId}`);

@@ -39,6 +39,23 @@
       <p class="field-error">{{ registerFieldError('email') }}</p>
     }
   </div>
+  <div class="field">
+    <label for="registerPassword">初期パスワード</label>
+    <!-- type="password"により、入力した文字が伏せて表示される -->
+    <input
+      id="registerPassword"
+      type="password"
+      maxlength="72"
+      autocomplete="new-password"
+      [value]="registerPassword()"
+      (input)="onRegisterPasswordInput($any($event.target).value)"
+      [class.invalid]="registerFieldError('password')"
+    />
+    <p class="note">8文字以上72文字以下、英字と数字をそれぞれ1文字以上含めてください</p>
+    @if (registerFieldError('password')) {
+      <p class="field-error">{{ registerFieldError('password') }}</p>
+    }
+  </div>
   <button type="submit" [disabled]="registering()">
     {{ registering() ? '登録中...' : '管理者を登録' }}
   </button>
@@ -69,10 +86,10 @@
           <td>{{ user.email }}</td>
           <!-- ロール（管理者／一般）のバッジに加え、退会済みの場合は追加でバッジを表示する -->
           <td>
-            @if (user.role === 'admin') {
-              <span class="badge badge-neutral">管理者</span>
+            @if (user.roleCode === RoleCode.ADMIN) {
+              <span class="badge badge-neutral">{{ user.roleName }}</span>
             } @else {
-              <span class="badge badge-positive">一般</span>
+              <span class="badge badge-positive">{{ user.roleName }}</span>
             }
             @if (user.anonymizedAt) {
               <span class="badge badge-neutral">退会済み</span>

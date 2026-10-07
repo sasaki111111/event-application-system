@@ -39,12 +39,12 @@
           <td>{{ attendee.ticketTypeName ?? '-' }}</td>
           <!-- 申込ステータスに応じてバッジの色・文言を切り替える -->
           <td>
-            @if (attendee.status === '受付済') {
-              <span class="badge badge-positive">受付済</span>
-            } @else if (attendee.status === 'キャンセル待ち') {
-              <span class="badge badge-waiting">キャンセル待ち</span>
+            @if (attendee.statusCode === StatusCode.ACCEPTED) {
+              <span class="badge badge-positive">{{ attendee.statusName }}</span>
+            } @else if (attendee.statusCode === StatusCode.WAITLISTED) {
+              <span class="badge badge-waiting">{{ attendee.statusName }}</span>
             } @else {
-              <span class="badge badge-neutral">キャンセル済</span>
+              <span class="badge badge-neutral">{{ attendee.statusName }}</span>
             }
           </td>
           <!-- チェックイン済みなら日時（dateパイプで整形）、未チェックインなら文言を表示する -->
@@ -62,7 +62,7 @@
           <!-- チェックインボタン。(click)はAngularのイベントバインディングで、クリック時にcheckIn()を呼ぶ。
                [disabled]はプロパティバインディングで、処理中（checkingInIdが自分の行と一致）の間ボタンを無効化する -->
           <td>
-            @if (attendee.status === '受付済') {
+            @if (attendee.statusCode === StatusCode.ACCEPTED) {
               <button type="button" class="btn-accent btn-sm"
                 (click)="checkIn(attendee)" [disabled]="checkingInId() === attendee.applicationId">
                 {{ checkingInId() === attendee.applicationId ? '処理中...' : (attendee.checkedInAt ? '再チェックイン' : 'チェックイン') }}

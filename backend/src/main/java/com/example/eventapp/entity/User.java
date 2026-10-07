@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。usersテーブル（docs/02_テーブル定義書.md §4.1）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。usersテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 // DBのCREATE文はbackend/src/main/resources/db/schema.sqlで管理しており、
 // このクラスはそこにあわせて手で定義している（ddl-auto: noneのため自動生成はしない）。
 @Entity
@@ -25,10 +25,16 @@ public class User {
     @Column(nullable = false, length = 255, unique = true)
     private String email;
 
-    @Column(nullable = false, length = 20)
-    private String role;
+    // パスワードをBCryptでハッシュ化した値（docs/20_基本設計/22_テーブル定義書.md 4.1）。パスワードそのものは保存しない。
+    // 退会（匿名化）時はNULLにし、以後ログインできないようにする
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
 
-    // AP-34: 利用者の匿名化（退会）日時。NULLなら未退会（docs/02_テーブル定義書.md §4.1）
+    // 利用者区分コード（RoleCode参照。1=一般利用者、2=管理者）。表示名はコードマスタ（roles）で管理する
+    @Column(name = "role_code", nullable = false)
+    private Integer roleCode;
+
+    // AP-013: 利用者の匿名化（退会）日時。NULLなら未退会（docs/20_基本設計/22_テーブル定義書.md）
     @Column(name = "anonymized_at")
     private LocalDateTime anonymizedAt;
 
@@ -47,12 +53,12 @@ public class User {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // 機能追加（軽い会員登録）: 名前・メールアドレスのみで一般ユーザーを作成する。
-    // パスワードは扱わない（要件定義書の前提どおりダミー認証のまま）ため、roleは常にgeneral固定でよい。
-    public User(String name, String email, String role) {
+    // 利用者登録（AP-011）・管理者アカウント登録（AP-145）用。passwordHashにはハッシュ化済みの値を渡す
+    public User(String name, String email, String passwordHash, Integer roleCode) {
         this.name = name;
         this.email = email;
-        this.role = role;
+        this.passwordHash = passwordHash;
+        this.roleCode = roleCode;
     }
 
     public Long getId() {
@@ -67,17 +73,26 @@ public class User {
         return email;
     }
 
-    public String getRole() {
-        return role;
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    // AP-012: パスワード変更。ハッシュ化済みの値で上書きする
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
+    public Integer getRoleCode() {
+        return roleCode;
     }
 
     public boolean isAdmin() {
-        return "admin".equals(role);
+        return Integer.valueOf(RoleCode.ADMIN).equals(roleCode);
     }
 
-    // AP-33: 管理者権限の降格。roleをgeneralに変更するのみ（新たな列は追加しない）
+    // AP-146: 管理者権限の降格。利用者区分コードを一般利用者に変更するのみ
     public void demote() {
-        this.role = "general";
+        this.roleCode = RoleCode.GENERAL;
     }
 
     public LocalDateTime getAnonymizedAt() {
@@ -88,11 +103,13 @@ public class User {
         return anonymizedAt != null;
     }
 
-    // AP-34: 利用者の匿名化（退会）。名前・メールアドレスを固定の文言・形式に置き換え、行は残す（物理削除しない）。
+    // AP-013: 利用者の匿名化（退会）。名前・メールアドレスを固定の文言・形式に置き換え、行は残す（物理削除しない）。
     // メールアドレスはUNIQUE制約があるため、利用者IDを用いて他の利用者と重複しない値にする
     public void anonymize() {
         this.name = "退会済み利用者";
         this.email = "withdrawn-" + id + "@invalid.example";
+        // パスワードを無効化する（R-24）。以後このアカウントではログインできない
+        this.passwordHash = null;
         this.anonymizedAt = LocalDateTime.now();
     }
 

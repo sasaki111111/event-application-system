@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。applicationsテーブル（docs/02_テーブル定義書.md §4.4）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。applicationsテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "applications")
 public class Application {
@@ -33,15 +33,16 @@ public class Application {
     @JoinColumn(name = "ticket_type_id")
     private TicketType ticketType;
 
-    // '受付済'・'キャンセル待ち'・'キャンセル済'のいずれか（docs/02_テーブル定義書.md §7）
-    @Column(nullable = false, length = 20)
-    private String status;
+    // 申込状況コード（ApplicationStatus参照。1=受付済、2=キャンセル待ち、9=キャンセル済）。
+    // 表示名はコードマスタ（application_statuses）で管理する
+    @Column(name = "status_code", nullable = false)
+    private Integer status;
 
     // APIレスポンスに即値が必要なためDB任せにせずJava側で設定する（created_at/updated_atとは異なる扱い）
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 AP-12）
+    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 AP-030）
     @Column(name = "extra_answer", length = 500)
     private String extraAnswer;
 
@@ -64,18 +65,18 @@ public class Application {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // イベント申込（AP-12）用。生成した瞬間は必ず「受付済」
+    // イベント申込（AP-030）用。生成した瞬間は必ず「受付済」
     public Application(User user, Event event) {
         this(user, event, ApplicationStatus.ACCEPTED);
     }
 
     // 機能追加（キャンセル待ち）: 定員超過時は最初から「キャンセル待ち」で作る
-    public Application(User user, Event event, String status) {
+    public Application(User user, Event event, Integer status) {
         this(user, event, null, status, null);
     }
 
     // 機能追加（定員区分）: 区分単位の申込用。ticketTypeは区分の無いイベントへの申込ではNULL
-    public Application(User user, Event event, TicketType ticketType, String status, String extraAnswer) {
+    public Application(User user, Event event, TicketType ticketType, Integer status, String extraAnswer) {
         this.user = user;
         this.event = event;
         this.ticketType = ticketType;
@@ -100,7 +101,7 @@ public class Application {
         return ticketType;
     }
 
-    public String getStatus() {
+    public Integer getStatus() {
         return status;
     }
 
@@ -116,7 +117,7 @@ public class Application {
         return checkedInAt;
     }
 
-    // 申込キャンセル（AP-14）用
+    // 申込キャンセル（AP-032）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
     }

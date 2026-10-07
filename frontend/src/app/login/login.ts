@@ -1,7 +1,7 @@
-// 実行環境: ブラウザ側。SC-01ログイン画面（E-2、機能追加でメールアドレス入力方式に変更）。
-// 要件定義書: 「簡易ログイン（ダミー認証）。ログイン画面でメールアドレスを入力すると、
-// そのユーザーのロールを自動判定してそれぞれの画面へ遷移する」。パスワードは無い。
-// 機能追加：軽い会員登録（名前・メールだけで一般ユーザーを作成し、そのままログインする）も同じ画面に持つ。
+// 実行環境: ブラウザ側。SC-010ログイン画面（メールアドレスとパスワードによるログイン、および利用者登録）。
+// 要件定義書: 「ログイン画面でメールアドレスとパスワードを入力すると、
+// そのユーザーの利用者区分を自動判定してそれぞれの画面へ遷移する」。
+// 機能追加：利用者登録（名前・メールアドレス・パスワードで一般ユーザーを作成し、そのままログインする）も同じ画面に持つ。
 // `inject()`は、Angularの依存性注入（DI）の仕組みでService等のインスタンスを取得する関数。
 // コンストラクタの引数で受け取る書き方（event-detail.ts等を参照）と役割は同じで、
 // クラスのフィールド定義の中で直接呼び出せる点が異なる（新しいComponentではこちらが主流）。
@@ -9,8 +9,9 @@
 // 参照しているテンプレートが自動的に再描画される。読み取りは`email()`のように関数呼び出しの形。
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { DummyUserStore } from '../core/dummy-user-store';
+import { LoginUserStore } from '../core/login-user-store';
 import { LoginApiService } from '../core/login-api';
+import { ROLE_CODE } from '../core/codes';
 
 // 新規登録フォームの入力エラー1件分（対象フィールド名とエラー文言）
 interface FieldError {
@@ -19,11 +20,11 @@ interface FieldError {
 }
 
 /**
- * SC-01ログイン画面を担当するComponent。
+ * SC-010ログイン画面を担当するComponent。
  * 1つの画面に「ログイン」フォームと「新規登録」フォームの2つを持つ。
  *
  * 使用するAngular Service:
- * - `DummyUserStore`: ログイン中ユーザー（id・ロール）をアプリ全体で共有する状態。
+ * - `LoginUserStore`: ログイン中ユーザー（id・ロール）をアプリ全体で共有する状態。
  *   ログイン・登録に成功した際にここへ記録する。
  * - `Router`: ログイン・登録成功後に別の画面へ遷移するために使う。
  * - `LoginApiService`: ログインAPI・会員登録APIの呼び出しをまとめたService。
@@ -38,16 +39,20 @@ interface FieldError {
   styleUrl: './login.css',
 })
 export class Login {
-  private readonly dummyUserStore = inject(DummyUserStore);
+  private readonly loginUserStore = inject(LoginUserStore);
   private readonly router = inject(Router);
   private readonly loginApi = inject(LoginApiService);
 
   protected readonly email = signal('');
+  // ログインフォームのパスワード入力値
+  protected readonly password = signal('');
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly registerName = signal('');
   protected readonly registerEmail = signal('');
+  // 新規登録フォームのパスワード入力値
+  protected readonly registerPassword = signal('');
   protected readonly registering = signal(false);
   protected readonly registerErrorMessage = signal<string | null>(null);
   // 新規登録フォームの項目別エラー（サーバー側のバリデーションエラーをそのまま保持する）
@@ -59,12 +64,22 @@ export class Login {
   }
 
   /** ログインフォームの送信（submit）で呼ばれる。メールアドレスのみでログインAPIを呼び出す。 */
+  protected onPasswordInput(value: string): void {
+    this.password.set(value);
+  }
+
   protected login(): void {
     // 入力されたメールアドレスから前後の空白を取り除く
     const email = this.email().trim();
     // 未入力ならAPIを呼ばずにエラーメッセージを表示して処理を中断する
     if (!email) {
       this.errorMessage.set('メールアドレスを入力してください。');
+      return;
+    }
+    // パスワードは前後の空白も含めて入力されたとおりに送る（trimしない）
+    const password = this.password();
+    if (!password) {
+      this.errorMessage.set('パスワードを入力してください。');
       return;
     }
 
@@ -76,21 +91,21 @@ export class Login {
     // `.subscribe({ next, error })`は、Observable（時間差で届く非同期の結果）を受け取るための書き方。
     // HTTP通信のレスポンスはすぐには返ってこないため、Observableという形で届き、
     // 成功した時は`next`、失敗した時は`error`に渡した処理が実行される。
-    this.loginApi.login(email).subscribe({
+    this.loginApi.login(email, password).subscribe({
       next: (user) => {
         // 通信が終わったのでローディング状態を解除する
         this.loading.set(false);
         // ログイン中ユーザー情報（id・ロール）をアプリ全体で共有する状態に記録する
-        this.dummyUserStore.login(String(user.userId), user.role);
+        this.loginUserStore.login(String(user.userId), user.roleCode);
         // ロールに応じて管理者ダッシュボードかイベント一覧へ画面遷移する
-        this.router.navigateByUrl(user.role === 'admin' ? '/admin/dashboard' : '/events');
+        this.router.navigateByUrl(user.roleCode === ROLE_CODE.ADMIN ? '/admin/dashboard' : '/events');
       },
       error: (err) => {
         // 失敗した場合もローディング状態を解除する
         this.loading.set(false);
         // サーバーからのメッセージをそのまま表示する。該当メールアドレスが無い場合（401）のメッセージは、
         // 利用者列挙対策のため登録の有無を断定しない文言（E-A-006）になっているので、画面側で言い換えない
-        // （docs/09_認証認可設計書.md 9-8）
+        // （docs/20_基本設計/24_方式設計書.md）
         this.errorMessage.set(err.error?.message ?? 'ログインに失敗しました。');
       },
     });
@@ -110,12 +125,16 @@ export class Login {
    * 指定したフィールド（例: 'name'、'email'）に対応するエラーメッセージを返す。
    * 無ければnull。テンプレート側で各入力欄の直下にエラー文言を表示するために使う。
    */
+  protected onRegisterPasswordInput(value: string): void {
+    this.registerPassword.set(value);
+  }
+
   protected registerFieldError(field: string): string | null {
     // registerFieldErrorsの配列から対象フィールドのエラーを探し、見つかればその文言、無ければnullを返す
     return this.registerFieldErrors().find((e) => e.field === field)?.message ?? null;
   }
 
-  // 登録できるのは常に一般ユーザー（パスワードは扱わない軽い登録のため、管理者作成の経路は用意しない）
+  // 登録できるのは常に一般ユーザー（管理者アカウントは利用者管理画面から管理者が登録する）
   /** 新規登録フォームの送信（submit）で呼ばれる。名前・メールアドレスで会員登録APIを呼び出す。 */
   protected register(): void {
     // これから送信するので、前回表示していたエラーメッセージ（全体・項目別）を消す
@@ -125,12 +144,12 @@ export class Login {
     this.registering.set(true);
 
     // 会員登録APIを呼び出す。成功時はnext、失敗時はerrorの処理が実行される
-    this.loginApi.register(this.registerName(), this.registerEmail()).subscribe({
+    this.loginApi.register(this.registerName(), this.registerEmail(), this.registerPassword()).subscribe({
       next: (created) => {
         // 通信が終わったのでローディング状態を解除する
         this.registering.set(false);
         // 作成されたユーザー情報でログイン状態にする
-        this.dummyUserStore.login(String(created.userId), created.role);
+        this.loginUserStore.login(String(created.userId), created.roleCode);
         // 登録後は常にイベント一覧へ画面遷移する
         this.router.navigateByUrl('/events');
       },

@@ -1,6 +1,6 @@
 <!-- 実行環境: ブラウザ側。login.tsのテンプレート。 -->
 <h1>ログイン</h1>
-<p>メールアドレスを入力してください。登録内容に応じて一般ユーザー／管理者いずれかの画面に自動で移動します（ダミー認証のためパスワードは不要です）。</p>
+<p>メールアドレスとパスワードを入力してください。登録内容に応じて一般ユーザー／管理者いずれかの画面に自動で移動します。</p>
 
 <!--
   @if は Angular の新しい制御構文（テンプレート内で条件分岐を書くための記法）。
@@ -32,6 +32,18 @@
       placeholder="例: general@example.com"
     />
   </div>
+  <div class="field">
+    <label for="password">パスワード</label>
+    <!-- type="password"により、入力した文字が伏せて表示される -->
+    <input
+      id="password"
+      type="password"
+      maxlength="72"
+      autocomplete="current-password"
+      [value]="password()"
+      (input)="onPasswordInput($any($event.target).value)"
+    />
+  </div>
   <!-- ログインボタン。処理中（loading）はボタンを無効化し、文言も変える -->
   <button type="submit" [disabled]="loading()">{{ loading() ? 'ログイン中...' : 'ログイン' }}</button>
 </form>
@@ -39,7 +51,7 @@
 <hr />
 
 <h2>はじめての方（新規登録）</h2>
-<p>名前とメールアドレスだけで一般ユーザーとして登録し、そのままログインできます（こちらもパスワードは不要です）。</p>
+<p>名前・メールアドレス・パスワードを入力して一般ユーザーとして登録し、そのままログインできます。</p>
 
 <!-- 新規登録失敗時のエラーメッセージ（フィールド単位のエラーは各入力欄の下に表示） -->
 @if (registerErrorMessage()) {
@@ -76,6 +88,22 @@
     <!-- メールアドレスフィールドのエラー文言 -->
     @if (registerFieldError('email')) {
       <p class="field-error">{{ registerFieldError('email') }}</p>
+    }
+  </div>
+  <div class="field">
+    <label for="registerPassword">パスワード</label>
+    <input
+      id="registerPassword"
+      type="password"
+      maxlength="72"
+      autocomplete="new-password"
+      [value]="registerPassword()"
+      (input)="onRegisterPasswordInput($any($event.target).value)"
+      [class.invalid]="registerFieldError('password')"
+    />
+    <p class="note">8文字以上、英字と数字を含む</p>
+    @if (registerFieldError('password')) {
+      <p class="field-error">{{ registerFieldError('password') }}</p>
     }
   </div>
   <!-- 登録ボタン。処理中（registering）はボタンを無効化し、文言も変える -->

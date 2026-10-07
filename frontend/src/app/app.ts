@@ -8,10 +8,10 @@
 // （ここではRouterOutletとRouterLink）を書く。
 //
 // [Angularの基礎: signal()] 値が変わるとテンプレートの表示を自動的に更新してくれる「状態の箱」。
-// 詳しくはcore/dummy-user-store.tsを参照。
+// 詳しくはcore/login-user-store.tsを参照。
 import { Component, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink } from '@angular/router';
-import { DummyUserStore } from './core/dummy-user-store';
+import { LoginUserStore } from './core/login-user-store';
 
 @Component({
   imports: [RouterOutlet, RouterLink],
@@ -25,16 +25,16 @@ export class App {
   // [Angularの基礎: コンストラクタ注入（DI）] コンストラクタの引数にサービスの型を書くだけで、
   // Angularがインスタンス生成時にそのサービスを自動的に渡してくれる。core/配下のGuard・
   // Interceptorで使うinject()関数と仕組みは同じだが、こちらはクラスのコンストラクタでのみ使える
-  // 書き方。dummyUserStoreをprotectedにしているのは、app.html（テンプレート側）から
-  // dummyUserStore.currentUserId()等を直接参照するため。
+  // 書き方。loginUserStoreをprotectedにしているのは、app.html（テンプレート側）から
+  // loginUserStore.currentUserId()等を直接参照するため。
   constructor(
-    protected readonly dummyUserStore: DummyUserStore,
+    protected readonly loginUserStore: LoginUserStore,
     private readonly router: Router,
   ) {}
 
   /** ログアウトしてログイン画面へ遷移する。app.htmlの「ログアウト」ボタンから呼ばれる。 */
   protected logout(): void {
-    this.dummyUserStore.logout();
+    this.loginUserStore.logout();
     this.router.navigateByUrl('/login');
   }
 }

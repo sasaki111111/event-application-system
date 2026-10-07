@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.WebApplicationContext;
 
 // commonパッケージの AuthContext / AuthInterceptor / CurrentUser / WebConfig は、
-// このプロジェクト独自の「ログイン中ユーザーを特定する仕組み（ダミー認証）」を構成する4クラス。
+// このプロジェクト独自の「ログイン中ユーザーを特定する仕組み」を構成する4クラス。
 // 本物のパスワード認証画面は無く、HTTPリクエストヘッダ（X-User-Id）に入っているユーザーIDを
 // そのまま信用する簡易な仕組みになっている（仕組みの詳細はAuthInterceptorのコメントを参照）。
 /**

@@ -1,6 +1,7 @@
 package com.example.eventapp.service;
 
 import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CodeNameResolver;
 import com.example.eventapp.common.exception.BusinessException;
 import com.example.eventapp.common.exception.ForbiddenException;
 import com.example.eventapp.common.exception.NotFoundException;
@@ -27,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 // 実行環境: サーバー側（JVM）。イベント申込、自分の申込一覧、申込キャンセル、当日受付の業務ロジック。
 // 機能追加：定員超過時は400で拒否せず「キャンセル待ち」として登録し、受付済がキャンセルされた際に
 // 最も古いキャンセル待ちを自動で「受付済」に繰り上げる。
-// 機能追加（定員区分）: 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（docs/06_詳細設計書.md 7-3）。
+// 機能追加（定員区分）: 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（docs/30_詳細設計/32_処理詳細設計書.md）。
 /**
  * 【Serviceとは】Serviceは、Controller（HTTPリクエストの入口）とRepository（DBアクセス）の間に立って、
  * アプリケーションの業務ロジック（「定員に空きがあるか」「本人の申込か」等の判断・処理）をまとめる層。
@@ -37,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * このクラスは、イベント申込・自分の申込一覧・申込キャンセル・当日受付チェックインの業務ロジックを担当し、
  * ApplicationController（apply／myApplications／cancel）とEventController（attendees）、
- * UserController（他利用者の申込一覧、AP-27）から呼ばれる。DBアクセスにはApplicationRepository・
+ * UserController（他利用者の申込一覧、AP-142）から呼ばれる。DBアクセスにはApplicationRepository・
  * EventRepository・UserRepository・TicketTypeRepositoryを使う。
  */
 @Service
@@ -50,21 +51,24 @@ public class ApplicationService {
     private final UserRepository userRepository;
     private final TicketTypeRepository ticketTypeRepository;
     private final AuthContext authContext;
+    private final CodeNameResolver codeNameResolver;
 
     public ApplicationService(ApplicationRepository applicationRepository, EventRepository eventRepository,
-            UserRepository userRepository, TicketTypeRepository ticketTypeRepository, AuthContext authContext) {
+            UserRepository userRepository, TicketTypeRepository ticketTypeRepository, AuthContext authContext,
+            CodeNameResolver codeNameResolver) {
         this.applicationRepository = applicationRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.ticketTypeRepository = ticketTypeRepository;
         this.authContext = authContext;
+        this.codeNameResolver = codeNameResolver;
     }
 
-    // AP-12: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
+    // AP-030: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
     // 定員（区分がある場合は区分単位、無い場合はイベント単位）に達している場合はキャンセル待ちとして登録する。
     // userIdは呼出元（Controller）がX-User-Idから渡す
     /**
-     * イベントへの参加申込を登録する（AP-12）。ApplicationController#applyから呼ばれ、ApplicationRepository・
+     * イベントへの参加申込を登録する（AP-030）。ApplicationController#applyから呼ばれ、ApplicationRepository・
      * EventRepository・UserRepository・TicketTypeRepositoryを使って登録・判定を行う。
      * {@code @Transactional}は、このメソッド内のDB操作をひとつのトランザクション（一連の処理をまとめて
      * 成功／失敗させる単位）として実行することを表す。途中で例外が発生すると、ここまでの変更はすべて
@@ -115,7 +119,7 @@ public class ApplicationService {
                 ? applicationRepository.countByTicketType_IdAndStatus(ticketType.getId(), ApplicationStatus.ACCEPTED)
                 : applicationRepository.countByEvent_IdAndStatus(eventId, ApplicationStatus.ACCEPTED);
         // 受付済件数が定員未満なら「受付済」、そうでなければ「キャンセル待ち」とする
-        String status = acceptedCount < capacity ? ApplicationStatus.ACCEPTED : ApplicationStatus.WAITLISTED;
+        int status = acceptedCount < capacity ? ApplicationStatus.ACCEPTED : ApplicationStatus.WAITLISTED;
 
         // 存在確認済みのIDなのでDBに問い合わせない参照を使う（AuthInterceptorがuserIdを、上のfindByIdがeventを検証済み）
         // 申込エンティティを組み立てる
@@ -124,9 +128,8 @@ public class ApplicationService {
         // DBに保存する（保存後、IDや申込日時が設定された状態のインスタンスが返る）
         Application saved = applicationRepository.save(application);
 
-        // 登録完了をログに記録する（docs/11_ログ設計書.md）
-        log.info("申込登録完了 userId={} applicationId={} eventId={} status={}",
-                userId, saved.getId(), eventId, saved.getStatus());
+        // 申込の成功はログに出力しない（申込者・イベント・状況・日時はapplicationsの行から確認できるため。
+        // docs/20_基本設計/24_方式設計書.md 6.2）
 
         // 保存結果をレスポンス用の形に変換して返す
         return new ApplicationResponse(
@@ -135,11 +138,12 @@ public class ApplicationService {
                 ticketType != null ? ticketType.getId() : null,
                 userId,
                 saved.getStatus(),
+                codeNameResolver.statusName(saved.getStatus()),
                 saved.getAppliedAt()
         );
     }
 
-    // 区分存在・必須チェック（docs/08_エラー設計書.md E-B-004・E-B-005）。区分の無いイベントはticketTypeIdを無視する（docs/03_API設計書.md AP-12）。
+    // 区分存在・必須チェック（docs/30_詳細設計/33_共通詳細設計書.md E-B-004・E-B-005）。区分の無いイベントはticketTypeIdを無視する（docs/30_詳細設計/31_API詳細設計書.md AP-030）。
     // 区分ありイベントでは、対象区分の存在検証とあわせて悲観ロックを取得する（apply()参照）。
     private TicketType resolveTicketType(Long eventId, Long ticketTypeId) {
         // 対象イベントに参加区分が1件も存在しなければ、区分の無いイベントとしてnullを返す
@@ -156,10 +160,10 @@ public class ApplicationService {
                 .orElseThrow(() -> new NotFoundException("指定された区分が見つかりません"));
     }
 
-    // AP-13: 自分の申込一覧（申込日時降順）。本人分のみ返す＝userIdでの絞り込みそのもの
+    // AP-031: 自分の申込一覧（申込日時降順）。本人分のみ返す＝userIdでの絞り込みそのもの
     /**
-     * 利用者本人の申込一覧を取得する（AP-13）。ApplicationController#myApplicationsに加え、
-     * UserController#applicationsOf（AP-27、管理者が他利用者を対象にする場合）からも共通で呼ばれる。
+     * 利用者本人の申込一覧を取得する（AP-031）。ApplicationController#myApplicationsに加え、
+     * UserController#applicationsOf（AP-142、管理者が他利用者を対象にする場合）からも共通で呼ばれる。
      * {@code @Transactional(readOnly = true)}は、更新を行わない参照専用の処理であることを表す指定で、
      * DBにその旨を伝えることで最適化が働く（更新系の{@code @Transactional}と区別するために付けている）。
      *
@@ -179,10 +183,10 @@ public class ApplicationService {
                 .toList();
     }
 
-    // AP-14: 取消可否チェック（要件定義書§8）。本人の申込以外は403。
+    // AP-032: 取消可否チェック（要件定義書§8）。本人の申込以外は403。
     // 受付済をキャンセルした場合、同一イベント（区分がある場合は同一区分）で最も古いキャンセル待ちを自動で繰り上げる。
     /**
-     * 本人の申込をキャンセルする（AP-14）。ApplicationController#cancelから呼ばれる。
+     * 本人の申込をキャンセルする（AP-032）。ApplicationController#cancelから呼ばれる。
      * 他人の申込を指定した場合はForbiddenExceptionを投げ、GlobalExceptionHandlerにより403（Forbidden）になる。
      *
      * @param userId        キャンセルを実行する利用者ID（本人確認に使う）
@@ -209,7 +213,7 @@ public class ApplicationService {
         }
 
         // 繰り上げ処理が必要かどうかの判定に使うため、キャンセル前の状況が「受付済」だったかを覚えておく
-        boolean wasAccepted = ApplicationStatus.ACCEPTED.equals(application.getStatus());
+        boolean wasAccepted = Integer.valueOf(ApplicationStatus.ACCEPTED).equals(application.getStatus());
         Long eventId = application.getEvent().getId();
         TicketType ticketType = application.getTicketType();
         // 申込自体の状況を「キャンセル済み」に変更する
@@ -234,20 +238,14 @@ public class ApplicationService {
                             eventId, ApplicationStatus.WAITLISTED);
             // 見つかった場合のみ、その申込を「受付済」に繰り上げる（Application::promoteは「あれば実行する」処理）
             nextInLine.ifPresent(Application::promote);
-            // 繰り上げが発生した場合は、そのこともログに記録してメソッドを終える
-            if (nextInLine.isPresent()) {
-                log.info("申込キャンセル完了 userId={} applicationId={} 繰り上げapplicationId={}",
-                        userId, applicationId, nextInLine.get().getId());
-                return;
-            }
         }
-        // 繰り上げが発生しなかった場合（またはキャンセル前が受付済でなかった場合）のログ
-        log.info("申込キャンセル完了 userId={} applicationId={}", userId, applicationId);
+        // キャンセル・繰り上げの成功はログに出力しない（applications.status_codeとupdated_atから確認できるため。
+        // docs/20_基本設計/24_方式設計書.md 6.2）
     }
 
-    // AP-11: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
+    // AP-125: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
     /**
-     * 当日受付画面で使う申込者一覧を取得する（AP-11）。EventController#attendeesから呼ばれる
+     * 当日受付画面で使う申込者一覧を取得する（AP-125）。EventController#attendeesから呼ばれる
      * （EventServiceではなくこちらに委譲されている点に注意）。管理者権限の確認はController側で完了済みのため、
      * ここでは行わない。
      *
@@ -264,9 +262,9 @@ public class ApplicationService {
                 .toList();
     }
 
-    // AP-15: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
+    // AP-126: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
     /**
-     * 当日受付でのチェックインを記録する（AP-15）。ApplicationController#checkInから呼ばれる
+     * 当日受付でのチェックインを記録する（AP-126）。ApplicationController#checkInから呼ばれる
      * （管理者権限の確認はController側で完了済み）。
      *
      * @param applicationId チェックイン対象の申込ID
@@ -277,13 +275,14 @@ public class ApplicationService {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new NotFoundException("申込が見つかりません"));
 
-        if (!ApplicationStatus.ACCEPTED.equals(application.getStatus())) {
+        if (!Integer.valueOf(ApplicationStatus.ACCEPTED).equals(application.getStatus())) {
             throw new BusinessException("受付済の申込のみチェックインできます");
         }
         application.checkIn();
 
-        log.info("チェックイン完了 userId={} applicationId={}",
-                authContext.getCurrentUser().userId(), application.getId());
+        // チェックインの実行者はapplicationsの行に残らないため、ログに記録する（docs/30_詳細設計/33_共通詳細設計書.md 6.1）
+        log.info("チェックイン完了 applicationId={} 実行者userId={}",
+                application.getId(), authContext.getCurrentUser().userId());
 
         return new CheckInResponse(application.getId(), application.getCheckedInAt());
     }
@@ -294,6 +293,7 @@ public class ApplicationService {
                 application.getUser().getName(),
                 application.getTicketType() != null ? application.getTicketType().getName() : null,
                 application.getStatus(),
+                codeNameResolver.statusName(application.getStatus()),
                 application.getCheckedInAt(),
                 application.getExtraAnswer()
         );
@@ -307,6 +307,7 @@ public class ApplicationService {
                 event.getName(),
                 event.getStartAt(),
                 application.getStatus(),
+                codeNameResolver.statusName(application.getStatus()),
                 application.getAppliedAt(),
                 calculateWaitlistRank(application)
         );
@@ -315,7 +316,7 @@ public class ApplicationService {
     // キャンセル待ちの順位計算（要件定義書§8）: 自分より申込日時が古い、同一イベント
     // （区分がある場合は同一区分）の「キャンセル待ち」件数＋1。キャンセル待ち以外はNULL
     private Long calculateWaitlistRank(Application application) {
-        if (!ApplicationStatus.WAITLISTED.equals(application.getStatus())) {
+        if (!Integer.valueOf(ApplicationStatus.WAITLISTED).equals(application.getStatus())) {
             return null;
         }
         TicketType ticketType = application.getTicketType();

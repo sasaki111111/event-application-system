@@ -36,10 +36,10 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * </ul>
  */
 // 実行環境: サーバー側（JVM）。@RestControllerAdvice＝全Controllerで共通の例外ハンドラー。
-// Service/Controllerが投げた例外を捕まえて、docs/03_API設計書.md 2.3節で決めたJSON形式
+// Service/Controllerが投げた例外を捕まえて、docs/30_詳細設計/31_API詳細設計書.mdで決めたJSON形式
 // （timestamp/status/error/message[/errors]）に変換して返す。
 // 認証・権限・業務ルール違反・入力エラー系の例外はいずれもここに集約されるため、
-// docs/11_ログ設計書.md 11-2のWARNログ（想定内だが注意が必要なとき）もここでまとめて出力する。
+// docs/30_詳細設計/33_共通詳細設計書.mdのWARNログ（想定内だが注意が必要なとき）もここでまとめて出力する。
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -115,7 +115,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // docs/03_API設計書.md 2.4節「リクエスト形式エラー」: 不正なJSON・型不一致・必須ボディ欠落
+    // docs/30_詳細設計/31_API詳細設計書.md「リクエスト形式エラー」: 不正なJSON・型不一致・必須ボディ欠落
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleMalformedRequest(HttpMessageNotReadableException ex, HttpServletRequest request) {
         warn(request, "リクエストの形式が不正です");
@@ -123,15 +123,15 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "リクエストの形式が不正です");
     }
 
-    // docs/03_API設計書.md 2.4節「リクエスト形式エラー」: パスパラメータが数値でない場合等
+    // docs/30_詳細設計/31_API詳細設計書.md「リクエスト形式エラー」: パスパラメータが数値でない場合等
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         warn(request, "パラメータの形式が不正です");
         return build(HttpStatus.BAD_REQUEST, "パラメータの形式が不正です");
     }
 
-    // docs/08_エラー設計書.md E-S-001: 上記のいずれにも該当しない想定外の例外。
-    // スタックトレースは画面には出さず、ログにのみ出力する（docs/11_ログ設計書.md 11-6）。
+    // docs/30_詳細設計/33_共通詳細設計書.md E-S-001: 上記のいずれにも該当しない想定外の例外。
+    // スタックトレースは画面には出さず、ログにのみ出力する（docs/30_詳細設計/33_共通詳細設計書.md）。
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         // 他のハンドラーと違いERRORレベルでログ出力し、例外exそのもの（スタックトレース）も記録する
@@ -152,13 +152,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(ErrorResponse.of(status.value(), status.getReasonPhrase(), message));
     }
 
-    // docs/11_ログ設計書.md 11-2・11-3: 想定内だが注意が必要なエラー（業務例外・入力エラー系）のログ出力
+    // docs/30_詳細設計/33_共通詳細設計書.md・11-3: 想定内だが注意が必要なエラー（業務例外・入力エラー系）のログ出力
     // userId・HTTPメソッド・パス・エラーメッセージをまとめてWARNレベルで出力する
     private void warn(HttpServletRequest request, String message) {
         log.warn("userId={} {} {} {}", currentUserIdOrDash(), request.getMethod(), request.getRequestURI(), message);
     }
 
-    // docs/11_ログ設計書.md 11-3: 未ログインでのアクセス失敗時はuserId=-とする
+    // docs/30_詳細設計/33_共通詳細設計書.md: 未ログインでのアクセス失敗時はuserId=-とする
     // AuthContextにログインユーザーがセットされていればそのuserIdを文字列化し、
     // セットされていなければ（未ログイン時）"-"を返す
     private String currentUserIdOrDash() {

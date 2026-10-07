@@ -13,7 +13,7 @@ import { RouterLink } from '@angular/router';
  *
  * 画面遷移: 存在しないURLにアクセスした時にルーティング設定（app.routes.ts等）経由で
  * 表示される。画面内の「イベント一覧に戻る」リンク（routerLink="/events"）から
- * イベント一覧画面（SC-02）へ戻れる。
+ * イベント一覧画面（SC-020）へ戻れる。
  */
 @Component({
   selector: 'app-not-found',

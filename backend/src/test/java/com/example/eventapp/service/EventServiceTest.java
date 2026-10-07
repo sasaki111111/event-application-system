@@ -19,6 +19,7 @@ import com.example.eventapp.dto.EventUpsertRequest;
 import com.example.eventapp.dto.TicketTypeRequest;
 import com.example.eventapp.entity.ApplicationStatus;
 import com.example.eventapp.entity.Event;
+import com.example.eventapp.entity.RoleCode;
 import com.example.eventapp.entity.TicketType;
 import com.example.eventapp.repository.ApplicationRepository;
 import com.example.eventapp.repository.EventRepository;
@@ -66,8 +67,8 @@ class EventServiceTest {
         ticketTypeRepository = mock(TicketTypeRepository.class);
         favoriteRepository = mock(FavoriteRepository.class);
         authContext = mock(AuthContext.class);
-        // 操作ログ（docs/11_ログ設計書.md 11-5）出力のため、create/update/delete/restoreはログイン中管理者を参照する
-        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", "admin"));
+        // 操作ログ（docs/30_詳細設計/33_共通詳細設計書.md）出力のため、create/update/delete/restoreはログイン中管理者を参照する
+        when(authContext.getCurrentUser()).thenReturn(new CurrentUser(2L, "管理者", RoleCode.ADMIN));
         // モック化したRepository・AuthContextを渡して、テスト対象のServiceを生成する
         eventService = new EventService(eventRepository, applicationRepository, ticketTypeRepository, favoriteRepository, authContext);
         // toDetail()が呼ばれる大半のテストで空の区分一覧を返す既定値にしておく
@@ -285,7 +286,7 @@ class EventServiceTest {
     }
 
     // 正常系（機能追加：定員区分）: 区分未指定でも既存の区分があれば、capacityをその合計値に保つ
-    // （docs/02_テーブル定義書.md §4.2「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ）
+    // （docs/20_基本設計/22_テーブル定義書.md「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ）
     @Test
     void update_正常系_区分未指定でも既存区分があればcapacityを合計に保つ() {
         Event event = mock(Event.class);

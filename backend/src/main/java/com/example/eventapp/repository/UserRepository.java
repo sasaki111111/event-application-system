@@ -21,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // findAllByOrderByIdAsc = 全件取得＋ORDER BY id ASC に相当するクエリメソッド
     List<User> findAllByOrderByIdAsc();
 
-    // AP-33: 管理者権限の降格で、対象が最後の1人の管理者でないかを判定するのに使う
+    // AP-146: 管理者権限の降格で、対象が最後の1人の管理者でないかを判定するのに使う
     // role = ? の件数を数える
-    long countByRole(String role);
+    long countByRoleCode(Integer roleCode);
 }

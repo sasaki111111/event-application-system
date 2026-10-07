@@ -19,11 +19,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final UserRepository userRepository;
     private final AuthContext authContext;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
-    public WebConfig(UserRepository userRepository, AuthContext authContext) {
+    public WebConfig(UserRepository userRepository, AuthContext authContext,
+            RateLimitInterceptor rateLimitInterceptor) {
         // AuthInterceptorの生成に必要な依存（UserRepository・AuthContext）を保持しておく
         this.userRepository = userRepository;
         this.authContext = authContext;
+        // 回数制限は状態（接続元ごとの回数）を持つため、Springが管理する1つのインスタンスを使う
+        this.rateLimitInterceptor = rateLimitInterceptor;
     }
 
     /**
@@ -33,13 +37,13 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 回数制限（docs/10_非機能設計書.md 10-3、機能追加）は認証の有無によらず最初に適用する
+        // 回数制限（docs/20_基本設計/24_方式設計書.md、機能追加）は認証の有無によらず最初に適用する
         // （未認証でのログイン総当たり・登録スパムも抑止対象のため）。
         // RateLimitInterceptorを登録し、対象パスを"/api/**"（API配下すべて）とする
-        registry.addInterceptor(new RateLimitInterceptor())
+        registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/**");
 
-        // ログイン・ping（起動確認用）は認証不要（docs/03_API設計書.md 2.1節）。
+        // ログイン・ping（起動確認用）は認証不要（docs/30_詳細設計/31_API詳細設計書.md）。
         // POST /api/users（軽い会員登録、機能追加）はAuthInterceptor側でメソッド単位に個別許可している
         // （GET /api/usersは一覧＝管理者専用のため、パス単位でここに含めるとGETまで無認証になってしまう）。
         // AuthInterceptorを登録し、"/api/**"を対象にしつつ"/api/login"と"/api/ping"だけは除外する

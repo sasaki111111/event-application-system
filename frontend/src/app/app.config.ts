@@ -9,17 +9,17 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { dummyAuthInterceptor } from './core/dummy-auth-interceptor';
+import { authHeaderInterceptor } from './core/auth-header-interceptor';
 import { httpErrorInterceptor } from './core/http-error-interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes), // app.routes.tsのルート設定を使ってAngular Routerを有効化する
-    // バックエンドAPIを呼ぶHttpClient。dummyAuthInterceptorで全リクエストにX-User-Idを自動付与し、
+    // バックエンドAPIを呼ぶHttpClient。authHeaderInterceptorで全リクエストにX-User-Idを自動付与し、
     // httpErrorInterceptorで通信エラー（サーバー未起動等）のメッセージを共通化する（E-1）
     // withInterceptors()に渡した配列の順序どおりに、リクエスト送信前はこの順で、
     // レスポンス受信時は逆順で各インターセプターを通過する
-    provideHttpClient(withInterceptors([dummyAuthInterceptor, httpErrorInterceptor])),
+    provideHttpClient(withInterceptors([authHeaderInterceptor, httpErrorInterceptor])),
   ]
 };

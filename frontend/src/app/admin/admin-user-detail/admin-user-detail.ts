@@ -1,7 +1,7 @@
-// 実行環境: ブラウザ側。SC-15 利用者詳細画面（/admin/users/:id）。
+// 実行環境: ブラウザ側。SC-141 利用者詳細画面（/admin/users/:id）。
 // 管理者が特定の利用者の基本情報・申込一覧・お気に入り一覧を確認するための画面。
-// キャンセル・お気に入り解除等、対象利用者に代わる操作はできない（利用者本人向けのSC-06とは役割が異なる）。
-// 管理者権限の降格（AP-33）・利用者の匿名化（AP-34）のみ、この画面から実行できる例外的な操作とする。
+// キャンセル・お気に入り解除等、対象利用者に代わる操作はできない（利用者本人向けのSC-030とは役割が異なる）。
+// 管理者権限の降格（AP-146）・利用者の匿名化（AP-013）のみ、この画面から実行できる例外的な操作とする。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,6 +10,7 @@ import { MyApplication } from '../../core/application-api';
 import { FavoriteEvent } from '../../core/favorite-api';
 import { UserComment } from '../../core/comment-api';
 import { UserApiService, UserSummary } from '../../core/user-api';
+import { STATUS_CODE, ROLE_CODE } from '../../core/codes';
 
 @Component({
   selector: 'app-admin-user-detail',
@@ -18,7 +19,7 @@ import { UserApiService, UserSummary } from '../../core/user-api';
   styleUrl: './admin-user-detail.css',
 })
 /**
- * SC-15 利用者詳細画面（/admin/users/:id）を担当するComponent。
+ * SC-141 利用者詳細画面（/admin/users/:id）を担当するComponent。
  * 特定の利用者の基本情報・申込一覧・お気に入り一覧・コメント履歴を確認する画面。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
@@ -31,6 +32,10 @@ import { UserApiService, UserSummary } from '../../core/user-api';
  *   管理者権限の降格・利用者の匿名化のみ、この画面から実行できる例外的な操作。
  */
 export class AdminUserDetail implements OnInit {
+  // テンプレートで申込状況コードを判定するために公開する（文字列の表示名では判定しない）
+  protected readonly StatusCode = STATUS_CODE;
+  // テンプレートで利用者区分コードを判定するために公開する
+  protected readonly RoleCode = ROLE_CODE;
   protected readonly user = signal<UserSummary | null>(null);
   protected readonly applications = signal<MyApplication[]>([]);
   protected readonly favorites = signal<FavoriteEvent[]>([]);
@@ -85,7 +90,7 @@ export class AdminUserDetail implements OnInit {
 
   /**
    * 「管理者権限を外す」ボタン（(click)="demote()"）から呼ばれる処理。
-   * AP-33: 対象が管理者の場合のみ呼び出せる（テンプレート側でボタンの表示を制御する）
+   * AP-146: 対象が管理者の場合のみ呼び出せる（テンプレート側でボタンの表示を制御する）
    */
   protected demote(): void {
     // 確認ダイアログでキャンセルされたらここで処理を中断する
@@ -111,7 +116,7 @@ export class AdminUserDetail implements OnInit {
 
   /**
    * 「退会させる」ボタン（(click)="anonymize()"）から呼ばれる処理。
-   * AP-34: 対象が管理者、または既に退会済みの場合は呼び出せない（テンプレート側でボタンの表示を制御する）
+   * AP-013: 対象が管理者、または既に退会済みの場合は呼び出せない（テンプレート側でボタンの表示を制御する）
    */
   protected anonymize(): void {
     // 確認ダイアログでキャンセルされたらここで処理を中断する

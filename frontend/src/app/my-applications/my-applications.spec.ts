@@ -12,7 +12,8 @@ const application: MyApplication = {
   eventId: 10,
   eventName: 'テストイベント',
   startAt: '2027-01-10T10:00:00',
-  status: '受付済',
+  statusCode: 1,
+  statusName: '受付済',
   appliedAt: '2026-12-01T09:00:00',
   waitlistRank: null,
 };

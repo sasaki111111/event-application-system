@@ -24,43 +24,43 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
     // 受付済数の集計（acceptedCount／充足率）に使う。テーブル定義書§5「カラムにしない派生値」
     // countByEvent_IdAndStatus = 「event_id=? AND status=? の件数」に相当するSQLが自動生成される
-    long countByEvent_IdAndStatus(Long eventId, String status);
+    long countByEvent_IdAndStatus(Long eventId, Integer status);
 
     // 区分単位の受付済数の集計（区分ありイベントのticketTypes[].acceptedCount、定員判定にも使用）
-    long countByTicketType_IdAndStatus(Long ticketTypeId, String status);
+    long countByTicketType_IdAndStatus(Long ticketTypeId, Integer status);
 
     // イベント保存時の区分全置換ロジックで、対象イベントに申込（受付済・キャンセル待ち）が
     // 残っていないかを確認するために使う（残っている場合は区分の変更を拒否する）。
     // ticketTypeが無い申込（区分の無いイベントだった時点の申込）も対象に含める
     // existsBy... = 「1件でも存在すればtrue」に相当するSQL（EXISTS）が自動生成される
-    boolean existsByEvent_IdAndStatusIn(Long eventId, Collection<String> statuses);
+    boolean existsByEvent_IdAndStatusIn(Long eventId, Collection<Integer> statuses);
 
     // 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
-    boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, String status);
+    boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, Integer status);
 
     // 機能追加（キャンセル待ち）: 二重申込チェックを受付済・キャンセル待ちの両方に対して行う
-    boolean existsByUser_IdAndEvent_IdAndStatusIn(Long userId, Long eventId, Collection<String> statuses);
+    boolean existsByUser_IdAndEvent_IdAndStatusIn(Long userId, Long eventId, Collection<Integer> statuses);
 
     // 機能追加（キャンセル待ちの繰り上げ、区分の無いイベント）: 対象イベントで最も古いキャンセル待ちを1件取得する
     // findFirstBy...OrderBy...Asc = 条件に合う行を昇順に並べた上で先頭1件だけを取得するSQLが自動生成される
-    Optional<Application> findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(Long eventId, String status);
+    Optional<Application> findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(Long eventId, Integer status);
 
     // 機能追加（キャンセル待ちの繰り上げ、区分単位）: 対象区分で最も古いキャンセル待ちを1件取得する
-    Optional<Application> findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(Long ticketTypeId, String status);
+    Optional<Application> findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(Long ticketTypeId, Integer status);
 
     // 機能追加（キャンセル待ちの順位計算、区分の無いイベント）: 自分より申込日時が古いキャンセル待ちの件数
-    long countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(Long eventId, String status, LocalDateTime appliedAt);
+    long countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(Long eventId, Integer status, LocalDateTime appliedAt);
 
     // 機能追加（キャンセル待ちの順位計算、区分単位）: 自分より申込日時が古いキャンセル待ちの件数
-    long countByTicketType_IdAndStatusAndAppliedAtLessThan(Long ticketTypeId, String status, LocalDateTime appliedAt);
+    long countByTicketType_IdAndStatusAndAppliedAtLessThan(Long ticketTypeId, Integer status, LocalDateTime appliedAt);
 
-    // AP-13: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
+    // AP-031: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
 
-    // AP-11: 当日受付の申込者一覧（申込日時の昇順、機能追加）
+    // AP-125: 当日受付の申込者一覧（申込日時の昇順、機能追加）
     List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
 
-    // AP-22 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
+    // AP-130 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、
     // 削除済みイベントに紐づく申込は対象外とする（集計一覧＝summarize()と対象範囲を揃える）
     // Event_DeletedAtIsNull = 関連するEventエンティティのdeletedAtがNULL（未削除）という条件を、
     // テーブルを結合（JOIN）して絞り込むSQLが自動生成される

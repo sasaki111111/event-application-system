@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// イベント申込API（AP-12）、自分の申込一覧API（AP-13）、申込キャンセルAPI（AP-14）。
+// イベント申込API（AP-030）、自分の申込一覧API（AP-031）、申込キャンセルAPI（AP-032）。
 /**
  * Controller（コントローラー）層のクラス。Controllerは、ブラウザ（Angular）から送られてくる
  * HTTPリクエスト（GET/POST/PUT/DELETEなど）を最初に受け取る「入口」の役割を持つ。
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  * そのインスタンスを生成して渡してくれる（コンストラクタインジェクション、DI＝Dependency Injection）。
  * {@code new ApplicationService(...)}のようなコードをどこにも書く必要がない。
  */
-@Tag(name = "申込", description = "イベント申込・自分の申込一覧・キャンセル・チェックイン（AP-12〜15）")
+@Tag(name = "申込", description = "イベント申込・自分の申込一覧・キャンセル・チェックイン（AP-030〜15）")
 @RestController
 public class ApplicationController {
 
@@ -54,10 +54,10 @@ public class ApplicationController {
         this.validator = validator;
     }
 
-    // AP-12 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
+    // AP-030 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
     // 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     /**
-     * AP-12: イベントへの参加を申し込む。フロントエンドのApplicationApiService.apply()から呼ばれ、
+     * AP-030: イベントへの参加を申し込む。フロントエンドのApplicationApiService.apply()から呼ばれ、
      * 内部ではApplicationService.apply()に処理を委ねる。
      * {@code @PostMapping}はHTTP POSTリクエストを受け付けるメソッドであることを表し、
      * {@code @RequestBody}はリクエストボディ（JSON）をApplicationCreateRequestに変換して受け取ることを表す。
@@ -68,7 +68,7 @@ public class ApplicationController {
      * @param request 申込対象のイベントID・参加区分ID・アンケート回答を含むリクエストボディ
      * @return 登録された申込の内容（申込ID・ステータス等）
      */
-    @Operation(summary = "AP-12 イベント申込",
+    @Operation(summary = "AP-030 イベント申込",
             description = "対象イベントへの参加を申し込む。参加区分が設定されたイベントではticketTypeIdが必須。"
                     + "定員に空きがあれば「受付済」、無ければ「キャンセル待ち」として登録する（エラーにはしない）。"
                     + "管理者による申込、受付期間外、区分未選択、二重申込はエラー（管理者は403、それ以外は400）。")
@@ -85,14 +85,14 @@ public class ApplicationController {
         return applicationService.apply(userId, request.eventId(), request.ticketTypeId(), request.extraAnswer());
     }
 
-    // AP-13 GET /api/my/applications（一般以上、本人分のみ）
+    // AP-031 GET /api/my/applications（一般以上、本人分のみ）
     /**
-     * AP-13: ログイン中の利用者本人の申込一覧を取得する。フロントエンドのApplicationApiService.myApplications()
+     * AP-031: ログイン中の利用者本人の申込一覧を取得する。フロントエンドのApplicationApiService.myApplications()
      * から呼ばれ、内部ではApplicationService.myApplications()に処理を委ねる。
      *
      * @return 申込日時降順の申込一覧（キャンセル済みも含む全件）
      */
-    @Operation(summary = "AP-13 自分の申込一覧取得",
+    @Operation(summary = "AP-031 自分の申込一覧取得",
             description = "ログイン中の利用者本人の申込一覧（申込日時降順、キャンセル済みを含む全件）を取得する。"
                     + "キャンセル待ちの場合はwaitlistRankに順位を設定する。")
     @GetMapping("/api/my/applications")
@@ -103,9 +103,9 @@ public class ApplicationController {
         return applicationService.myApplications(userId);
     }
 
-    // AP-14 DELETE /api/applications/{id}（一般以上、本人の申込のみ）
+    // AP-032 DELETE /api/applications/{id}（一般以上、本人の申込のみ）
     /**
-     * AP-14: 本人の申込をキャンセルする。フロントエンドのApplicationApiService.cancel()から呼ばれ、
+     * AP-032: 本人の申込をキャンセルする。フロントエンドのApplicationApiService.cancel()から呼ばれ、
      * 内部ではApplicationService.cancel()に処理を委ねる。
      * {@code @PathVariable}は、URLの一部（ここでは{@code /api/applications/{id}}の{@code id}）を
      * メソッドの引数として受け取ることを表す。{@code @ResponseStatus(HttpStatus.NO_CONTENT)}は、
@@ -113,7 +113,7 @@ public class ApplicationController {
      *
      * @param id キャンセル対象の申込ID
      */
-    @Operation(summary = "AP-14 申込キャンセル",
+    @Operation(summary = "AP-032 申込キャンセル",
             description = "本人の申込のみキャンセルできる。受付済の申込をキャンセルした場合、同一イベント（区分があれば同一区分）で"
                     + "最も申込日時が古いキャンセル待ちの申込を自動的に繰り上げる。他人の申込指定は403、キャンセル不可の状態は400、対象が存在しない場合は404。")
     @DeleteMapping("/api/applications/{id}")
@@ -125,9 +125,9 @@ public class ApplicationController {
         applicationService.cancel(userId, id);
     }
 
-    // AP-15 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
+    // AP-126 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
     /**
-     * AP-15: 当日受付でのチェックインを記録する。フロントエンドのCheckInApiService.checkIn()から呼ばれ、
+     * AP-126: 当日受付でのチェックインを記録する。フロントエンドのCheckInApiService.checkIn()から呼ばれ、
      * 内部ではApplicationService.checkIn()に処理を委ねる。{@code @PutMapping}はHTTP PUTリクエストを
      * 受け付けるメソッドであることを表す。
      * {@code authContext.requireAdmin()}は、ログイン中の利用者が管理者でない場合に例外
@@ -137,7 +137,7 @@ public class ApplicationController {
      * @param id チェックイン対象の申込ID
      * @return チェックイン結果（申込ID・チェックイン日時）
      */
-    @Operation(summary = "AP-15 チェックイン",
+    @Operation(summary = "AP-126 チェックイン",
             description = "当日受付でのチェックインを記録する。状況が「受付済」の申込のみ対象（それ以外は400）。"
                     + "既にチェックイン済みの申込に再実行した場合は、画面側の確認を経てチェックイン日時を更新する。管理者のみ実行できる。")
     @PutMapping("/api/applications/{id}/check-in")
@@ -148,7 +148,7 @@ public class ApplicationController {
         return applicationService.checkIn(id);
     }
 
-    // 管理者による申込を防ぐ（AP-12、要件定義書E7）。ここで例外を投げると、最終的にGlobalExceptionHandlerが
+    // 管理者による申込を防ぐ（AP-030、要件定義書E7）。ここで例外を投げると、最終的にGlobalExceptionHandlerが
     // キャッチしてHTTPステータス403として応答する
     private void requireGeneral() {
         // ログイン中の利用者が管理者かどうかを判定する

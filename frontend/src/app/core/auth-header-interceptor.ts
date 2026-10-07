@@ -1,6 +1,6 @@
-// 実行環境: ブラウザ側。すべてのAPIリクエストにダミー認証ヘッダ（X-User-Id）を自動で付ける関数型インターセプター。
-// docs/03_API設計書.md 2.1の認証方式（X-User-Idヘッダ）に対応。
-// どのuserIdを付けるかはDummyUserStoreが持つ（SC-01ログイン画面で選んだロール、E-2）。
+// 実行環境: ブラウザ側。すべてのAPIリクエストに利用者識別ヘッダ（X-User-Id）を自動で付ける関数型インターセプター。
+// docs/30_詳細設計/31_API詳細設計書.mdの認証方式（X-User-Idヘッダ）に対応。
+// どのuserIdを付けるかはLoginUserStoreが持つ（SC-010ログイン画面で選んだロール、E-2）。
 // 未ログイン時はヘッダを付けない（authGuardで保護ルートには来ない想定だが、念のためbackend側の401に委ねる）。
 //
 // [Angularの基礎: HTTPインターセプターとは] HttpClientが送信するすべてのHTTPリクエスト・
@@ -13,16 +13,16 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 // inject(): DIコンテナからサービスを取り出す関数
 import { inject } from '@angular/core';
-import { DummyUserStore } from './dummy-user-store';
+import { LoginUserStore } from './login-user-store';
 
 /**
  * ログイン中ユーザーのuserIdをX-User-IdヘッダとしてすべてのHTTPリクエストに付与するインターセプター。
  * app.config.tsのprovideHttpClient(withInterceptors([...]))に登録されており、HttpClientを使う
  * すべてのService（application-api.ts等）のリクエストに対して自動的に働く。
  */
-export const dummyAuthInterceptor: HttpInterceptorFn = (req, next) => {
+export const authHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   // ログイン中ユーザーのuserIdを取得する（未ログインならnull）
-  const userId = inject(DummyUserStore).currentUserId();
+  const userId = inject(LoginUserStore).currentUserId();
   if (userId === null) {
     // 未ログインの場合はヘッダを付けず、そのままリクエストを次へ渡す
     return next(req);

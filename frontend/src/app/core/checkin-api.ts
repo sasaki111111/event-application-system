@@ -9,7 +9,10 @@ export interface Attendee {
   applicationId: number;
   userName: string;
   ticketTypeName: string | null;
-  status: string;
+  /** 申込状況コード（STATUS_CODE参照）。表示の切り替えの判定に使う。 */
+  statusCode: number;
+  /** 申込状況の表示名（コードマスタの値）。 */
+  statusName: string;
   checkedInAt: string | null;
   // （機能追加）: 申込時アンケートへの回答。アンケート未設定・未回答の場合はNULL
   extraAnswer: string | null;

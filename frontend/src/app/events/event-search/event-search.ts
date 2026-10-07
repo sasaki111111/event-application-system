@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { EventApiService, EventSummary } from '../../core/event-api';
+import { moveHeldEventsLast } from '../../core/event-order';
 
 /**
  * イベント検索画面（機能追加、/events/search）を担当するComponent。
@@ -61,14 +62,19 @@ export class EventSearch implements OnInit {
 
     switch (this.sortOrder()) {
       case 'accepted_desc':
-        return filtered.sort((a, b) => b.acceptedCount - a.acceptedCount);
+        filtered.sort((a, b) => b.acceptedCount - a.acceptedCount);
+        break;
       case 'favorite_desc':
-        return filtered.sort((a, b) => b.favoriteCount - a.favoriteCount);
+        filtered.sort((a, b) => b.favoriteCount - a.favoriteCount);
+        break;
       case 'deadline_asc':
-        return filtered.sort((a, b) => a.applicationDeadline.localeCompare(b.applicationDeadline));
+        filtered.sort((a, b) => a.applicationDeadline.localeCompare(b.applicationDeadline));
+        break;
       default:
-        return filtered.sort((a, b) => a.startAt.localeCompare(b.startAt));
+        filtered.sort((a, b) => a.startAt.localeCompare(b.startAt));
     }
+    // イベント一覧（SC-020）と同じく、どの並び順でも開催済みのイベントは末尾にまとめて表示する
+    return moveHeldEventsLast(filtered);
   });
 
   constructor(private readonly eventApi: EventApiService) {}

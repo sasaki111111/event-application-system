@@ -1,10 +1,11 @@
-// 実行環境: ブラウザ側。SC-06 当日受付画面（機能追加、/admin/events/:id/checkin）。
+// 実行環境: ブラウザ側。SC-030 当日受付画面（機能追加、/admin/events/:id/checkin）。
 // 申込者一覧の表示（API-18）とチェックイン操作（API-19）を行う。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Attendee, CheckInApiService } from '../../core/checkin-api';
 import { EventApiService } from '../../core/event-api';
+import { STATUS_CODE } from '../../core/codes';
 
 @Component({
   selector: 'app-admin-checkin',
@@ -13,7 +14,7 @@ import { EventApiService } from '../../core/event-api';
   styleUrl: './admin-checkin.css',
 })
 /**
- * SC-06 当日受付画面（/admin/events/:id/checkin）を担当するComponent。
+ * SC-030 当日受付画面（/admin/events/:id/checkin）を担当するComponent。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard の両方が
  *   設定されているため、未ログインのユーザーや管理者以外のロールのユーザーはこの画面に
@@ -29,12 +30,14 @@ import { EventApiService } from '../../core/event-api';
  * 呼び出される（コンストラクタの後、画面表示の準備が整った時点で呼ばれる初期化処理の定番の場所）。
  */
 export class AdminCheckin implements OnInit {
+  // テンプレートで申込状況コードを判定するために公開する（文字列の表示名では判定しない）
+  protected readonly StatusCode = STATUS_CODE;
   protected readonly attendees = signal<Attendee[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly checkingInId = signal<number | null>(null);
 
-  // （機能追加）: アンケートの質問文言はAP-05（イベント詳細）から取得する。未設定ならNULL
+  // （機能追加）: アンケートの質問文言はAP-021（イベント詳細）から取得する。未設定ならNULL
   protected readonly extraQuestion = signal<string | null>(null);
 
   private eventId = 0;

@@ -1,7 +1,7 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-guard.tsの単体テスト。
 //
-// [テストの概要] adminGuardは引数を取らずDummyUserStoreのロールだけを見て判定するため、
-// ここではTestBed（Angularのテスト用DIコンテナ）でDummyUserStoreとRouterを用意し、
+// [テストの概要] adminGuardは引数を取らずLoginUserStoreのロールだけを見て判定するため、
+// ここではTestBed（Angularのテスト用DIコンテナ）でLoginUserStoreとRouterを用意し、
 // ログイン状態を変えながらadminGuardの戻り値（true／UrlTree）を確認する。
 // TestBed: Angularのテスト用DIコンテナ。本番のinject()相当の仕組みをテストコードから使うためのAPI
 import { TestBed } from '@angular/core/testing';
@@ -9,11 +9,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 // テスト対象の関数
 import { adminGuard } from './admin-guard';
-import { DummyUserStore } from './dummy-user-store';
+import { LoginUserStore } from './login-user-store';
+import { ROLE_CODE } from './codes';
 
 describe('adminGuard', () => {
   // テスト対象が依存するサービスのインスタンスを各テストで使えるように変数として保持する
-  let dummyUserStore: DummyUserStore;
+  let loginUserStore: LoginUserStore;
   let router: Router;
 
   // 各it()ブロックの実行前に毎回呼ばれる準備処理
@@ -28,13 +29,13 @@ describe('adminGuard', () => {
     });
     // TestBed.inject(): 組み立てたテスト用DIコンテナから、本番コードのinject()と同様にサービスの
     // インスタンスを取得する（テストコード側の取得方法）。
-    dummyUserStore = TestBed.inject(DummyUserStore);
+    loginUserStore = TestBed.inject(LoginUserStore);
     router = TestBed.inject(Router);
   });
 
-  it('管理者（role=admin）は通過させる（true）', () => {
-    // DummyUserStoreをadmin役でログイン状態にする
-    dummyUserStore.login('2', 'admin');
+  it('管理者（利用者区分コード＝管理者）は通過させる（true）', () => {
+    // LoginUserStoreをadmin役でログイン状態にする
+    loginUserStore.login('2', ROLE_CODE.ADMIN);
 
     // adminGuard自体はinject()を使う関数型ガードなので、Angularの依存注入が効く文脈
     // （インジェクションコンテキスト）の中でしか呼び出せない。TestBed.runInInjectionContext()で
@@ -46,9 +47,9 @@ describe('adminGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('一般利用者（role=general）はイベント一覧へのUrlTreeを返す（role基準の判定）', () => {
+  it('一般利用者（利用者区分コード＝一般利用者）はイベント一覧へのUrlTreeを返す（利用者区分コード基準の判定）', () => {
     // 一般利用者役でログイン状態にする
-    dummyUserStore.login('1', 'general');
+    loginUserStore.login('1', ROLE_CODE.GENERAL);
 
     const result = TestBed.runInInjectionContext(() => adminGuard(null as never, null as never));
 

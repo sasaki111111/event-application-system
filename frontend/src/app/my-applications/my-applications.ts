@@ -1,16 +1,17 @@
-// 実行環境: ブラウザ側。SC-03のマイページ（一覧表示、キャンセル操作）。
+// 実行環境: ブラウザ側。SC-021のマイページ（一覧表示、キャンセル操作）。
 // 機能追加: キャンセル待ちの順位表示、お気に入りタブ。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApplicationApiService, MyApplication } from '../core/application-api';
-import { DummyUserStore } from '../core/dummy-user-store';
+import { LoginUserStore } from '../core/login-user-store';
 import { FavoriteApiService, FavoriteEvent } from '../core/favorite-api';
 import { FavoriteStore } from '../core/favorite-store';
 import { UserApiService } from '../core/user-api';
+import { STATUS_CODE } from '../core/codes';
 
 /**
- * SC-03マイページを担当するComponent。「申込一覧」「お気に入り」の2タブを持ち、
+ * SC-021マイページを担当するComponent。「申込一覧」「お気に入り」の2タブを持ち、
  * 申込のキャンセルやお気に入りの解除、アカウントの退会（匿名化）もここから行う。
  *
  * 使用するAngular Service:
@@ -18,8 +19,8 @@ import { UserApiService } from '../core/user-api';
  * - `FavoriteApiService`: 自分のお気に入り一覧取得とお気に入り解除APIの呼び出し。
  * - `FavoriteStore`: イベント一覧・詳細画面と共有するお気に入り状態。このタブで解除した際に
  *   キャッシュを無効化し、他画面で最新状態を取り直させるために使う。
- * - `UserApiService`: 退会（匿名化）API（AP-34）の呼び出し。
- * - `DummyUserStore`: 退会対象（自分）のユーザーIDの取得、退会後のログアウトに使う。
+ * - `UserApiService`: 退会（匿名化）API（AP-013）の呼び出し。
+ * - `LoginUserStore`: 退会対象（自分）のユーザーIDの取得、退会後のログアウトに使う。
  * - `Router`: 退会成功後にログイン画面へ遷移するために使う。
  *
  * 画面遷移: 申込一覧・お気に入り一覧のカードのタイトルからevent-detail.ts（イベント詳細）へ
@@ -32,6 +33,8 @@ import { UserApiService } from '../core/user-api';
   styleUrl: './my-applications.css',
 })
 export class MyApplications implements OnInit {
+  // テンプレートで申込状況コードを判定するために公開する（文字列の表示名では判定しない）
+  protected readonly StatusCode = STATUS_CODE;
   protected readonly applications = signal<MyApplication[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
@@ -44,7 +47,7 @@ export class MyApplications implements OnInit {
   protected readonly favoritesErrorMessage = signal<string | null>(null);
   protected readonly unfavoritingId = signal<number | null>(null);
 
-  // AP-34（機能追加）: 退会（匿名化）処理中フラグ
+  // AP-013（機能追加）: 退会（匿名化）処理中フラグ
   protected readonly withdrawing = signal(false);
 
   constructor(
@@ -52,7 +55,7 @@ export class MyApplications implements OnInit {
     private readonly favoriteApi: FavoriteApiService,
     private readonly favoriteStore: FavoriteStore,
     private readonly userApi: UserApiService,
-    private readonly dummyUserStore: DummyUserStore,
+    private readonly loginUserStore: LoginUserStore,
     private readonly router: Router,
   ) {}
 
@@ -128,16 +131,16 @@ export class MyApplications implements OnInit {
     });
   }
 
-  // AP-34: 自分のアカウントを退会（匿名化）する。成功後はログアウトしてSC-01（ログイン）へ遷移する
+  // AP-013: 自分のアカウントを退会（匿名化）する。成功後はログアウトしてSC-010（ログイン）へ遷移する
   protected withdraw(): void {
     if (!confirm('退会しますか？この操作は取り消せません。')) {
       return;
     }
-    const userId = Number(this.dummyUserStore.currentUserId());
+    const userId = Number(this.loginUserStore.currentUserId());
     this.withdrawing.set(true);
     this.userApi.anonymize(userId).subscribe({
       next: () => {
-        this.dummyUserStore.logout();
+        this.loginUserStore.logout();
         this.router.navigateByUrl('/login');
       },
       error: (err) => {

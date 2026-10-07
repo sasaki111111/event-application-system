@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-02の詳細部分（イベント詳細＋申込）。
+// 実行環境: ブラウザ側。SC-020の詳細部分（イベント詳細＋申込）。
 // `ActivatedRoute`は、現在表示中のURL（/events/:id等）のパラメータ（:idの値）や
 // クエリパラメータ（?from=search等）を読み取るためのAngularのService。
 import { CommonModule } from '@angular/common';
@@ -8,11 +8,11 @@ import { EventApiService, EventDetail as EventDetailModel } from '../../core/eve
 import { ApplicationApiService } from '../../core/application-api';
 import { FavoriteStore } from '../../core/favorite-store';
 import { CommentApiService, CommentNode, buildCommentTree } from '../../core/comment-api';
-import { DummyUserStore } from '../../core/dummy-user-store';
+import { LoginUserStore } from '../../core/login-user-store';
 import { CommentItem, CommentReplyEvent } from '../comment-item/comment-item';
 
 /**
- * SC-02イベント詳細画面（イベント詳細の表示・申込・お気に入り・コメント）を担当するComponent。
+ * SC-020イベント詳細画面（イベント詳細の表示・申込・お気に入り・コメント）を担当するComponent。
  * `implements OnInit`は、`ngOnInit`というライフサイクルフックのメソッドを必ず持つことを
  * TypeScriptに伝える宣言（下のngOnInitで説明）。
  *
@@ -24,7 +24,7 @@ import { CommentItem, CommentReplyEvent } from '../comment-item/comment-item';
  * - `ApplicationApiService`: 申込API（API-03）の呼び出し。
  * - `FavoriteStore`: お気に入り登録状態を画面間で共有する状態管理（登録・解除もここから行う）。
  * - `CommentApiService`: コメントの一覧取得・投稿・削除APIの呼び出し。
- * - `DummyUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
+ * - `LoginUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
  *
  * 画面遷移: 起点はevent-list.ts（一覧のリンク）やevent-search.ts（検索結果のリンク）。
  * 申込成功時はapply-done.ts（申込完了画面）へ遷移する。「戻る」リンクの行き先は
@@ -71,12 +71,12 @@ export class EventDetail implements OnInit {
     private readonly applicationApi: ApplicationApiService,
     protected readonly favoriteStore: FavoriteStore,
     private readonly commentApi: CommentApiService,
-    protected readonly dummyUserStore: DummyUserStore,
+    protected readonly loginUserStore: LoginUserStore,
   ) {}
 
   // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない。role基準で判定する
   protected get isAdmin(): boolean {
-    return this.dummyUserStore.isAdmin();
+    return this.loginUserStore.isAdmin();
   }
 
   /**

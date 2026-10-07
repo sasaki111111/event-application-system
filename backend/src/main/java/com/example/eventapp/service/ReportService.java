@@ -1,6 +1,7 @@
 package com.example.eventapp.service;
 
 import com.example.eventapp.common.AuthContext;
+import com.example.eventapp.common.CodeNameResolver;
 import com.example.eventapp.dto.EventReportResponse;
 import com.example.eventapp.entity.Application;
 import com.example.eventapp.entity.ApplicationStatus;
@@ -15,9 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。申込実績レポート（AP-22）の業務ロジック。
+// 実行環境: サーバー側（JVM）。申込実績レポート（AP-130）の業務ロジック。
 /**
- * 申込実績の集計取得（JSON）・CSV出力（AP-22）の業務ロジックを担当するService。
+ * 申込実績の集計取得（JSON）・CSV出力（AP-130）の業務ロジックを担当するService。
  * ReportController#reportから呼ばれ、DBアクセスにはEventRepository・ApplicationRepositoryを使う。
  */
 @Service
@@ -31,17 +32,19 @@ public class ReportService {
     private final EventRepository eventRepository;
     private final ApplicationRepository applicationRepository;
     private final AuthContext authContext;
+    private final CodeNameResolver codeNameResolver;
 
     public ReportService(EventRepository eventRepository, ApplicationRepository applicationRepository,
-            AuthContext authContext) {
+            AuthContext authContext, CodeNameResolver codeNameResolver) {
+        this.codeNameResolver = codeNameResolver;
         this.eventRepository = eventRepository;
         this.applicationRepository = applicationRepository;
         this.authContext = authContext;
     }
 
-    // format=json: イベント別の受付済数・充足率（docs/01_要件定義書.md F-12）
+    // format=json: イベント別の受付済数・充足率（docs/10_要件定義/10_要件定義書.md F-130）
     /**
-     * イベント別の受付済数・充足率の一覧を取得する（AP-22、format=json）。ReportController#reportから呼ばれる。
+     * イベント別の受付済数・充足率の一覧を取得する（AP-130、format=json）。ReportController#reportから呼ばれる。
      *
      * @param sort "startAt"（既定、開催日時順）または"accepted_desc"（受付数降順）
      * @return イベント別の集計一覧
@@ -73,11 +76,11 @@ public class ReportService {
         );
     }
 
-    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス／アンケート回答／参加区分、docs/03_API設計書.md AP-22）
+    // format=csv: 申込明細（イベント名／申込者名／申込日時／ステータス／アンケート回答／参加区分、docs/30_詳細設計/31_API詳細設計書.md AP-130）
     // 集計一覧（summarize()）と同様、削除済みイベントに紐づく申込は対象外とする
     // アンケート回答列（アンケート未設定・未回答の申込は空欄）・参加区分列（区分の無いイベントへの申込は空欄）を含む
     /**
-     * 申込明細のCSVデータを文字列として組み立てる（AP-22、format=csv）。ReportController#reportから呼ばれ、
+     * 申込明細のCSVデータを文字列として組み立てる（AP-130、format=csv）。ReportController#reportから呼ばれ、
      * 呼び出し側（Controller）がこの文字列をそのままレスポンスボディとしてダウンロードさせる。
      * {@link StringBuilder}は、文字列を繰り返し連結する際に{@code String}の{@code +}連結よりも
      * 効率よく組み立てるためのクラスで、{@code .append(...)}をメソッドチェーンでつないで1文字ずつ・
@@ -97,17 +100,17 @@ public class ReportService {
             csv.append(csvField(application.getEvent().getName())).append(',')
                     .append(csvField(application.getUser().getName())).append(',')
                     .append(csvField(application.getAppliedAt().toString())).append(',')
-                    .append(csvField(application.getStatus())).append(',')
+                    .append(csvField(codeNameResolver.statusName(application.getStatus()))).append(',')
                     .append(csvField(application.getExtraAnswer())).append(',')
                     .append(csvField(ticketTypeName)).append("\r\n");
         }
 
-        log.info("申込実績CSV出力完了 userId={} 出力条件=開催日時順 件数={}",
-                authContext.getCurrentUser().userId(), applications.size());
+        log.info("申込実績CSV出力完了 件数={} 実行者userId={}",
+                applications.size(), authContext.getCurrentUser().userId());
         return csv.toString();
     }
 
-    // CSVインジェクション対策（docs/03_API設計書.md AP-22）対象の先頭文字。
+    // CSVインジェクション対策（docs/30_詳細設計/31_API詳細設計書.md AP-130）対象の先頭文字。
     // Excel等の表計算ソフトが数式として解釈しうる文字（=, +, -, @）およびタブ・改行文字。
     private static final String FORMULA_TRIGGER_CHARS = "=+-@\t\r";
 

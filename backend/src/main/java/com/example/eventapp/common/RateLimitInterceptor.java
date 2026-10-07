@@ -9,17 +9,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * これもAuthInterceptorと同じ{@code HandlerInterceptor}（Controllerの処理の前に割り込む仕組み）。
  * こちらは認証ではなく、短時間に大量のリクエストを送ってくるIPアドレスを制限する役割を持つ。
  */
-// 実行環境: サーバー側（JVM）。書き込み系API（POST/PUT/DELETE、ログインAP-01を含む）に対する、
-// IPアドレス単位の簡易な回数制限（docs/10_非機能設計書.md 10-3、機能追加）。
+// 実行環境: サーバー側（JVM）。書き込み系API（POST/PUT/DELETE、ログインAP-010を含む）に対する、
+// IPアドレス単位の簡易な回数制限（docs/20_基本設計/24_方式設計書.md、機能追加）。
 // ログイン総当たり・コメントやアカウント登録の大量投稿を抑止する。単一インスタンス運用（学内限定の
-// 小規模利用、docs/10_非機能設計書.md 10-1）を前提としたインメモリ実装であり、複数インスタンス構成には
+// 小規模利用、docs/20_基本設計/24_方式設計書.md）を前提としたインメモリ実装であり、複数インスタンス構成には
 // 対応しない（その場合はRedis等の共有ストアへの置き換えが必要）。
+@Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitInterceptor.class);
@@ -29,6 +31,15 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private static final long WINDOW_MILLIS = 60_000L;
 
     private final ConcurrentHashMap<String, Window> windowsByIp = new ConcurrentHashMap<>();
+
+    /**
+     * 記録している回数をすべて消去する。結合テストで、テストごとに回数制限の状態を初期化するために使う
+     * （多数のテストを続けて実行すると、同じ接続元からの書き込みが上限に達してしまうため）。
+     * 業務処理からは呼び出さない。
+     */
+    public void reset() {
+        windowsByIp.clear();
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -59,7 +70,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         response.setHeader("Retry-After", String.valueOf(WINDOW_MILLIS / 1000));
         // レスポンス本文がJSONであることをクライアントに伝える
         response.setContentType("application/json;charset=UTF-8");
-        // docs/03_API設計書.md 2.3節の共通エラーレスポンス形式と同じ形。GlobalExceptionHandlerを経由しない
+        // docs/30_詳細設計/31_API詳細設計書.mdの共通エラーレスポンス形式と同じ形。GlobalExceptionHandlerを経由しない
         // （Controllerに到達する前のHandlerInterceptorで判定するため）ため、ここで直接組み立てる。
         // メッセージは固定文字列のみを扱うため、JSON用のエスケープ処理は行っていない。
         // 現在時刻をISO 8601形式（タイムゾーン付き）の文字列に変換する

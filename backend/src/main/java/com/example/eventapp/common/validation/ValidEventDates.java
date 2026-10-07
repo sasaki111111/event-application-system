@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * （{@code @Constraint(validatedBy = ...)}で指定）に実装されている。{@code EventUpsertRequest}
  * （クラス全体、{@code @Target(ElementType.TYPE)}）に付けて使う。
  */
-// 実行環境: サーバー側（JVM）。「申込締切はstartAtより前」（docs/07_バリデーション設計書.md 8-3 C-01）を@Validと連携させるための
+// 実行環境: サーバー側（JVM）。「申込締切はstartAtより前」（docs/30_詳細設計/33_共通詳細設計書.md C-01）を@Validと連携させるための
 // クラスレベルのBean Validation制約。EventUpsertRequestに付ける。
 // このアノテーションをクラス全体（TYPE）に付けられるようにする
 @Target(ElementType.TYPE)

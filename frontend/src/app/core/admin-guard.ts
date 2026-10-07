@@ -12,7 +12,7 @@ import { inject } from '@angular/core';
 // CanActivateFn: ルートガードとして使う関数の型。Router: 画面遷移やUrlTree生成を行うサービス
 import { CanActivateFn, Router } from '@angular/router';
 // ログイン中ユーザー（userId・role）を保持するストア
-import { DummyUserStore } from './dummy-user-store';
+import { LoginUserStore } from './login-user-store';
 
 /**
  * 管理者専用ルート（/admin/**）用のガード。CanActivateFn型で実装する「関数型ガード」。
@@ -26,9 +26,9 @@ export const adminGuard: CanActivateFn = () => {
   // inject(): コンストラクタを持たない関数（この関数型ガードなど）の中でも、
   // Angularの依存注入（DI）の仕組みを使ってサービスのインスタンスを取り出せる関数。
   // クラスのコンストラクタ注入と同じDIコンテナから取得する。
-  const dummyUserStore = inject(DummyUserStore);
-  // isAdmin()はcomputed（dummy-user-store.ts）で、現在のroleが"admin"かどうかを返す
-  if (dummyUserStore.isAdmin()) {
+  const loginUserStore = inject(LoginUserStore);
+  // isAdmin()はcomputed（login-user-store.ts）で、現在のroleが"admin"かどうかを返す
+  if (loginUserStore.isAdmin()) {
     // 管理者なので、このまま/admin/**への遷移を許可する
     return true;
   }

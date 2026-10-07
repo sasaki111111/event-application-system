@@ -35,7 +35,7 @@ public class EventDatesValidator implements ConstraintValidator<ValidEventDates,
         }
 
         // 申込締切が開催日時より前（isBefore）なら、ルールを満たしているのでtrue（OK）を返す。
-        // 同じ日時は「前」ではないためエラーにする（docs/07_バリデーション設計書.md 8-3 C-01）
+        // 同じ日時は「前」ではないためエラーにする（docs/30_詳細設計/33_共通詳細設計書.md C-01）
         if (value.applicationDeadline().isBefore(value.startAt())) {
             return true;
         }

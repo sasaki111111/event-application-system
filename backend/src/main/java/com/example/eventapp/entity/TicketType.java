@@ -11,10 +11,10 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。ticket_typesテーブル（docs/02_テーブル定義書.md §4.3）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。ticket_typesテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 // イベントに紐づく定員区分（例：「一般枠」定員30、「会員枠」定員10）。区分の無いイベントでは1件も存在しない。
 @Entity
-// 同一イベント内で区分名は重複不可（docs/02_テーブル定義書.md、schema.sqlのuk_ticket_types_event_nameと同じ）。
+// 同一イベント内で区分名は重複不可（docs/20_基本設計/22_テーブル定義書.md、schema.sqlのuk_ticket_types_event_nameと同じ）。
 // 本番のDDLはschema.sqlで適用するが、テスト用DB（H2、Entityから自動生成）にも同じ制約を付けるためここにも定義する
 @Table(name = "ticket_types",
         uniqueConstraints = @UniqueConstraint(name = "uk_ticket_types_event_name", columnNames = {"event_id", "name"}))
