@@ -620,6 +620,45 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
+    // 共通（E-V-028）: 存在しないURLは、システムエラー（500）ではなく404になる
+    @Test
+    void cmn_存在しないURLは404になる() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/nothing"), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(GENERAL_USER_ID)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).contains("指定されたURLは存在しません");
+    }
+
+    // 共通（E-V-029）: URLは存在するが対応していないHTTPメソッドは、500ではなく405になる
+    @Test
+    void cmn_対応していないメソッドは405になる() {
+        // GETだけに対応している稼働確認（/api/ping）を、POSTで呼ぶ
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/ping"), HttpMethod.POST,
+                new HttpEntity<>(new HttpHeaders()), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(response.getBody()).contains("この操作には対応していません");
+    }
+
+    // 共通（E-V-030）: 本文の形式がJSONでないリクエストは、500ではなく415になる
+    @Test
+    void cmn_JSON以外の形式の本文は415になる() {
+        HttpHeaders headers = authHeaders(GENERAL_USER_ID);
+        // 本文の形式を、JSONではなくプレーンテキストとして送る
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/api/favorites"), HttpMethod.POST,
+                new HttpEntity<>("eventId=1", headers), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(response.getBody()).contains("リクエストの形式が不正です");
+        // お気に入りは登録されていない
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM favorites", Integer.class)).isZero();
+    }
+
     // AP-122 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
     @Test
     void ap122_csv出力は削除済みイベントの申込を含まない() {

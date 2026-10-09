@@ -10,10 +10,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * {@code @RestControllerAdvice}が付いたこのクラスは、アプリ全体のControllerから投げられた例外を
@@ -128,6 +131,25 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         warn(request, "パラメータの形式が不正です");
         return build(HttpStatus.BAD_REQUEST, "パラメータの形式が不正です");
+    }
+
+    // docs/30_詳細設計/33_共通詳細設計書.md E-V-028: 存在しないURLへのリクエスト。
+    // ブラウザが自動で取得する/favicon.ico等でも発生するため、ログには出力しない（同 6.2）。
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, "指定されたURLは存在しません");
+    }
+
+    // docs/30_詳細設計/33_共通詳細設計書.md E-V-029: URLは存在するが、対応していないHTTPメソッドでのリクエスト。
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "この操作には対応していません");
+    }
+
+    // docs/30_詳細設計/33_共通詳細設計書.md E-V-030: 本文の形式（Content-Type）がJSONでないリクエスト。
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "リクエストの形式が不正です");
     }
 
     // docs/30_詳細設計/33_共通詳細設計書.md E-S-001: 上記のいずれにも該当しない想定外の例外。
