@@ -207,7 +207,7 @@
 | 項目 | 型 | 必須 | 桁数・形式 | 設定先 |
 |---|---|:--:|---|---|
 | `eventId` | 数値 | ○ | - | `applications.event_id` |
-| `ticketTypeId` | 数値 | ○（参加区分が設定されたイベントの場合） | 対象イベントの参加区分のID | `applications.ticket_type_id`。区分の無いイベントではNULL |
+| `ticketTypeId` | 数値 | ○（参加区分が設定されたイベントの場合） | 対象イベントの参加区分のID | `applications.ticket_type_id`。区分の無いイベントでは指定しない（NULLで登録する）。区分の無いイベントに指定した場合は、対象イベントに存在しない区分としてエラー（E-B-005）にする |
 | `extraAnswer` | 文字列 | - | 最大500文字 | `applications.extra_answer` |
 
 - 処理：申込者（`applications.user_id`）は認証情報から特定し、リクエストでは指定しない。`applications.applied_at`には実行時の日時を設定する。`applications.status_code`は、対象（参加区分がある場合はその区分、無い場合はイベント全体）の受付済の件数が定員未満なら1（受付済）、定員に達していれば2（キャンセル待ち）とする。定員の判定から登録までは排他制御を行う（`docs/30_詳細設計/32_処理詳細設計書.md`7章）。

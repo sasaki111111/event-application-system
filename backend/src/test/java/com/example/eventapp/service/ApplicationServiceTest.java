@@ -415,6 +415,23 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).save(any());
     }
 
+    // 異常系（機能追加：定員区分）: 区分の無いイベントに区分を指定した場合も404（32_処理詳細設計書 4章 AP-030 No.7）
+    @Test
+    void apply_異常系_区分の無いイベントに区分を指定すると指定された区分が見つかりませんで拒否される() {
+        Event event = openEvent(999);
+        when(eventRepository.findByIdAndDeletedAtIsNull(EVENT_ID)).thenReturn(Optional.of(event));
+        // このイベントには参加区分が1件も無い状況を設定する
+        when(ticketTypeRepository.existsByEvent_Id(EVENT_ID)).thenReturn(false);
+        when(applicationRepository.existsByUser_IdAndEvent_IdAndStatusIn(anyLong(), anyLong(), any()))
+                .thenReturn(false);
+
+        // 区分の無いイベントに、区分ID(1L)を指定して申込もうとする
+        assertThatThrownBy(() -> applicationService.apply(USER_ID, EVENT_ID, 1L, null))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("指定された区分が見つかりません");
+        verify(applicationRepository, never()).save(any());
+    }
+
     // 機能追加（定員区分）: 区分ありの申込をキャンセルすると、同じ区分で最も古いキャンセル待ちが繰り上がる
     @Test
     void cancel_機能追加_区分単位でキャンセル待ちが繰り上がる() {

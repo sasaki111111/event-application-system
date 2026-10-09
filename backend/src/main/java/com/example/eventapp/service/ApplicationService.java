@@ -143,11 +143,16 @@ public class ApplicationService {
         );
     }
 
-    // 区分存在・必須チェック（docs/30_詳細設計/33_共通詳細設計書.md E-B-004・E-B-005）。区分の無いイベントはticketTypeIdを無視する（docs/30_詳細設計/31_API詳細設計書.md AP-030）。
+    // 区分存在・必須チェック（docs/30_詳細設計/33_共通詳細設計書.md E-B-004・E-B-005）。区分の無いイベントにticketTypeIdが指定された場合も、対象イベントに存在しない区分としてE-B-005で拒否する（docs/30_詳細設計/32_処理詳細設計書.md 4章 AP-030 No.7）。
     // 区分ありイベントでは、対象区分の存在検証とあわせて悲観ロックを取得する（apply()参照）。
     private TicketType resolveTicketType(Long eventId, Long ticketTypeId) {
-        // 対象イベントに参加区分が1件も存在しなければ、区分の無いイベントとしてnullを返す
+        // 対象イベントに参加区分が1件も存在しない場合（区分の無いイベント）
         if (!ticketTypeRepository.existsByEvent_Id(eventId)) {
+            // 区分が指定されていれば、このイベントに存在しない区分なので例外を投げる
+            if (ticketTypeId != null) {
+                throw new NotFoundException("指定された区分が見つかりません");
+            }
+            // 区分の指定が無ければ、区分なしの申込としてnullを返す
             return null;
         }
         // 区分があるイベントなのにticketTypeIdが指定されていなければ、ここで例外を投げる
