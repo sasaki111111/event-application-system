@@ -52,6 +52,11 @@ export class AdminEventForm implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly fieldErrors = signal<FieldError[]>([]);
 
+  // 編集モードで読み込んだ時点の区分（名称・定員）。保存時に比べ、変わっていなければticketTypesを送らない。
+  // 送ると区分の入れ替えとして扱われ、有効な申込があるイベントは区分以外の項目も保存できなくなるため
+  // （docs/30_詳細設計/31_API詳細設計書.md AP-121「参加区分の扱い」、Issue #19）
+  private loadedTicketTypes: string | null = null;
+
   // inject()はAngularのDependency Injection（DI）をコンストラクタを介さず呼び出す書き方。
   // constructor(private readonly x: X) {} と同じ意味で、Angular側がインスタンスを渡してくれる。
   private readonly fb = inject(FormBuilder);
@@ -212,6 +217,7 @@ export class AdminEventForm implements OnInit {
         for (const ticketType of event.ticketTypes) {
           this.ticketTypesArray.push(this.newTicketTypeGroup(ticketType.name, ticketType.capacity));
         }
+        this.loadedTicketTypes = this.ticketTypesKey();
         // データ反映が終わったので読み込み中表示を終える
         this.loading.set(false);
       },
@@ -253,6 +259,8 @@ export class AdminEventForm implements OnInit {
     // 区分が1件以上ある場合、画面には合計値を表示しているが対応するinputにformControlNameを
     // 付けていない（自動計算の見た目のみのため）ので、capacityフィールド自体もその合計値を送る
     const capacity = this.hasTicketTypes ? this.ticketTypesCapacitySum : value.capacity;
+    // 編集モードで区分が読み込み時から変わっていなければ、区分は送らない（既存の区分をそのまま残す）
+    const ticketTypesUnchanged = this.eventId() !== null && this.ticketTypesKey() === this.loadedTicketTypes;
     // サーバーに送信するリクエストボディを組み立てる
     const request = {
       name: value.name,
@@ -266,8 +274,8 @@ export class AdminEventForm implements OnInit {
       organizerName: value.organizerName || undefined,
       imageUrl: value.imageUrl || undefined,
       extraQuestion: value.extraQuestion || undefined,
-      // 区分は常に現在のフォームの内容で全置換する（0件なら「区分無し」に確定させる）
-      ticketTypes: value.ticketTypes,
+      // 区分を変更した場合（新規登録・複製を含む）は、現在のフォームの内容で全置換する（0件なら「区分無し」に確定させる）
+      ticketTypes: ticketTypesUnchanged ? undefined : value.ticketTypes,
     };
 
     // eventIdがnullなら新規作成（POST）、値があれば更新（PUT）を呼ぶ
@@ -321,6 +329,11 @@ export class AdminEventForm implements OnInit {
     for (const ticketType of source.ticketTypes) {
       this.ticketTypesArray.push(this.newTicketTypeGroup(ticketType.name, ticketType.capacity));
     }
+  }
+
+  /** 区分の入力内容（名称・定員の並び）を比較用の文字列にする。 */
+  private ticketTypesKey(): string {
+    return JSON.stringify(this.ticketTypesArray.getRawValue().map((t) => [t.name, t.capacity]));
   }
 
   /** "2027-03-01T10:00:00" → datetime-local入力欄向けの"2027-03-01T10:00" */

@@ -185,6 +185,43 @@ describe('AdminEventForm', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/events');
   });
 
+  // 区分を変えずに保存した場合は区分を送らない（送ると区分の入れ替えとして扱われ、
+  // 有効な申込があるイベントは区分以外の項目も保存できなくなるため。Issue #19）
+  it('編集モード: 区分を変更せずに保存すると、ticketTypesを送らない', () => {
+    eventApi.detail.mockReturnValue(
+      of({ ...detail, ticketTypes: [{ id: 1, name: '一般', capacity: 2, acceptedCount: 1, remaining: 1 }] }),
+    );
+    const component = createComponent('5') as any;
+    component.form.patchValue({ place: '別の会議室' });
+
+    component.submit();
+
+    const request = eventApi.update.mock.calls[0][1];
+    expect(request.place).toBe('別の会議室');
+    expect(request.ticketTypes).toBeUndefined();
+  });
+
+  it('編集モード: 区分の無いイベントを、区分を追加せずに保存すると、ticketTypesを送らない', () => {
+    const component = createComponent('5') as any;
+    component.form.patchValue({ place: '別の会議室' });
+
+    component.submit();
+
+    expect(eventApi.update.mock.calls[0][1].ticketTypes).toBeUndefined();
+  });
+
+  it('編集モード: 区分を変更して保存すると、変更後のticketTypesを送る', () => {
+    eventApi.detail.mockReturnValue(
+      of({ ...detail, ticketTypes: [{ id: 1, name: '一般', capacity: 2, acceptedCount: 0, remaining: 2 }] }),
+    );
+    const component = createComponent('5') as any;
+    component.ticketTypesArray.at(0).patchValue({ name: '一般枠' });
+
+    component.submit();
+
+    expect(eventApi.update.mock.calls[0][1].ticketTypes).toEqual([{ name: '一般枠', capacity: 2 }]);
+  });
+
   it('保存時に入力値エラー（400）が返るとfieldErrorsに反映される', () => {
     // mockReturnValueでcreate()の戻り値を「400エラーを返すObservable」に差し替え、
     // サーバー側バリデーションエラーが発生した状況を再現する
