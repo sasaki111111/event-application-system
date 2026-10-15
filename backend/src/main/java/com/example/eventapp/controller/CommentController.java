@@ -21,12 +21,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// イベントコメントの一覧（AP-050）・投稿（AP-051）・削除（AP-052）。一般ユーザー・管理者の両方が使える（要件定義書§4）。
+// イベントコメントの一覧（AP-050）・投稿（AP-051）・削除（AP-052）。一般ユーザー・管理者の両方が使える（docs/20_基本設計/20_機能設計書.md 4.4）。
+// あわせて、管理者専用のコメント総数取得（AP-132）・全コメント一覧取得（AP-150）も担当する。
 /**
- * Controller（コントローラー）層のクラス。フロントエンド（Angular）のCommentApiServiceから
+ * Controller（コントローラー）層のクラス。フロントエンド（Angular）のcore/comment-api.ts（CommentApiService）から
  * 呼び出され、受け取ったHTTPリクエストの内容をEventCommentService（Service層）に渡す「入口」の役割を持つ。
  */
-@Tag(name = "イベントコメント", description = "イベントへのコメント投稿・閲覧・削除（AP-050〜21）")
+@Tag(name = "イベントコメント", description = "イベントへのコメント投稿・閲覧・削除、コメント総数・全コメント一覧（AP-050〜AP-052、AP-132、AP-150）")
 @RestController
 public class CommentController {
 
@@ -123,9 +124,9 @@ public class CommentController {
         return new CountResponse(eventCommentService.countActive());
     }
 
-    // AP-150 GET /api/comments（管理者のみ、SC-150コメントモデレーション）
+    // AP-150 GET /api/comments（管理者のみ、SC-150コメント管理）
     /**
-     * AP-150: SC-150（コメントモデレーション画面）向けに、全イベントを横断したコメント一覧を取得する。
+     * AP-150: SC-150（コメント管理画面）向けに、全イベントを横断したコメント一覧を取得する。
      * フロントエンドのCommentApiService.listAll()から呼ばれ、内部ではEventCommentService.listAllActive()
      * に処理を委ねる。
      *
@@ -133,7 +134,7 @@ public class CommentController {
      */
     @Operation(summary = "AP-150 全コメント一覧取得（管理者用）",
             description = "全イベントを横断した、有効な（論理削除されていない）コメント一覧（投稿日時降順）を取得する。"
-                    + "イベント別・投稿者別の絞り込みは提供しない。SC-150（コメントモデレーション）の一覧表示に使う。管理者のみ実行できる。")
+                    + "イベント別・投稿者別の絞り込みは提供しない。SC-150（コメント管理）の一覧表示に使う。管理者のみ実行できる。")
     @GetMapping("/api/comments")
     public List<CommentModerationResponse> listAll() {
         // ログイン中の利用者が管理者かどうかを確認する（管理者でなければ、ここで例外が投げられる）

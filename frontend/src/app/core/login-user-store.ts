@@ -1,6 +1,8 @@
-// 実行環境: ブラウザ側。ログイン中のユーザーを保持する入れ物（E-2）。
-// パスワード認証は実装対象外（要件定義書）のため、ログイン＝ロール選択のみ。未ログイン時はnull。
-// 管理者判定はバックエンドが返すrole（"admin"/"general"）に基づいて行う（userIdの決め打ちはしない）。
+// 実行環境: ブラウザ側。ログイン中のユーザーを保持する入れ物（docs/30_詳細設計/33_共通詳細設計書.md 5.1）。
+// ログイン（AP-010、メールアドレスとパスワード）・利用者登録（AP-011）に成功したときに、応答の利用者ID・
+// 利用者区分コードを保持する。未ログイン時はnull。
+// 管理者判定はバックエンドが返す利用者区分コード（roleCode。1=一般利用者、2=管理者）に基づいて行う
+// （userIdの決め打ちはしない）。
 //
 // [Angularの基礎: signal()とcomputed()] signal()は、値が変わると参照している画面（テンプレート）
 // を自動的に再描画してくれる「状態を持つ箱」。値を読むときは関数のように signal() の形で呼び、
@@ -16,10 +18,10 @@ const USER_ID_STORAGE_KEY = 'loginUserId';
 const ROLE_STORAGE_KEY = 'loginUserRoleCode';
 
 /**
- * ログイン中ユーザーのuserId・roleを保持し、画面間で共有するストア。
+ * ログイン中ユーザーのuserId・利用者区分コードを保持し、画面間で共有するストア。
  * login.ts（ログイン・登録成功時）、app.ts（共通ナビの表示・ログアウト）、
  * auth-guard.ts／admin-guard.ts（遷移可否の判定）、auth-header-interceptor.ts
- * （リクエストヘッダへの付与）から利用される。ページ再読み込みをまたいで状態を保てるよう、
+ * （リクエストヘッダへの付与）、http-error-interceptor.ts（401時のログイン状態の解除）から利用される。ページ再読み込みをまたいで状態を保てるよう、
  * localStorageにも保存する。
  */
 @Injectable({ providedIn: 'root' })
@@ -32,10 +34,11 @@ export class LoginUserStore {
   // （login/logoutメソッド）からしかできないようにする
   readonly currentUserId = this.userId.asReadonly();
   readonly currentRole = this.role.asReadonly();
-  // roleが"admin"文字列かどうかを毎回比較し、boolean値として返す派生値
+  // 保持している利用者区分コードが管理者（ROLE_CODE.ADMIN＝2。文字列で保持しているため"2"と比較）かどうかを
+  // boolean値として返す派生値
   readonly isAdmin = computed(() => this.role() === String(ROLE_CODE.ADMIN));
 
-  /** ログイン状態にする。login.tsのログイン成功・会員登録成功時に呼ばれる。 */
+  /** ログイン状態にする。login.tsのログイン成功・利用者登録成功時に呼ばれる。 */
   login(id: string, roleCode: number): void {
     // signalの値を更新する。これによりcurrentUserId・currentRole・isAdminを参照している
     // テンプレート（app.html等）が自動的に再描画される
@@ -52,7 +55,7 @@ export class LoginUserStore {
     }
   }
 
-  /** ログイン状態を解除する。app.tsの「ログアウト」ボタンから呼ばれる。 */
+  /** ログイン状態を解除する。app.tsの「ログアウト」ボタン、http-error-interceptor.ts（401受信時）から呼ばれる。 */
   logout(): void {
     // signalをnullに戻す＝未ログイン状態にする
     this.userId.set(null);

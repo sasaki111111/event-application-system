@@ -27,12 +27,15 @@ import { NotFound } from './not-found/not-found';
 import { authGuard } from './core/auth-guard';
 import { adminGuard } from './core/admin-guard';
 
-// SC-010（ログイン）・SC-020・SC-022・SC-023（画面遷移図）に対応。"/"は暫定でイベント一覧へ流す
-// （未ログインならauthGuardがさらに/loginへ戻す）。
-// authGuardは未ログインを弾き、adminGuardは管理者以外の/admin/**アクセスを弾く（E-7）。
+// 各画面IDとURLの対応はdocs/20_基本設計/21_画面基本設計書.md 3.2、画面遷移は4章に対応。
+// "/"はイベント一覧へ流す（未ログインならauthGuardがさらに/loginへ戻す）。
+// authGuardは未ログインを弾き、adminGuardは管理者以外の/admin/**アクセスを弾く
+// （docs/30_詳細設計/33_共通詳細設計書.md 5.4）。
 export const routes: Routes = [
   { path: '', redirectTo: '/events', pathMatch: 'full' },
+  // SC-010 ログイン・利用者登録（ログイン前に開くためガードを付けない）
   { path: 'login', component: Login },
+  // SC-020 イベント一覧・SC-021 イベント検索・SC-022 イベント詳細・申込・SC-023 申込完了・SC-030 マイページ
   { path: 'events', component: EventList, canActivate: [authGuard] },
   { path: 'events/search', component: EventSearch, canActivate: [authGuard] },
   { path: 'events/:id', component: EventDetail, canActivate: [authGuard] },
@@ -40,19 +43,21 @@ export const routes: Routes = [
   { path: 'my/applications', component: MyApplications, canActivate: [authGuard] },
   // SC-011 パスワード変更（一般利用者・管理者とも利用できる）
   { path: 'my/password', component: PasswordChange, canActivate: [authGuard] },
+  // 以下は管理者向け画面。SC-110 ダッシュボード・SC-120 イベント管理・SC-121 イベント登録・編集・SC-122 削除済みイベント
   { path: 'admin/dashboard', component: AdminDashboard, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events', component: AdminEventList, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/new', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/deleted', component: AdminDeletedEvents, canActivate: [authGuard, adminGuard] },
   { path: 'admin/events/:id/edit', component: AdminEventForm, canActivate: [authGuard, adminGuard] },
-  // 機能追加（当日受付）
+  // SC-123 当日受付
   { path: 'admin/events/:id/checkin', component: AdminCheckin, canActivate: [authGuard, adminGuard] },
+  // SC-130 申込状況・実績・SC-140 利用者管理
   { path: 'admin/reports', component: AdminReport, canActivate: [authGuard, adminGuard] },
   { path: 'admin/users', component: AdminUserList, canActivate: [authGuard, adminGuard] },
-  // （機能追加）: 利用者詳細（SC-141）
+  // SC-141 利用者詳細
   { path: 'admin/users/:id', component: AdminUserDetail, canActivate: [authGuard, adminGuard] },
-  // （機能追加）: コメントモデレーション（SC-150）
+  // SC-150 コメント管理
   { path: 'admin/comments', component: AdminCommentList, canActivate: [authGuard, adminGuard] },
-  // 画面遷移図§3「未定義URLにアクセス→404」（機能追加）。ワイルドカードは必ず配列の最後に置く
+  // SC-900 該当ページなし（未定義のURL）。ワイルドカードは必ず配列の最後に置く
   { path: '**', component: NotFound },
 ];

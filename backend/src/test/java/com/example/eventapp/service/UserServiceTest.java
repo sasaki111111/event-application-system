@@ -33,7 +33,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * JUnit5とMockitoを使用する。UserRepository（DBアクセスを担うクラス）はモック化（偽装）し、
  * 本物のDBに接続せずに「メールアドレスの正規化」「最後の管理者は降格できない」等の業務ルールだけを検証する。
  */
-// 実行環境: サーバー側（JVM）。docs/old/12_テスト仕様書.md 12-3 UT-USR-01〜17に対応する。
+// 実行環境: サーバー側（JVM）。各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.5（UT-USR-）のテストケースと1対1で対応する。
 class UserServiceTest {
 
     private UserRepository userRepository;
@@ -70,7 +70,7 @@ class UserServiceTest {
         return user;
     }
 
-    // 正常系（UT-USR-01）: 未登録のメールアドレスなら一般利用者として登録される
+    // 正常系（UT-USR-N01）: 未登録のメールアドレスなら一般利用者として登録される
     @Test
     void register_正常系_未登録のメールアドレスなら一般利用者で登録される() {
         // このメールアドレスがまだ登録されていない状況を設定する
@@ -91,7 +91,7 @@ class UserServiceTest {
         assertThat(response.roleCode()).isEqualTo(RoleCode.GENERAL);
     }
 
-    // 異常系（UT-USR-02）: 登録済みのメールアドレスは登録できない（文言は存在有無を断定しない）
+    // 異常系（UT-USR-E01）: 登録済みのメールアドレスは登録できない（文言は存在有無を断定しない）
     @Test
     void register_異常系_登録済みのメールアドレスは登録できない() {
         when(userRepository.existsByEmail("general@example.com")).thenReturn(true);
@@ -103,7 +103,7 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
-    // 異常系（UT-USR-03）: 大文字小文字・前後空白だけが異なるメールアドレスは、正規化後に重複と判定される
+    // 異常系（UT-USR-E02）: 大文字小文字・前後空白だけが異なるメールアドレスは、正規化後に重複と判定される
     @Test
     void register_異常系_大文字小文字と前後空白だけ異なるメールアドレスは重複と判定される() {
         // 正規化後（小文字・空白除去）のメールアドレスが登録済みである状況を設定する
@@ -117,7 +117,7 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
-    // 正常系（UT-USR-04）: 未登録のメールアドレスなら管理者として登録される
+    // 正常系（UT-USR-N02）: 未登録のメールアドレスなら管理者として登録される
     @Test
     void registerAdmin_正常系_未登録のメールアドレスなら管理者で登録される() {
         when(userRepository.existsByEmail("newadmin@example.com")).thenReturn(false);
@@ -128,7 +128,7 @@ class UserServiceTest {
         assertThat(response.email()).isEqualTo("newadmin@example.com");
     }
 
-    // 異常系（UT-USR-05）: 管理者登録では、登録済みであることを明確に伝える文言になる
+    // 異常系（UT-USR-E03）: 管理者登録では、登録済みであることを明確に伝える文言になる
     @Test
     void registerAdmin_異常系_登録済みのメールアドレスは登録できない() {
         when(userRepository.existsByEmail("admin@example.com")).thenReturn(true);
@@ -139,7 +139,7 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
-    // 正常系（UT-USR-06）: 大文字混在・前後空白ありでも、正規化して該当利用者を返す
+    // 正常系（UT-USR-N03）: 大文字混在・前後空白ありでも、正規化して該当利用者を返す
     @Test
     void login_正常系_大文字混在と前後空白ありでも正規化して利用者を返す() {
         User admin = user(ADMIN_ID, "管理者", "admin@example.com", RoleCode.ADMIN);
@@ -152,7 +152,7 @@ class UserServiceTest {
         assertThat(response.roleCode()).isEqualTo(RoleCode.ADMIN);
     }
 
-    // 異常系（UT-USR-07）: 未登録のメールアドレスではログインできない（文言は存在有無を断定しない）
+    // 異常系（UT-USR-E04）: 未登録のメールアドレスではログインできない（文言は存在有無を断定しない）
     @Test
     void login_異常系_未登録のメールアドレスはログインできない() {
         when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
@@ -162,7 +162,7 @@ class UserServiceTest {
                 .hasMessage("ログインできませんでした。入力内容をご確認のうえ、初めてご利用の場合は新規登録してください");
     }
 
-    // 正常系（UT-USR-08）: 管理者が2人以上いれば、管理者を一般利用者に降格できる
+    // 正常系（UT-USR-N04）: 管理者が2人以上いれば、管理者を一般利用者に降格できる
     @Test
     void demote_正常系_管理者が2人以上いれば降格できる() {
         User target = user(USER_ID, "降格対象", "target@example.com", RoleCode.ADMIN);
@@ -176,7 +176,7 @@ class UserServiceTest {
         assertThat(target.isAdmin()).isFalse();
     }
 
-    // 異常系（UT-USR-09）: 一般利用者は降格できない
+    // 異常系（UT-USR-E05）: 一般利用者は降格できない
     @Test
     void demote_異常系_一般利用者は降格できない() {
         User target = user(USER_ID, "一般ユーザー", "general@example.com", RoleCode.GENERAL);
@@ -187,7 +187,7 @@ class UserServiceTest {
                 .hasMessage("既に一般利用者です");
     }
 
-    // 異常系（UT-USR-10）: 管理者が対象の1人だけなら降格できない
+    // 異常系（UT-USR-E06）: 管理者が対象の1人だけなら降格できない
     @Test
     void demote_異常系_最後の管理者は降格できない() {
         User target = user(ADMIN_ID, "管理者", "admin@example.com", RoleCode.ADMIN);
@@ -202,7 +202,7 @@ class UserServiceTest {
         assertThat(target.isAdmin()).isTrue();
     }
 
-    // 異常系（UT-USR-11）: 存在しない利用者は降格できない
+    // 異常系（UT-USR-E07）: 存在しない利用者は降格できない
     @Test
     void demote_異常系_利用者が存在しなければNotFoundException() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
@@ -212,7 +212,7 @@ class UserServiceTest {
                 .hasMessage("利用者が見つかりません");
     }
 
-    // 正常系（UT-USR-12）: 本人は自分のアカウントを退会（匿名化）できる
+    // 正常系（UT-USR-N05）: 本人は自分のアカウントを退会（匿名化）できる
     @Test
     void anonymize_正常系_本人は自分を退会できる() {
         User target = user(USER_ID, "退会する人", "leave@example.com", RoleCode.GENERAL);
@@ -227,7 +227,7 @@ class UserServiceTest {
         assertThat(response.anonymizedAt()).isNotNull();
     }
 
-    // 正常系（UT-USR-13）: 管理者は一般利用者を退会させられる
+    // 正常系（UT-USR-N06）: 管理者は一般利用者を退会させられる
     @Test
     void anonymize_正常系_管理者は一般利用者を退会させられる() {
         User target = user(USER_ID, "退会させられる人", "leave@example.com", RoleCode.GENERAL);
@@ -241,7 +241,7 @@ class UserServiceTest {
         assertThat(response.anonymizedAt()).isNotNull();
     }
 
-    // 権限（UT-USR-14）: 一般利用者は他人を退会させられない
+    // 権限（UT-USR-E08）: 一般利用者は他人を退会させられない
     @Test
     void anonymize_権限_一般利用者は他人を退会させられない() {
         User target = user(USER_ID, "他人", "other@example.com", RoleCode.GENERAL);
@@ -256,7 +256,7 @@ class UserServiceTest {
         assertThat(target.getName()).isEqualTo("他人");
     }
 
-    // 異常系（UT-USR-15）: 管理者は退会できない（先に降格が必要）
+    // 異常系（UT-USR-E09）: 管理者は退会できない（先に降格が必要）
     @Test
     void anonymize_異常系_管理者は退会できない() {
         User target = user(ADMIN_ID, "管理者", "admin@example.com", RoleCode.ADMIN);
@@ -268,7 +268,7 @@ class UserServiceTest {
         assertThat(target.isAnonymized()).isFalse();
     }
 
-    // 異常系（UT-USR-16）: 退会済みの利用者は再度退会できない
+    // 異常系（UT-USR-E10）: 退会済みの利用者は再度退会できない
     @Test
     void anonymize_異常系_退会済みの利用者は再度退会できない() {
         User target = user(USER_ID, "退会する人", "leave@example.com", RoleCode.GENERAL);
@@ -281,7 +281,7 @@ class UserServiceTest {
                 .hasMessage("既に退会済みです");
     }
 
-    // 異常系（UT-USR-17）: 存在しない利用者は退会できない
+    // 異常系（UT-USR-E11）: 存在しない利用者は退会できない
     @Test
     void anonymize_異常系_利用者が存在しなければNotFoundException() {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());

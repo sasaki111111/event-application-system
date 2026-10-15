@@ -8,8 +8,9 @@ import org.springframework.web.context.WebApplicationContext;
 
 // commonパッケージの AuthContext / AuthInterceptor / CurrentUser / WebConfig は、
 // このプロジェクト独自の「ログイン中ユーザーを特定する仕組み」を構成する4クラス。
-// 本物のパスワード認証画面は無く、HTTPリクエストヘッダ（X-User-Id）に入っているユーザーIDを
-// そのまま信用する簡易な仕組みになっている（仕組みの詳細はAuthInterceptorのコメントを参照）。
+// パスワードの照合はログイン時（AP-010、UserService#login）のみ行い、以降のリクエストでは
+// HTTPリクエストヘッダ（X-User-Id）に入っているユーザーIDをそのまま信用する簡易な仕組みになっている
+// （docs/20_基本設計/24_方式設計書.md 3.2。仕組みの詳細はAuthInterceptorのコメントを参照）。
 /**
  * リクエスト単位で「今ログインしているのは誰か」を保持する入れ物（クラス）。
  * {@code @Scope(SCOPE_REQUEST)}が付いているため、HTTPリクエスト1回ごとに新しいインスタンスが
@@ -43,8 +44,8 @@ public class AuthContext {
      */
     // 管理者専用APIの権限チェック（各Controllerに重複していたものを集約）
     public void requireAdmin() {
-        // ログイン中ユーザーのroleが"admin"かどうかをCurrentUser#isAdminで判定し、
-        // 管理者でなければForbiddenException（403）を投げて処理を中断する
+        // ログイン中ユーザーの利用者区分コードが管理者（RoleCode.ADMIN）かどうかをCurrentUser#isAdminで判定し、
+        // 管理者でなければForbiddenException（403、E-A-002）を投げて処理を中断する
         if (!currentUser.isAdmin()) {
             throw new ForbiddenException("権限がありません");
         }

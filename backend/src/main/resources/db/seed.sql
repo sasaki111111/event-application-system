@@ -1,4 +1,4 @@
--- C-2: 初期データ投入（docs/20_基本設計/22_テーブル定義書.md 7章、docs/20_基本設計/24_方式設計書.md 3.4）
+-- 初期データ投入（docs/20_基本設計/22_テーブル定義書.md 7章、docs/20_基本設計/24_方式設計書.md 3.4）
 -- 実行環境: MySQLサーバー。schema.sql適用後に一度だけ実行する（毎起動では実行しない）。
 --
 -- 実行例:
@@ -28,7 +28,7 @@ INSERT INTO users (id, name, email, password_hash, role_code) VALUES
     (3, '退会確認用ユーザー', 'withdraw-test@example.com', '$2a$10$8Rn8vS9zkbWCMpHFdTrSveCAAUcB5T2srW0rYf.478IWwMuH3OTfO', 1);
 
 -- サンプルイベント（サークル・イベント運営者向けのエンタメ系イベントを想定。docs/10_要件定義/10_要件定義書.md「3. 想定利用者」「4. 利用シーン」参照）。
--- 開催日時の異なる複数件。1件は申込締切・開催日時とも過去＝「受付終了」表示の確認用。
+-- 開催日時の異なる複数件。うち2026-08-01開催の1件は、申込締切・開催日時とも過去の日時にした「受付終了」表示の確認用。
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
     ('ボードゲーム交流会', '2026-10-01 12:00:00', 'コミュニティスペースあおば', 20,
      '2026-09-25 23:59:59', '初心者歓迎！わいわい盛り上がるボードゲーム交流会です。'),
@@ -47,7 +47,7 @@ INSERT INTO events (name, start_at, place, capacity, application_deadline, descr
     ('登山サークル：紅葉ハイキング', '2026-11-08 07:00:00', '高尾山口駅前集合', 25,
      '2026-11-01 23:59:59', '紅葉シーズンの日帰りハイキング企画です。初心者向けの緩やかなコースを予定。');
 
--- サンプルイベント追加分（計約50件になるよう42件追加。ジャンル・時期を分散させた雰囲気づくり用）
+-- サンプルイベント追加分（上記8件・下記の定員1名の1件と合わせて計51件になるよう42件追加。ジャンル・時期を分散させた雰囲気づくり用）
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
     ('読書会：今月のテーマ本を語る', '2026-09-23 10:00:00', '市立図書館 集会室', 12,
      '2026-09-17 23:59:00', '今月選んだ本について感想を語り合う読書会です。'),
@@ -134,7 +134,7 @@ INSERT INTO events (name, start_at, place, capacity, application_deadline, descr
     ('ジャズライブナイト', '2027-05-27 19:00:00', 'ジャズバーBlue Note', 30,
      '2027-05-21 23:59:00', '生演奏のジャズを楽しむライブナイトです。');
 
--- 定員超過（E1）の動作確認用サンプル（定員1名）
+-- 定員超過時のキャンセル待ち（docs/30_詳細設計/32_処理詳細設計書.md R-02）の動作確認用サンプル（定員1名）
 INSERT INTO events (name, start_at, place, capacity, application_deadline, description) VALUES
     ('先着1名限定：特別ワークショップ', '2026-09-25 19:00:00', 'コミュニティスペースあおば', 1,
      '2026-09-22 23:59:59', '（サンプル：定員超過の動作確認用。定員1名のイベントです。）');

@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-021のマイページ（一覧表示、キャンセル操作）。
-// 機能追加: キャンセル待ちの順位表示、お気に入りタブ。
+// 実行環境: ブラウザ側。SC-030 マイページ（/my/applications）。
+// 申込一覧（キャンセル待ちの順位表示、キャンセル操作）とお気に入りの2タブ、および退会（匿名化）を持つ。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -11,12 +11,12 @@ import { UserApiService } from '../core/user-api';
 import { STATUS_CODE } from '../core/codes';
 
 /**
- * SC-021マイページを担当するComponent。「申込一覧」「お気に入り」の2タブを持ち、
+ * SC-030 マイページを担当するComponent。「申込一覧」「お気に入り」の2タブを持ち、
  * 申込のキャンセルやお気に入りの解除、アカウントの退会（匿名化）もここから行う。
  *
  * 使用するAngular Service:
- * - `ApplicationApiService`: 自分の申込一覧取得（API）とキャンセルAPI（API-05）の呼び出し。
- * - `FavoriteApiService`: 自分のお気に入り一覧取得とお気に入り解除APIの呼び出し。
+ * - `ApplicationApiService`: 自分の申込一覧取得（AP-031）とキャンセルAPI（AP-032）の呼び出し。
+ * - `FavoriteApiService`: 自分のお気に入り一覧取得（AP-042）とお気に入り解除API（AP-041）の呼び出し。
  * - `FavoriteStore`: イベント一覧・詳細画面と共有するお気に入り状態。このタブで解除した際に
  *   キャッシュを無効化し、他画面で最新状態を取り直させるために使う。
  * - `UserApiService`: 退会（匿名化）API（AP-013）の呼び出し。
@@ -40,14 +40,14 @@ export class MyApplications implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly cancellingId = signal<number | null>(null);
 
-  // 機能追加（お気に入りタブ）
+  // お気に入りタブ
   protected readonly activeTab = signal<'applications' | 'favorites'>('applications');
   protected readonly favorites = signal<FavoriteEvent[]>([]);
   protected readonly favoritesLoading = signal(true);
   protected readonly favoritesErrorMessage = signal<string | null>(null);
   protected readonly unfavoritingId = signal<number | null>(null);
 
-  // AP-013（機能追加）: 退会（匿名化）処理中フラグ
+  // AP-013: 退会（匿名化）処理中フラグ
   protected readonly withdrawing = signal(false);
 
   constructor(
@@ -68,7 +68,7 @@ export class MyApplications implements OnInit {
     this.activeTab.set(tab);
   }
 
-  // API-16: 未登録でもエラーにしない（冪等）。マイページからの解除は常に登録済みのものだけが対象。
+  // AP-041: 未登録でもエラーにしない（冪等）。マイページからの解除は常に登録済みのものだけが対象。
   // このタブはFavoriteStoreを介さず直接APIで一覧を取得しているため、解除後はストアのキャッシュを
   // 破棄し、event-list・event-detailに戻った時に最新状態を取り直させる
   protected unfavorite(favorite: FavoriteEvent): void {
@@ -100,7 +100,7 @@ export class MyApplications implements OnInit {
     });
   }
 
-  // API-05: すでにキャンセル済／開催日時経過は400（要件定義書§8「取消可否チェック」）
+  // AP-032: すでにキャンセル済／開催日時経過は400（R-04・E-B-010）
   protected cancel(application: MyApplication): void {
     if (!confirm(`「${application.eventName}」への申込をキャンセルしますか？`)) {
       return;

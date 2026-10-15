@@ -9,19 +9,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 // AuthInterceptorがX-User-Idヘッダの値からログインユーザーを引くのに使う。
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // 機能追加（軽い会員登録）: メールアドレスの重複チェック用
+    // AP-011・AP-145: メールアドレスの重複チェック用（R-15）
     // email = ? の行が存在するかどうかを判定する
     boolean existsByEmail(String email);
 
-    // 機能追加（メールアドレスでのログイン）
+    // AP-010: ログイン時にメールアドレスから利用者を検索する
     // email = ? に一致する1件を取得する
     Optional<User> findByEmail(String email);
 
-    // 機能追加（管理者向けユーザー一覧、マスタ確認用）
+    // AP-140: 利用者一覧（利用者ID昇順）
     // findAllByOrderByIdAsc = 全件取得＋ORDER BY id ASC に相当するクエリメソッド
     List<User> findAllByOrderByIdAsc();
 
     // AP-146: 管理者権限の降格で、対象が最後の1人の管理者でないかを判定するのに使う
-    // role = ? の件数を数える
+    // role_code = ? の件数を数える（R-17）
     long countByRoleCode(Integer roleCode);
 }

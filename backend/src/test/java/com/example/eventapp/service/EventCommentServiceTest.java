@@ -30,7 +30,8 @@ import org.mockito.ArgumentCaptor;
  * JUnit5とMockitoを使用する。Repository（DBアクセスを担うクラス）はすべてモック化（偽装）し、
  * 本物のDBに接続せずに「投稿者本人か」「返信があるので論理削除にする」等の業務ルールだけを検証する。
  */
-// 実行環境: サーバー側（JVM）。EventCommentServiceの業務ロジック（要件定義書§8 E10）のユニットテスト。
+// 実行環境: サーバー側（JVM）。EventCommentServiceの業務ロジック（R-13・R-14等）の単体テスト。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.3（UT-CMT-）のテストケースと1対1で対応する。
 // JUnit5＋Mockito。Repositoryは全てモック化し、DBに触れずにビジネスロジックだけを検証する。
 class EventCommentServiceTest {
 
@@ -207,7 +208,7 @@ class EventCommentServiceTest {
         verify(eventCommentRepository).delete(comment);
     }
 
-    // 正常系（要件定義書§8）: 管理者は他人のコメントも削除できる
+    // 正常系（R-13）: 管理者は他人のコメントも削除できる
     @Test
     void delete_正常系_管理者は他人のコメントも削除できる() {
         Event event = mock(Event.class);
@@ -223,7 +224,7 @@ class EventCommentServiceTest {
         verify(eventCommentRepository).delete(comment);
     }
 
-    // 異常系（要件定義書§8 E10）: 投稿者本人でも管理者でもない一般ユーザーは削除できない
+    // 異常系（R-13・E-A-004）: 投稿者本人でも管理者でもない一般ユーザーは削除できない
     @Test
     void delete_異常系_本人でも管理者でもなければ削除できない() {
         Event event = mock(Event.class);
@@ -370,7 +371,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).body()).isEqualTo("このコメントは削除されました");
     }
 
-    // 正常系: 全コメント一覧（モデレーション用）に、イベント名・投稿者名が含まれる
+    // 正常系: 全コメント一覧（SC-150コメント管理用）に、イベント名・投稿者名が含まれる
     @Test
     void listAllActive_正常系_イベント名と投稿者名を含めて返す() {
         Event event = mock(Event.class);
@@ -393,7 +394,7 @@ class EventCommentServiceTest {
         assertThat(result.get(0).body()).isEqualTo("コメント本文");
     }
 
-    // 異常系（UT-CMT-10）: 返信先に別イベントのコメントを指定した場合はNotFoundException
+    // 異常系（UT-CMT-E04）: 返信先に別イベントのコメントを指定した場合はNotFoundException
     @Test
     void post_異常系_返信先が別イベントのコメントならNotFoundException() {
         Event event = mock(Event.class);
@@ -411,7 +412,7 @@ class EventCommentServiceTest {
         verify(eventCommentRepository, never()).save(any());
     }
 
-    // 正常系（UT-CMT-11）: 論理削除済みのコメントにも返信できる
+    // 正常系（UT-CMT-N07）: 論理削除済みのコメントにも返信できる
     @Test
     void post_正常系_論理削除済みのコメントにも返信できる() {
         Event event = mock(Event.class);

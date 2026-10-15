@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-030 当日受付画面（機能追加、/admin/events/:id/checkin）。
-// 申込者一覧の表示（API-18）とチェックイン操作（API-19）を行う。
+// 実行環境: ブラウザ側。SC-123 当日受付画面（/admin/events/:id/checkin）。
+// 申込者一覧の表示（AP-125）とチェックイン操作（AP-126）を行う（docs/30_詳細設計/30_画面詳細設計書.md SC-123）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -14,16 +14,16 @@ import { STATUS_CODE } from '../../core/codes';
   styleUrl: './admin-checkin.css',
 })
 /**
- * SC-030 当日受付画面（/admin/events/:id/checkin）を担当するComponent。
+ * SC-123 当日受付画面（/admin/events/:id/checkin）を担当するComponent。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard の両方が
- *   設定されているため、未ログインのユーザーや管理者以外のロールのユーザーはこの画面に
+ *   設定されているため、未ログインのユーザーや一般利用者はこの画面に
  *   到達できない（＝管理者専用画面）。
  * - 利用するAngular Service:
- *   - CheckInApiService: 申込者一覧の取得（API-18）とチェックイン操作（API-19）を行う。
- *   - EventApiService: アンケート設問文言（extraQuestion）を取得するためにイベント詳細を読む。
+ *   - CheckInApiService: 申込者一覧の取得（AP-125）とチェックイン操作（AP-126）を行う。
+ *   - EventApiService: アンケート設問文言（extraQuestion）を取得するためにイベント詳細（AP-021）を読む。
  * - 画面遷移: 画面上部の「← イベント管理に戻る」リンク（RouterLink）から /admin/events に戻る。
- *   この画面へは管理者側のイベント一覧・編集画面などから遷移してくる想定。
+ *   この画面へはイベント管理画面（SC-120）の各イベントの「受付」ボタンから遷移してくる。
  *
  * `implements OnInit` は、Angularが用意しているライフサイクルフックの一つを使うことを表す
  * 宣言。ngOnInitメソッドは、このComponentが画面に実際に表示される直前に一度だけ自動的に
@@ -37,7 +37,7 @@ export class AdminCheckin implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly checkingInId = signal<number | null>(null);
 
-  // （機能追加）: アンケートの質問文言はAP-021（イベント詳細）から取得する。未設定ならNULL
+  // アンケートの質問文言はAP-021（イベント詳細）から取得する。未設定ならNULL
   protected readonly extraQuestion = signal<string | null>(null);
 
   private eventId = 0;
@@ -81,7 +81,7 @@ export class AdminCheckin implements OnInit {
   /**
    * テンプレート側の「チェックイン」「再チェックイン」ボタン（(click)="checkIn(attendee)"）
    * から呼ばれる処理。引数attendeeはクリックされた行の申込者データ。
-   * API-19: 「受付済」以外はbackendが400で拒否する（要件定義書§8 E8）。ボタン自体も受付済のみ活性にする。
+   * AP-126: 「受付済」以外はbackendが400で拒否する（R-06・E-B-012）。ボタン自体も受付済の行にのみ表示する。
    * チェックイン済みの申込への再実行は、確認のうえ管理者が許可した場合にのみAPIを呼び出す
    */
   protected checkIn(attendee: Attendee): void {

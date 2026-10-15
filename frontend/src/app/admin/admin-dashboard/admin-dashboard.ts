@@ -1,6 +1,6 @@
-// 実行環境: ブラウザ側。管理者ダッシュボード画面（/admin/dashboard、機能追加）。
-// 既存のAPI（イベント一覧・ユーザー一覧・申込実績集計）に加え、AP-131（お気に入り総数）・
-// AP-132（コメント総数）を組み合わせて表示する。
+// 実行環境: ブラウザ側。SC-110 管理者ダッシュボード画面（/admin/dashboard）。
+// イベント一覧（AP-020）・利用者一覧（AP-140）・申込実績集計（AP-130）に、AP-131（お気に入り総数）・
+// AP-132（コメント総数）を組み合わせて表示する（docs/30_詳細設計/30_画面詳細設計書.md SC-110）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
@@ -17,7 +17,7 @@ import { CommentApiService } from '../../core/comment-api';
   styleUrl: './admin-dashboard.css',
 })
 /**
- * 管理者ダッシュボード画面（/admin/dashboard）を担当するComponent。
+ * SC-110 管理者ダッシュボード画面（/admin/dashboard）を担当するComponent。
  * ログイン後、管理者が最初に見る集計サマリー画面。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
@@ -25,7 +25,7 @@ import { CommentApiService } from '../../core/comment-api';
  * - 利用するAngular Service: EventApiService（イベント数）、UserApiService（ユーザー数）、
  *   ReportApiService（受付済申込数の集計）、FavoriteApiService（お気に入り総数）、
  *   CommentApiService（コメント総数）。5つのServiceから集計値だけを取り出して表示する。
- * - 画面遷移: この画面自体には他画面への遷移リンクは無い。ログイン画面からロール判定で
+ * - 画面遷移: この画面自体には他画面への遷移リンクは無い。ログイン画面で利用者区分を判定し、
  *   管理者はこの画面に遷移してくる（login.ts参照）。
  */
 export class AdminDashboard implements OnInit {

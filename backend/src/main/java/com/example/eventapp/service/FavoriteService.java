@@ -16,8 +16,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（AP-040〜18）の業務ロジック。
-// 登録・解除はどちらも冪等：同じ状態への操作を繰り返してもエラーにしない。
+// 実行環境: サーバー側（JVM）。お気に入り登録・解除・一覧（AP-040〜AP-042、AP-131、AP-143）の業務ロジック。
+// 登録・解除はどちらも冪等：同じ状態への操作を繰り返してもエラーにしない（R-12）。
+// 登録・解除の成功はログに出力しない（docs/20_基本設計/24_方式設計書.md 6.2）。
 /**
  * お気に入り登録（AP-040）・解除（AP-041）・一覧（AP-042）、お気に入り総数取得（AP-131）の業務ロジックを担当するService。
  * FavoriteController（add／remove／myFavorites／count）とUserController#favoritesOf（AP-143）から呼ばれ、
@@ -51,9 +52,11 @@ public class FavoriteService {
      */
     @Transactional
     public FavoriteAddResult add(Long userId, Long eventId) {
+        // 対象イベントが存在し、削除済みでないことを確認する（無ければ404・E-B-001）
         Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
 
+        // 同じ利用者・同じイベントの登録が既にあるかを確認する（あれば新規作成しない）
         Optional<Favorite> existing = favoriteRepository.findByUser_IdAndEvent_Id(userId, eventId);
         boolean created = existing.isEmpty();
         // Optional.orElseGet(...): 値が入っていればそれをそのまま使い、空（未登録）の場合だけ
@@ -77,7 +80,7 @@ public class FavoriteService {
         favoriteRepository.deleteByUser_IdAndEvent_Id(userId, eventId);
     }
 
-    // AP-042: 自分のお気に入り一覧（登録日時の降順）。ソフトデリート済みイベントも
+    // AP-042: 自分のお気に入り一覧（登録日時の降順）。論理削除済みイベントも
     // 履歴としてそのまま表示する（一覧・詳細系APIのようなdeleted_atでの絞り込みは行わない）
     /**
      * 利用者のお気に入り一覧を取得する（AP-042）。FavoriteController#myFavoritesに加え、

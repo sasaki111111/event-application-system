@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * JUnit5とMockitoを使用する。Repository（DBアクセスを担うクラス）はすべてモック化（偽装）し、
  * 本物のDBに接続せずに「充足率の丸め」「CSVのエスケープ」「CSVインジェクション対策」等だけを検証する。
  */
-// 実行環境: サーバー側（JVM）。docs/old/12_テスト仕様書.md 12-3 UT-RPT-01〜07に対応する。
+// 実行環境: サーバー側（JVM）。各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.6（UT-RPT-）のテストケースと1対1で対応する。
 class ReportServiceTest {
 
     private EventRepository eventRepository;
@@ -89,7 +89,7 @@ class ReportServiceTest {
         return reportService.toCsv().substring(BOM.length()).split("\r\n");
     }
 
-    // 正常系（UT-RPT-01）: 充足率は小数第2位までに四捨五入される（2÷3＝0.666…→0.67）
+    // 正常系（UT-RPT-N01）: 充足率は小数第2位までに四捨五入される（2÷3＝0.666…→0.67）
     @Test
     void summarize_正常系_充足率は小数第2位までに丸められる() {
         Event event = event(1L, "定員3のイベント", 3, 2L);
@@ -102,7 +102,7 @@ class ReportServiceTest {
         assertThat(result.get(0).fillRate()).isEqualTo(0.67);
     }
 
-    // 正常系（UT-RPT-02）: sort=accepted_descなら受付済数の多い順に並ぶ
+    // 正常系（UT-RPT-N02）: sort=accepted_descなら受付済数の多い順に並ぶ
     @Test
     void summarize_正常系_accepted_descなら受付済数の多い順に並ぶ() {
         // Repositoryは開催日時順（受付済数は1→5→3）で返す状況を設定する
@@ -120,7 +120,7 @@ class ReportServiceTest {
                 .containsExactly(1L, 2L, 3L);
     }
 
-    // 正常系（UT-RPT-03）: 集計対象は削除されていないイベントのみ
+    // 正常系（UT-RPT-N03）: 集計対象は削除されていないイベントのみ
     // （削除済みの除外そのものはRepositoryのクエリが行うため、ここでは未削除のみを取得するメソッドを使うことを確認する）
     @Test
     void summarize_正常系_削除済みイベントは含まれない() {
@@ -135,7 +135,7 @@ class ReportServiceTest {
         verify(eventRepository, never()).findAllByDeletedAtIsNotNullOrderByStartAtAsc();
     }
 
-    // 正常系（UT-RPT-04）: CSVは先頭がBOM、1行目が仕様どおりのヘッダ行になる
+    // 正常系（UT-RPT-N04）: CSVは先頭がBOM、1行目が仕様どおりのヘッダ行になる
     @Test
     void toCsv_正常系_先頭がBOMでヘッダ行が仕様どおり() {
         Application application = application("説明会", "一般ユーザー", ApplicationStatus.ACCEPTED, "勉強のため", "午前");
@@ -154,7 +154,7 @@ class ReportServiceTest {
         assertThat(csv).endsWith("\r\n");
     }
 
-    // 正常系（UT-RPT-05）: 受付済・キャンセル待ち・キャンセル済のすべての申込が出力される
+    // 正常系（UT-RPT-N05）: 受付済・キャンセル待ち・キャンセル済のすべての申込が出力される
     @Test
     void toCsv_正常系_すべてのステータスの申込が出力される() {
         String[] lines = csvLines(List.of(
@@ -170,7 +170,7 @@ class ReportServiceTest {
         assertThat(lines[3]).isEqualTo("説明会,利用者C," + APPLIED_AT + ",キャンセル済,,");
     }
 
-    // 境界（UT-RPT-06）: カンマ・改行・ダブルクォートを含む値はダブルクォートで囲まれ、内部の"は""になる
+    // 境界（UT-RPT-N06）: カンマ・改行・ダブルクォートを含む値はダブルクォートで囲まれ、内部の"は""になる
     @Test
     void toCsv_境界_カンマ改行ダブルクォートを含む値はダブルクォートで囲まれる() {
         Application application = application("秋,祭り", "山田\"太郎\"", ApplicationStatus.ACCEPTED, "1行目\n2行目", null);
@@ -184,7 +184,7 @@ class ReportServiceTest {
                 "\"秋,祭り\",\"山田\"\"太郎\"\"\"," + APPLIED_AT + ",受付済,\"1行目\n2行目\",\r\n");
     }
 
-    // 境界（UT-RPT-07）: 先頭が = + - @ タブ 復帰 の値には、先頭に'が付与される（CSVインジェクション対策）
+    // 境界（UT-RPT-N07）: 先頭が = + - @ タブ 復帰 の値には、先頭に'が付与される（CSVインジェクション対策）
     @Test
     void toCsv_境界_数式として解釈されうる先頭文字にはシングルクォートが付与される() {
         Application application = application("=SUM(1)", "+81", ApplicationStatus.ACCEPTED, "-1", "@午前");
@@ -201,7 +201,7 @@ class ReportServiceTest {
                         + "'\tタブ始まり,\"'\r復帰始まり\"," + APPLIED_AT + ",受付済,,\r\n");
     }
 
-    // 対策対象外の値（先頭以外に記号がある・通常の文字で始まる）には'が付与されないことの確認（UT-RPT-07の補足）
+    // 対策対象外の値（先頭以外に記号がある・通常の文字で始まる）には'が付与されないことの確認（UT-RPT-N08の補足）
     @Test
     void toCsv_境界_先頭以外の記号にはシングルクォートが付与されない() {
         String[] lines = csvLines(List.of(

@@ -1,8 +1,9 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。admin-guard.tsの単体テスト。
 //
-// [テストの概要] adminGuardは引数を取らずLoginUserStoreのロールだけを見て判定するため、
+// [テストの概要] adminGuardは引数を取らずLoginUserStoreの利用者区分コードだけを見て判定するため、
 // ここではTestBed（Angularのテスト用DIコンテナ）でLoginUserStoreとRouterを用意し、
 // ログイン状態を変えながらadminGuardの戻り値（true／UrlTree）を確認する。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.8（UT-ADMG-）のテストケースと1対1で対応する。
 // TestBed: Angularのテスト用DIコンテナ。本番のinject()相当の仕組みをテストコードから使うためのAPI
 import { TestBed } from '@angular/core/testing';
 // provideRouter: テスト用にAngular Routerを有効化するprovider。UrlTree: ガードが返す遷移先の型
@@ -34,7 +35,7 @@ describe('adminGuard', () => {
   });
 
   it('管理者（利用者区分コード＝管理者）は通過させる（true）', () => {
-    // LoginUserStoreをadmin役でログイン状態にする
+    // LoginUserStoreを管理者としてログイン状態にする
     loginUserStore.login('2', ROLE_CODE.ADMIN);
 
     // adminGuard自体はinject()を使う関数型ガードなので、Angularの依存注入が効く文脈

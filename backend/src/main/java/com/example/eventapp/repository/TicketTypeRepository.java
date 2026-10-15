@@ -12,11 +12,12 @@ import org.springframework.data.repository.query.Param;
 // 実行環境: サーバー側（JVM）。ticket_typesテーブルへの問い合わせ口。
 public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
 
-    // イベント詳細・編集フォームの区分一覧表示用
+    // 対象イベントの区分を全件取得する。イベント詳細（AP-021）・削除済みイベント一覧（AP-123）の区分一覧と、
+    // イベント登録・更新（AP-120・AP-121）時の既存区分の定員合計の算出に使う
     // event_id = ? で絞り込んだ全件取得に相当する
     List<TicketType> findByEvent_Id(Long eventId);
 
-    // 申込時の区分必須チェック（対象イベントに区分が1件以上あるか、要件定義書E12）。
+    // 申込時の区分必須チェック（対象イベントに区分が1件以上あるか、C-03）。
     // findByEvent_Id()で全件取得してisEmpty()を見るより軽い
     boolean existsByEvent_Id(Long eventId);
 

@@ -17,16 +17,17 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * こちらは認証ではなく、短時間に大量のリクエストを送ってくるIPアドレスを制限する役割を持つ。
  */
 // 実行環境: サーバー側（JVM）。書き込み系API（POST/PUT/DELETE、ログインAP-010を含む）に対する、
-// IPアドレス単位の簡易な回数制限（docs/20_基本設計/24_方式設計書.md、機能追加）。
+// IPアドレス単位の簡易な回数制限（docs/20_基本設計/24_方式設計書.md 8章「総当たり・大量投稿」）。
 // ログイン総当たり・コメントやアカウント登録の大量投稿を抑止する。単一インスタンス運用（学内限定の
-// 小規模利用、docs/20_基本設計/24_方式設計書.md）を前提としたインメモリ実装であり、複数インスタンス構成には
+// 小規模利用、docs/20_基本設計/24_方式設計書.md 9章）を前提としたインメモリ実装であり、複数インスタンス構成には
 // 対応しない（その場合はRedis等の共有ストアへの置き換えが必要）。
+// 上限を超えた場合は429・E-R-001を返す（docs/30_詳細設計/33_共通詳細設計書.md 3.4）。
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitInterceptor.class);
 
-    // 固定ウィンドウ方式: ウィンドウ内の上限に達したら429を返す。閾値はいずれも暫定値（運用しながら調整する想定）
+    // 固定ウィンドウ方式: 60秒（WINDOW_MILLIS）のウィンドウ内で60回（MAX_REQUESTS_PER_WINDOW）を超えたら429を返す
     private static final int MAX_REQUESTS_PER_WINDOW = 60;
     private static final long WINDOW_MILLIS = 60_000L;
 
@@ -70,7 +71,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         response.setHeader("Retry-After", String.valueOf(WINDOW_MILLIS / 1000));
         // レスポンス本文がJSONであることをクライアントに伝える
         response.setContentType("application/json;charset=UTF-8");
-        // docs/30_詳細設計/31_API詳細設計書.mdの共通エラーレスポンス形式と同じ形。GlobalExceptionHandlerを経由しない
+        // docs/20_基本設計/23_API基本設計書.md 2.3の共通エラーレスポンス形式と同じ形。GlobalExceptionHandlerを経由しない
         // （Controllerに到達する前のHandlerInterceptorで判定するため）ため、ここで直接組み立てる。
         // メッセージは固定文字列のみを扱うため、JSON用のエスケープ処理は行っていない。
         // 現在時刻をISO 8601形式（タイムゾーン付き）の文字列に変換する

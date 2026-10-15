@@ -12,19 +12,19 @@ import org.springframework.data.repository.query.Param;
 // 実行環境: サーバー側（JVM）。eventsテーブルへの問い合わせ口。
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-    // AP-020: GET /api/events は開催日時の昇順で固定（docs/30_詳細設計/31_API詳細設計書.md AP-020）。ソフトデリート済みは除外する。
+    // AP-020: GET /api/events は開催日時の昇順で固定（docs/30_詳細設計/31_API詳細設計書.md AP-020）。論理削除済みは除外する。
     // DeletedAtIsNull = deleted_at IS NULL（未削除）、OrderByStartAtAsc = ORDER BY start_at ASC
     List<Event> findAllByDeletedAtIsNullOrderByStartAtAsc();
 
-    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧用
+    // AP-123: 管理者の「削除済みイベント」一覧用
     // DeletedAtIsNotNull = deleted_at IS NOT NULL（削除済み）
     List<Event> findAllByDeletedAtIsNotNullOrderByStartAtAsc();
 
-    // 通常の参照・更新はソフトデリート済みを除外する
+    // 通常の参照・更新は論理削除済みを除外する
     // id = ? AND deleted_at IS NULL に相当する1件検索
     Optional<Event> findByIdAndDeletedAtIsNull(Long id);
 
-    // 機能追加（ソフトデリートの復元）: 削除済みイベントのみを対象に取得する
+    // AP-124: 復元対象として、削除済みイベントのみを対象に取得する（削除済みでなければ空。R-08）
     Optional<Event> findByIdAndDeletedAtIsNotNull(Long id);
 
     // 同時申込時の排他制御（悲観ロック）。区分の無いイベントで、定員判定〜申込登録・

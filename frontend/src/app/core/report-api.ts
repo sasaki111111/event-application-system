@@ -1,9 +1,10 @@
-// 実行環境: ブラウザ側。バックエンド（申込実績出力）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（申込実績取得・CSV出力、AP-130）を呼び出すサービス。
 // backendのReportController・EventReportResponseと対応。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+// AP-130 format=jsonのレスポンス1件分。fillRateは0.0〜1.0の小数（画面では百分率で表示する）
 export interface EventReport {
   eventId: number;
   eventName: string;
@@ -13,6 +14,7 @@ export interface EventReport {
   fillRate: number;
 }
 
+// 並び順：startAt＝開催日時順（既定）、accepted_desc＝受付数の多い順
 export type ReportSort = 'startAt' | 'accepted_desc';
 
 const API_BASE_URL = 'http://localhost:8080/api';

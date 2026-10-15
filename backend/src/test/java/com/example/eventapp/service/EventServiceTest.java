@@ -39,12 +39,12 @@ import org.springframework.dao.DataIntegrityViolationException;
  * 本物のDBに接続せずに「申込があれば削除できない」「区分の定員合計にcapacityを同期する」等の
  * 業務ルールだけを検証する。
  */
-// 実行環境: サーバー側（JVM）。G-1: EventService.delete()の業務ロジック（要件定義書§8）のユニットテスト。
-// かつて「削除はカスケードされる」と誤認していたが、実際は受付済の申込が残っていると削除を拒否する
-// 仕様であることが分かったため、そのことを回帰確認できるようテストとして残す。
-// 機能追加（ソフトデリート）: delete()は物理削除ではなくdeleted_atを立てるのみになったため、
-// softDelete()が呼ばれることと、listDeleted()/restore()の挙動を合わせて確認する。
-// 機能追加（定員区分）: create()/update()での区分の全置換ロジックを検証する。
+// 実行環境: サーバー側（JVM）。EventServiceの業務ロジック（docs/30_詳細設計/32_処理詳細設計書.md 5章の業務ルール）の単体テスト。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.2（UT-EVT-）のテストケースと1対1で対応する。
+// delete(): 受付済の申込が残っていれば削除を拒否し（R-07。申込をカスケード削除しない）、
+// 削除できる場合も物理削除ではなくdeleted_atを立てるのみ（softDelete()）であることを確認する。
+// listDeleted()/restore(): 削除済みイベントの一覧・復元の挙動を確認する。
+// create()/update(): 定員の決定（R-11）と参加区分の全置換ロジック（R-09・R-10）を検証する。
 class EventServiceTest {
 
     private EventRepository eventRepository;
@@ -77,7 +77,7 @@ class EventServiceTest {
         when(ticketTypeRepository.save(any(TicketType.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
-    // 正常系: 受付済の申込が無いイベントは削除（ソフトデリート）できる
+    // 正常系: 受付済の申込が無いイベントは削除（論理削除）できる
     @Test
     void delete_正常系_申込が無ければ削除できる() {
         // モック化したEventを用意する（本物のEventは作らず、挙動だけ偽装する）
@@ -91,13 +91,13 @@ class EventServiceTest {
         // テスト対象のメソッドを実行する
         eventService.delete(EVENT_ID);
 
-        // 物理削除ではなく、ソフトデリート用のsoftDelete()が呼ばれたことを確認する
+        // 物理削除ではなく、論理削除用のsoftDelete()が呼ばれたことを確認する
         verify(event).softDelete();
         // Repositoryの物理削除（delete）は呼ばれていないことを確認する
         verify(eventRepository, never()).delete(event);
     }
 
-    // 異常系: 受付済の申込が1件でもあれば削除は拒否される（要件定義書§8 E5）。カスケード削除はしない
+    // 異常系: 受付済の申込が1件でもあれば削除は拒否される（R-07・E-B-013）。カスケード削除はしない
     @Test
     void delete_異常系_受付済の申込があれば削除できない() {
         Event event = mock(Event.class);
@@ -204,7 +204,7 @@ class EventServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
-    // 正常系（機能追加：定員区分）: 登録時にticketTypesを指定すると、区分が保存されcapacityが合計値に同期される
+    // 正常系（参加区分）: 登録時にticketTypesを指定すると、区分が保存されcapacityが合計値に同期される
     @Test
     void create_正常系_区分を指定すると保存されcapacityが同期される() {
         // 2つの区分（合計定員40）を指定した登録リクエストを用意する
@@ -229,7 +229,7 @@ class EventServiceTest {
         verify(savedEvent).syncCapacityFromTicketTypes(40);
     }
 
-    // 正常系（要件定義書§8）: capacity未指定でも、区分を指定していれば区分の定員合計を暫定capacityとして登録できる
+    // 正常系（R-11）: capacity未指定でも、区分を指定していれば区分の定員合計を暫定capacityとして登録できる
     @Test
     void create_正常系_capacity未指定でも区分の定員合計を使う() {
         // capacity（4番目の引数）をnullにし、区分だけを指定した登録リクエストを作る
@@ -250,7 +250,7 @@ class EventServiceTest {
         assertThat(eventCaptor.getValue().getCapacity()).isEqualTo(40);
     }
 
-    // 異常系（要件定義書§8）: capacityも区分も指定が無ければ登録できない（区分未選択時のApplicationServiceと同じ考え方）
+    // 異常系（R-11）: capacityも区分も指定が無ければ登録できない（区分未選択時のApplicationServiceと同じ考え方）
     @Test
     void create_異常系_capacityも区分も未指定なら登録できない() {
         // capacityも区分（最後の引数）も指定しないリクエストを作る
@@ -266,7 +266,7 @@ class EventServiceTest {
         verify(eventRepository, never()).save(any());
     }
 
-    // 正常系（機能追加：定員区分）: ticketTypesを指定しない（null）場合は既存の区分に手を加えない
+    // 正常系（参加区分）: ticketTypesを指定しない（null）場合は既存の区分に手を加えない
     @Test
     void update_正常系_区分未指定なら既存の区分は変更しない() {
         Event event = mock(Event.class);
@@ -285,7 +285,7 @@ class EventServiceTest {
         verify(event, never()).syncCapacityFromTicketTypes(org.mockito.ArgumentMatchers.anyInt());
     }
 
-    // 正常系（機能追加：定員区分）: 区分未指定でも既存の区分があれば、capacityをその合計値に保つ
+    // 正常系（参加区分）: 区分未指定でも既存の区分があれば、capacityをその合計値に保つ
     // （docs/20_基本設計/22_テーブル定義書.md「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ）
     @Test
     void update_正常系_区分未指定でも既存区分があればcapacityを合計に保つ() {
@@ -306,7 +306,7 @@ class EventServiceTest {
         verify(event).syncCapacityFromTicketTypes(5);
     }
 
-    // 正常系（要件定義書§8）: 更新時、capacity未指定・区分未指定（変更なし）でも既存区分があればそれを暫定capacityにする
+    // 正常系（R-11）: 更新時、capacity未指定・区分未指定（変更なし）でも既存区分があればそれを暫定capacityにする
     @Test
     void update_正常系_capacity未指定かつ区分未指定でも既存区分があれば維持される() {
         Event event = mock(Event.class);
@@ -331,7 +331,7 @@ class EventServiceTest {
         verify(event).syncCapacityFromTicketTypes(5);
     }
 
-    // 異常系（要件定義書§8）: capacity未指定・区分未指定（変更なし）で、既存区分も無ければ更新できない
+    // 異常系（R-11）: capacity未指定・区分未指定（変更なし）で、既存区分も無ければ更新できない
     @Test
     void update_異常系_capacity未指定かつ既存区分も無ければ更新できない() {
         Event event = mock(Event.class);
@@ -351,7 +351,7 @@ class EventServiceTest {
         verify(event, never()).applyChanges(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
-    // 異常系（要件定義書§8）: capacity未指定で区分を空（全解除）にする場合は、区分が無くなるため更新できない
+    // 異常系（R-11）: capacity未指定で区分を空（全解除）にする場合は、区分が無くなるため更新できない
     @Test
     void update_異常系_capacity未指定で区分を空にすると更新できない() {
         Event event = mock(Event.class);
@@ -368,7 +368,7 @@ class EventServiceTest {
                 .hasMessage("定員を入力してください");
     }
 
-    // 正常系（機能追加：定員区分）: 区分ありで更新すると、既存区分を削除してから新しい区分を保存する
+    // 正常系（参加区分）: 区分ありで更新すると、既存区分を削除してから新しい区分を保存する
     @Test
     void update_正常系_区分を全置換しcapacityが同期される() {
         Event event = mock(Event.class);
@@ -389,7 +389,7 @@ class EventServiceTest {
         verify(event).syncCapacityFromTicketTypes(20);
     }
 
-    // 異常系（機能追加：定員区分）: 区分に受付済・キャンセル待ちの申込が残っていれば変更を拒否する
+    // 異常系（参加区分）: 区分に受付済・キャンセル待ちの申込が残っていれば変更を拒否する
     @Test
     void update_異常系_区分に申込が残っていれば変更できない() {
         Event event = mock(Event.class);
@@ -408,7 +408,7 @@ class EventServiceTest {
         verify(ticketTypeRepository, never()).deleteByEvent_Id(EVENT_ID);
     }
 
-    // 異常系（機能追加：定員区分）: キャンセル済の申込が区分を参照したまま残っている場合、
+    // 異常系（参加区分）: キャンセル済の申込が区分を参照したまま残っている場合、
     // 事前チェック（受付済・キャンセル待ちのみ判定）をすり抜けてDB制約（RESTRICT）違反になるが、
     // 500ではなく分かりやすいBusinessExceptionに変換する
     @Test
@@ -430,7 +430,7 @@ class EventServiceTest {
                 .hasMessage("区分に申込の履歴が残っているため変更できません");
     }
 
-    // 異常系（機能追加：定員区分）: 区分の無いイベントに初めて区分を追加しようとしても、
+    // 異常系（参加区分）: 区分の無いイベントに初めて区分を追加しようとしても、
     // 既存の申込（ticketTypeがNULL）が受付済・キャンセル待ちで残っていれば変更を拒否する。
     // これを許すと、既存の申込がどの区分にも属さないまま区分単位の定員判定・繰り上げから
     // 漏れてしまう（code-review PR#4で指摘）
@@ -487,7 +487,7 @@ class EventServiceTest {
                 ticketTypes == null ? null : List.of(ticketTypes));
     }
 
-    // 正常系（UT-EVT-03）: キャンセル待ち・キャンセル済の申込しか無ければ削除できる（削除を止めるのは受付済のみ）
+    // 正常系（UT-EVT-N02）: キャンセル待ち・キャンセル済の申込しか無ければ削除できる（削除を止めるのは受付済のみ）
     @Test
     void delete_正常系_キャンセル待ちとキャンセル済の申込のみなら削除できる() {
         Event event = mock(Event.class);
@@ -505,7 +505,7 @@ class EventServiceTest {
         verify(eventRepository, never()).delete(event);
     }
 
-    // 正常系（UT-EVT-22）: status=openなら、受付中かつ未削除のイベントのみを開催日時昇順で返す
+    // 正常系（UT-EVT-N12）: status=openなら、受付中かつ未削除のイベントのみを開催日時昇順で返す
     // （未削除の絞り込みと開催日時順の並びはRepositoryのクエリが行うため、ここではそのメソッドを使うことと、
     // 受付終了のイベントが除かれ、Repositoryが返した順が保たれることを確認する）
     @Test

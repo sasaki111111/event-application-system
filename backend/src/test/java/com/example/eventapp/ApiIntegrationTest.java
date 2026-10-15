@@ -57,11 +57,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Controller→Service→Repository→DB（テスト実行時はH2インメモリDB）まで実際に処理を通し、
  * TestRestTemplateで本物のHTTPリクエストを送信し、レスポンスとDBの状態を合わせて検証する
  * （ServiceやRepositoryをモック化しない点が、Serviceクラス単体の単体テストとの違い）。
- * 各テストメソッド名の先頭「apNN」等は、対応する要件定義書の機能ID（例: AP-020）を示す。
+ * 各テストメソッド名の先頭「ap020_」等は、対応するAPI ID（例: AP-020、docs/20_基本設計/23_API基本設計書.md 3.2）を、
+ * 「cmn_」は全APIに共通する動作を、「o01_」は同時申込（総合テスト）を示す。各メソッドは
+ * docs/40_テスト/42_結合テスト仕様書.md・43_総合テスト仕様書.mdのテストケースと1対1で対応する。
  */
-// 実行環境: サーバー側（JVM）。G-2: API/DB結合テスト。
-// Controller→Service→Repository→H2（インメモリDB）まで実際に通し、必須API 8本のうち代表7本を検証する。
-// Userは公開コンストラクタが無いためJdbcTemplateで直接INSERTし、Eventは実際のEventRepositoryで作成する。
+// 実行環境: サーバー側（JVM）。API/DB結合テスト。
+// Controller→Service→Repository→H2（インメモリDB）まで実際に通し、APIの応答とDBの状態を検証する。
+// 利用者はIDを固定（seed.sqlと同じ1・2）にするためJdbcTemplateで直接INSERTし、Eventは実際のEventRepositoryで作成する。
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class ApiIntegrationTest {
@@ -121,7 +123,8 @@ class ApiIntegrationTest {
         applicationRepository.deleteAll();
         ticketTypeRepository.deleteAll();
         eventRepository.deleteAll();
-        // Userは公開コンストラクタが無いためRepository経由で作れず、JdbcTemplateで直接INSERTする
+        // 利用者は、IDを固定値（GENERAL_USER_ID・ADMIN_USER_ID）にするため、Repositoryではなく
+        // JdbcTemplateで直接INSERTする（Repositoryで保存するとIDは自動採番になる）
         jdbcTemplate.update("DELETE FROM users");
         // コードマスタ（利用者区分・申込状況）を初期データと同じ内容で用意する。
         // テスト環境（H2）はエンティティからテーブルを自動生成するため、seed.sqlは実行されない
@@ -245,7 +248,7 @@ class ApiIntegrationTest {
         assertThat(eventRepository.count()).isZero();
     }
 
-    // AP-120（要件定義書§8）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
+    // AP-120（R-11）: 定員未指定でも、参加区分を指定していれば区分の定員合計で登録できる
     @Test
     void ap120_定員を指定せず参加区分のみで登録できる() {
         // capacity（4番目の引数）をnullにし、区分（一般枠7・会員枠3＝合計10）だけを指定したリクエストを作る
@@ -264,7 +267,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody().capacity()).isEqualTo(10);
     }
 
-    // AP-120（要件定義書§8）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
+    // AP-120（R-11・E-B-006）: 定員も参加区分も指定が無ければ400（業務ルール違反）になる
     @Test
     void ap120_定員も参加区分も未指定なら400() {
         // capacityも区分（最後の引数）も指定しないリクエストを作る
@@ -392,7 +395,7 @@ class ApiIntegrationTest {
         }
     }
 
-    // AP-014: whoamiのレスポンスに、role="admin"由来のadminフィールド（true）が含まれる
+    // AP-014: whoamiのレスポンスに、利用者区分コード（管理者=2）から判定したadminフィールド（true）が含まれる
     @Test
     void ap014_whoamiはadminフィールドを含む() {
         // 管理者として自分自身の情報を返すwhoami APIを呼び出す
@@ -415,9 +418,9 @@ class ApiIntegrationTest {
                 UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        // レスポンスのroleが"admin"であることを確認する
+        // レスポンスの利用者区分コードが管理者（RoleCode.ADMIN）であることを確認する
         assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.ADMIN);
-        // DBから直接SELECTしても、保存されたroleが"admin"であることを確認する
+        // DBから直接SELECTしても、保存されたrole_codeが管理者であることを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role_code FROM users WHERE email = ?", Integer.class, "new-admin@example.com"))
                 .isEqualTo(RoleCode.ADMIN);
@@ -455,9 +458,9 @@ class ApiIntegrationTest {
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), UserResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // レスポンス上のroleが"general"に変わったことを確認する
+        // レスポンス上の利用者区分コードが一般利用者（RoleCode.GENERAL）に変わったことを確認する
         assertThat(response.getBody().roleCode()).isEqualTo(RoleCode.GENERAL);
-        // DB上でも実際にroleが更新されていることを確認する
+        // DB上でも実際にrole_codeが更新されていることを確認する
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT role_code FROM users WHERE id = ?", Integer.class, newAdminId)).isEqualTo(RoleCode.GENERAL);
     }
@@ -659,7 +662,8 @@ class ApiIntegrationTest {
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM favorites", Integer.class)).isZero();
     }
 
-    // AP-122 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
+    // AP-130 format=csv: 削除済みイベントに紐づく申込明細はCSVに含まれない
+    // （メソッド名はap122_だが、対象はAP-130。テスト仕様書IT-AP130-N06がこのメソッド名で参照しているため名前は変えていない）
     @Test
     void ap122_csv出力は削除済みイベントの申込を含まない() {
         Event deletedEvent = openEvent();
@@ -667,7 +671,7 @@ class ApiIntegrationTest {
         // このイベントに申込を1件作っておく
         restTemplate.exchange(url("/api/applications"), HttpMethod.POST,
                 new HttpEntity<>(applyRequest, authHeaders(GENERAL_USER_ID)), ApplicationResponse.class);
-        // そのイベント自体をソフトデリート（論理削除）する
+        // そのイベント自体を論理削除する
         deletedEvent.softDelete();
         eventRepository.save(deletedEvent);
 
@@ -702,7 +706,7 @@ class ApiIntegrationTest {
                 .containsExactly(1L);
     }
 
-    // AP-130: CSV明細にアンケート回答列が追加され、回答内容がそのまま出力される
+    // AP-130: CSV明細にアンケート回答列があり、回答内容がそのまま出力される
     @Test
     void ap130_csv出力にアンケート回答列が含まれる() {
         // アンケート（extra_question）付きのイベントを作る
@@ -805,7 +809,7 @@ class ApiIntegrationTest {
         assertThat(response.getBody()[0].id()).isEqualTo(event.getId());
     }
 
-    // AP-130: CSV明細に参加区分列が追加され、区分名がそのまま出力される
+    // AP-130: CSV明細に参加区分列があり、区分名がそのまま出力される
     @Test
     void ap130_csv出力に参加区分列が含まれる() {
         Event event = eventRepository.save(new Event(
@@ -946,7 +950,7 @@ class ApiIntegrationTest {
         restTemplate.exchange(url("/api/comments/" + commentId), HttpMethod.DELETE,
                 new HttpEntity<>(authHeaders(GENERAL_USER_ID)), Void.class);
 
-        // 全コメント一覧（モデレーション用）を取得するAPIを呼び出す
+        // 全コメント一覧（SC-150コメント管理用）を取得するAPIを呼び出す
         ResponseEntity<CommentModerationResponse[]> response = restTemplate.exchange(
                 url("/api/comments"), HttpMethod.GET,
                 new HttpEntity<>(authHeaders(ADMIN_USER_ID)), CommentModerationResponse[].class);

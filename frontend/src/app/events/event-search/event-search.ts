@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。イベント検索画面（機能追加）。
-// GET /api/eventsで全件取得し、キーワード（イベント名・場所）・開催日時の範囲でAngular側のみで絞り込む
+// 実行環境: ブラウザ側。SC-021 イベント検索画面（/events/search）。
+// GET /api/events（AP-020）で全件取得し、キーワード（イベント名・場所）・開催日時の範囲でAngular側のみで絞り込む
 // （バックエンドAPIは変更しない。想定件数が数十件程度のため実用上問題ない）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, signal } from '@angular/core';
@@ -8,12 +8,12 @@ import { EventApiService, EventSummary } from '../../core/event-api';
 import { moveHeldEventsLast } from '../../core/event-order';
 
 /**
- * イベント検索画面（機能追加、/events/search）を担当するComponent。
+ * SC-021 イベント検索画面（/events/search）を担当するComponent。
  * イベント一覧を一度だけ全件取得し、キーワード・開催日の範囲・並び替えは
  * すべてブラウザ側（computed）で絞り込む。APIへの再問い合わせは行わない。
  *
  * 使用するAngular Service:
- * - `EventApiService`: イベント一覧取得API（API-01）の呼び出し。
+ * - `EventApiService`: イベント一覧取得API（AP-020）の呼び出し。
  *
  * 画面遷移: 検索結果のカードのタイトルからevent-detail.ts（イベント詳細）へ遷移する
  * （?from=searchを付けて渡すため、詳細画面の「戻る」でこの検索画面に戻れる）。
@@ -33,7 +33,7 @@ export class EventSearch implements OnInit {
   protected readonly dateFrom = signal('');
   protected readonly dateTo = signal('');
 
-  // （機能追加）: 並び替え。APIの再取得は行わず、絞り込み結果を画面側で並び替える
+  // 並び替え。APIの再取得は行わず、絞り込み結果を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
   /**

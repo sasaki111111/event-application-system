@@ -1,6 +1,7 @@
 // 実行環境: テスト実行時（ブラウザ相当の環境）。httpErrorInterceptorの単体テスト。
 // 認証エラー（401）でログイン状態を解除してログイン画面へ遷移すること、ログインAPIの401は対象外であること、
 // サーバーに接続できない場合にメッセージが統一されることを確認する。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.9（UT-HTTP-）のテストケースと1対1で対応する。
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';

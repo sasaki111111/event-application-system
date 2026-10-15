@@ -1,6 +1,6 @@
-// 実行環境: ブラウザ側。SC-020の一覧部分（イベント一覧）。
-// 各行を展開すると詳細（API-02）を取得して表示し、その場で申込（API-03）もできる（機能追加）。
-// 機能追加: 一覧表示／開催カレンダー表示の切替。
+// 実行環境: ブラウザ側。SC-020 イベント一覧画面（/events）。
+// 各行を展開すると詳細（AP-021）を取得して表示し、その場で申込（AP-030）もできる。
+// 一覧表示／開催カレンダー表示を切り替えられる。
 // `computed()`は、他のsignalの値から自動的に導き出される「計算結果のsignal」を作るAngularの機能。
 // 元になるsignal（例: events, sortOrder）が変わると、computed()の値も自動的に再計算される。
 import { CommonModule } from '@angular/common';
@@ -22,12 +22,12 @@ interface CalendarDay {
 
 /**
  * SC-020イベント一覧画面を担当するComponent。カード形式の一覧表示と、
- * 開催カレンダー表示（機能追加）の2つの表示モードを切り替えられる。
+ * 開催カレンダー表示の2つの表示モードを切り替えられる。
  * 一覧の各カードは「▼詳細を見る」で展開でき、展開したカード内でその場で申込もできる。
  *
  * 使用するAngular Service:
- * - `EventApiService`: イベント一覧取得API（API-01）とイベント詳細取得API（API-02、カード展開時）。
- * - `ApplicationApiService`: 申込API（API-03）の呼び出し。
+ * - `EventApiService`: イベント一覧取得API（AP-020）とイベント詳細取得API（AP-021、カード展開時）。
+ * - `ApplicationApiService`: 申込API（AP-030）の呼び出し。
  * - `FavoriteStore`: お気に入り登録状態を画面間で共有する状態管理。
  * - `Router`: 申込成功後に申込完了画面へ遷移するために使う。
  * - `ActivatedRoute`: カレンダー表示から戻ってきた場合の表示モード・表示月（?view=calendar&month=…）を読み取る。
@@ -55,15 +55,15 @@ export class EventList implements OnInit {
   protected readonly applying = signal(false);
   protected readonly applyErrorMessage = signal<string | null>(null);
 
-  // 機能追加（定員区分・アンケート）: 展開中カードの申込フォーム入力状態
+  // 展開中カードの申込フォーム入力状態（選択中の参加区分・アンケート回答）
   protected readonly selectedTicketTypeId = signal<number | null>(null);
   protected readonly extraAnswer = signal('');
 
-  // 機能追加（開催カレンダー表示）: 表示モードの切替と、表示中の月
+  // 開催カレンダー表示: 表示モードの切替と、表示中の月
   protected readonly viewMode = signal<'list' | 'calendar'>('list');
   protected readonly calendarMonth = signal(this.startOfMonth(new Date()));
 
-  // （機能追加）: 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
+  // 一覧表示の並び替え。APIの再取得は行わず、取得済みの一覧を画面側で並び替える
   protected readonly sortOrder = signal<'startAt' | 'accepted_desc' | 'favorite_desc' | 'deadline_asc'>('startAt');
 
   /**
@@ -97,7 +97,7 @@ export class EventList implements OnInit {
     return `${month.getFullYear()}年${month.getMonth() + 1}月`;
   });
 
-  // 機能追加（カレンダー表示からの詳細遷移）: 詳細画面の「戻る」がこの表示モード・月に戻れるよう、遷移先へ引き継ぐ値
+  // カレンダー表示からの詳細遷移: 詳細画面の「戻る」がこの表示モード・月に戻れるよう、遷移先へ引き継ぐ値
   protected readonly calendarMonthParam = computed(() => {
     const month = this.calendarMonth();
     return `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
@@ -142,7 +142,7 @@ export class EventList implements OnInit {
     return weeks;
   });
 
-  // 機能追加（お気に入り）: 登録済みのイベントID一覧はFavoriteStore（画面間で共有）から参照する
+  // お気に入り: 登録済みのイベントID一覧はFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusyId = signal<number | null>(null);
 
   // コンストラクタの引数に型を書くと、Angularが対応するServiceのインスタンスを自動的に渡してくれる
@@ -156,7 +156,7 @@ export class EventList implements OnInit {
     protected readonly loginUserStore: LoginUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない（イベント詳細画面と同じ制御）。role基準で判定する
+  // 管理者は申込できない（E-A-005、イベント詳細画面と同じ制御）。利用者区分コードで判定する
   protected get isAdmin(): boolean {
     return this.loginUserStore.isAdmin();
   }
@@ -167,7 +167,7 @@ export class EventList implements OnInit {
    * 表示モード・表示月の復元と、イベント一覧・お気に入り状態の取得を行っている。
    */
   ngOnInit(): void {
-    // 機能追加（カレンダー表示からの詳細遷移）: イベント詳細の「戻る」がこの画面へ渡すview/month
+    // カレンダー表示からの詳細遷移: イベント詳細の「戻る」がこの画面へ渡すview/month
     const queryParams = this.route.snapshot.queryParamMap;
     if (queryParams.get('view') === 'calendar') {
       this.viewMode.set('calendar');
@@ -191,11 +191,11 @@ export class EventList implements OnInit {
       },
     });
 
-    // お気に入りは一般ユーザー・管理者の両方が使える（要件定義書§4）。取得失敗は一覧表示をブロックしない
+    // お気に入りは一般ユーザー・管理者の両方が使える（docs/20_基本設計/20_機能設計書.md 4.2）。取得失敗は一覧表示をブロックしない
     this.favoriteStore.ensureLoaded().subscribe({ error: () => {} });
   }
 
-  // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）
+  // お気に入り: 登録・解除はどちらも冪等（R-12）
   /** カードの「☆/★」ボタン（(click)）で呼ばれる。対象イベントのお気に入りを登録・解除する。 */
   protected toggleFavorite(eventId: number): void {
     this.favoriteBusyId.set(eventId);
@@ -291,7 +291,7 @@ export class EventList implements OnInit {
     this.extraAnswer.set(value);
   }
 
-  // 展開部分の「申し込む」。API-03を呼び、成功したら申込完了画面へ画面遷移する
+  // 展開部分の「申し込む」。AP-030を呼び、成功したら申込完了画面へ画面遷移する
   /** 展開カード内の「申し込む」ボタン（(click)）で呼ばれる。 */
   protected apply(eventId: number): void {
     this.applyErrorMessage.set(null);

@@ -48,7 +48,7 @@ public class ReportController {
      */
     @Operation(summary = "AP-130 申込実績取得",
             description = "format=json（既定）はイベントごとの受付数・充足率の一覧（sortでstartAt順／accepted_desc順を選択）。"
-                    + "format=csvはBOM付きUTF-8の申込明細（イベント名・申込者名・申込日時・ステータス・アンケート回答）をダウンロードする。"
+                    + "format=csvはBOM付きUTF-8の申込明細（イベント名・申込者名・申込日時・ステータス・アンケート回答・参加区分）をダウンロードする。"
                     + "いずれも削除済みイベントは対象外。管理者のみ実行できる。")
     @GetMapping("/api/reports/applications")
     public ResponseEntity<Object> report(

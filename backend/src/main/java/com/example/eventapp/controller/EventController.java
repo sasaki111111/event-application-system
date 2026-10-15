@@ -27,16 +27,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// イベント一覧・詳細API（AP-020・AP-021）、イベント登録・編集・削除API（AP-120〜09、管理者のみ）。
+// イベント一覧・詳細API（AP-020・AP-021）、イベント登録・更新・削除・削除済み一覧・復元・申込者一覧API（AP-120〜AP-125、管理者のみ）。
 /**
- * イベント一覧・詳細取得（AP-020・AP-021）、削除済み一覧（AP-123）、登録・更新・削除・復元（AP-120〜10）、
+ * イベント一覧・詳細取得（AP-020・AP-021）、登録・更新・削除（AP-120〜AP-122）、削除済み一覧（AP-123）、復元（AP-124）、
  * 当日受付の申込者一覧（AP-125）のHTTP入口を担当するController。
  * フロントエンドのcore/event-api.ts（EventApiService）およびcore/checkin-api.ts（CheckInApiService#attendees）から呼ばれ、
  * 内部ではEventServiceの各メソッド、attendees()のみApplicationService#listAttendeesに処理を委譲する。
  * 他のController（ApplicationControllerなど）と同様、権限チェック・入力チェックをここで行い、
  * 実際の業務ロジックはService層に委ねる。
  */
-@Tag(name = "イベント", description = "イベントの一覧・詳細・登録・編集・削除・復元、当日受付の申込者一覧（AP-020〜11）")
+@Tag(name = "イベント", description = "イベントの一覧・詳細・登録・編集・削除・復元、当日受付の申込者一覧（AP-020・AP-021、AP-120〜AP-125）")
 @RestController
 public class EventController {
 
@@ -89,7 +89,7 @@ public class EventController {
         return eventService.getDetail(id);
     }
 
-    // 機能追加（ソフトデリート） GET /api/events/deleted（管理者のみ）
+    // AP-123 GET /api/events/deleted（管理者のみ）
     /**
      * 削除済み（論理削除）のイベント一覧を取得する（AP-123）。フロントエンドのcore/event-api.ts（EventApiService#listDeleted）
      * から呼ばれ、EventService#listDeletedに処理を委譲する。authContext.requireAdmin()により、
@@ -109,6 +109,7 @@ public class EventController {
 
     // AP-120 POST /api/events（管理者のみ）
     // 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
+    // （docs/20_基本設計/23_API基本設計書.md 2.5、docs/30_詳細設計/33_共通詳細設計書.md 2.1）
     /**
      * イベントを新規登録する（AP-120）。フロントエンドのcore/event-api.ts（EventApiService#create）から呼ばれ、
      * EventService#createに処理を委譲する。authContext.requireAdmin()により管理者以外は403になる。
@@ -171,7 +172,7 @@ public class EventController {
         eventService.delete(id);
     }
 
-    // 機能追加（ソフトデリートの復元） POST /api/events/{id}/restore（管理者のみ）
+    // AP-124 POST /api/events/{id}/restore（管理者のみ）
     /**
      * 削除済みのイベントを復元する（AP-124）。フロントエンドのcore/event-api.ts（EventApiService#restore）から呼ばれ、
      * EventService#restoreに処理を委譲する。authContext.requireAdmin()により管理者以外は403になる。
@@ -189,7 +190,7 @@ public class EventController {
         return eventService.restore(id);
     }
 
-    // AP-125 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ、機能追加）
+    // AP-125 GET /api/events/{id}/attendees（当日受付の申込者一覧、管理者のみ）
     /**
      * 当日受付画面で使う申込者一覧を取得する（AP-125）。フロントエンドのcore/checkin-api.ts（CheckInApiService#attendees）
      * から呼ばれ、ApplicationService#listAttendeesに処理を委譲する（EventServiceではない点に注意）。

@@ -26,9 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。イベント申込、自分の申込一覧、申込キャンセル、当日受付の業務ロジック。
-// 機能追加：定員超過時は400で拒否せず「キャンセル待ち」として登録し、受付済がキャンセルされた際に
-// 最も古いキャンセル待ちを自動で「受付済」に繰り上げる。
-// 機能追加（定員区分）: 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（docs/30_詳細設計/32_処理詳細設計書.md）。
+// 定員超過時は400で拒否せず「キャンセル待ち」として登録し（R-02）、受付済がキャンセルされた際に
+// 最も古いキャンセル待ちを自動で「受付済」に繰り上げる（R-05）。
+// 区分があるイベントは区分単位で定員判定・繰り上げ・順位計算を行う（docs/30_詳細設計/32_処理詳細設計書.md 3章・7章）。
 /**
  * 【Serviceとは】Serviceは、Controller（HTTPリクエストの入口）とRepository（DBアクセス）の間に立って、
  * アプリケーションの業務ロジック（「定員に空きがあるか」「本人の申込か」等の判断・処理）をまとめる層。
@@ -64,7 +64,7 @@ public class ApplicationService {
         this.codeNameResolver = codeNameResolver;
     }
 
-    // AP-030: 締切/日付・二重申込・区分存在/必須のチェック（要件定義書§8）。
+    // AP-030: 締切/日付（R-01）・二重申込（R-03）・区分存在/必須（C-03）のチェック（docs/30_詳細設計/32_処理詳細設計書.md 4章）。
     // 定員（区分がある場合は区分単位、無い場合はイベント単位）に達している場合はキャンセル待ちとして登録する。
     // userIdは呼出元（Controller）がX-User-Idから渡す
     /**
@@ -89,7 +89,7 @@ public class ApplicationService {
         Event event = eventRepository.findByIdAndDeletedAtIsNull(eventId)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
 
-        // イベントが現在受付中でなければ（締切済み・開始前等）、ここで例外を投げる
+        // イベントが現在受付中でなければ（申込締切を過ぎた、または開催日時を過ぎた）、ここで例外を投げる（R-01・E-B-002）
         if (!event.isOpen(LocalDateTime.now())) {
             throw new BusinessException("申込受付は終了しました");
         }
@@ -97,7 +97,7 @@ public class ApplicationService {
         // 同一利用者が同一イベントに、有効な状態（受付済／キャンセル待ち）で既に申込済みかどうかを確認する
         boolean alreadyApplied = applicationRepository
                 .existsByUser_IdAndEvent_IdAndStatusIn(userId, eventId, ApplicationStatus.ACTIVE_STATUSES);
-        // 既に申込済みであれば、ここで例外を投げる（二重申込の防止）
+        // 既に申込済みであれば、ここで例外を投げる（二重申込の防止。R-03・E-B-003）
         if (alreadyApplied) {
             throw new BusinessException("すでに申し込み済みです");
         }
@@ -121,7 +121,7 @@ public class ApplicationService {
         // 受付済件数が定員未満なら「受付済」、そうでなければ「キャンセル待ち」とする
         int status = acceptedCount < capacity ? ApplicationStatus.ACCEPTED : ApplicationStatus.WAITLISTED;
 
-        // 存在確認済みのIDなのでDBに問い合わせない参照を使う（AuthInterceptorがuserIdを、上のfindByIdがeventを検証済み）
+        // 存在確認済みのIDなのでDBに問い合わせない参照を使う（AuthInterceptorがuserIdを、上のfindByIdAndDeletedAtIsNullがeventを検証済み）
         // 申込エンティティを組み立てる
         Application application = new Application(
                 userRepository.getReferenceById(userId), event, ticketType, status, extraAnswer);
@@ -188,7 +188,7 @@ public class ApplicationService {
                 .toList();
     }
 
-    // AP-032: 取消可否チェック（要件定義書§8）。本人の申込以外は403。
+    // AP-032: 取消可否チェック（R-04）。本人の申込以外は403（E-A-003）。
     // 受付済をキャンセルした場合、同一イベント（区分がある場合は同一区分）で最も古いキャンセル待ちを自動で繰り上げる。
     /**
      * 本人の申込をキャンセルする（AP-032）。ApplicationController#cancelから呼ばれる。
@@ -214,6 +214,7 @@ public class ApplicationService {
                 && LocalDateTime.now().isBefore(application.getEvent().getStartAt());
         // キャンセルできない状態であれば、ここで例外を投げる
         if (!cancellable) {
+            // E-B-010
             throw new BusinessException("取消できません");
         }
 
@@ -248,7 +249,7 @@ public class ApplicationService {
         // docs/20_基本設計/24_方式設計書.md 6.2）
     }
 
-    // AP-125: 当日受付の申込者一覧（申込日時昇順、機能追加）。管理者権限はController側で確認済み
+    // AP-125: 当日受付の申込者一覧（申込日時昇順）。管理者権限はController側で確認済み
     /**
      * 当日受付画面で使う申込者一覧を取得する（AP-125）。EventController#attendeesから呼ばれる
      * （EventServiceではなくこちらに委譲されている点に注意）。管理者権限の確認はController側で完了済みのため、
@@ -259,15 +260,17 @@ public class ApplicationService {
      */
     @Transactional(readOnly = true)
     public List<AttendeeResponse> listAttendees(Long eventId) {
+        // 対象イベントが存在し、削除済みでないことを確認する（無ければ404・E-B-001）
         eventRepository.findByIdAndDeletedAtIsNull(eventId)
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
 
+        // 状況（受付済・キャンセル待ち・キャンセル済）を問わず、申込日時の昇順で全件を返す
         return applicationRepository.findByEvent_IdOrderByAppliedAtAsc(eventId).stream()
                 .map(this::toAttendeeResponse)
                 .toList();
     }
 
-    // AP-126: チェックイン可否チェック（要件定義書§8 E8、機能追加）。「受付済」以外は拒否
+    // AP-126: チェックイン可否チェック（R-06）。「受付済」以外は拒否
     /**
      * 当日受付でのチェックインを記録する（AP-126）。ApplicationController#checkInから呼ばれる
      * （管理者権限の確認はController側で完了済み）。
@@ -277,12 +280,16 @@ public class ApplicationService {
      */
     @Transactional
     public CheckInResponse checkIn(Long applicationId) {
+        // チェックイン対象の申込を取得する（存在しなければ404・E-B-009）
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new NotFoundException("申込が見つかりません"));
 
+        // 状況が「受付済」でなければ拒否する（R-06・E-B-012）
         if (!Integer.valueOf(ApplicationStatus.ACCEPTED).equals(application.getStatus())) {
             throw new BusinessException("受付済の申込のみチェックインできます");
         }
+        // チェックイン日時を現在時刻にする。既にチェックイン済みでも拒否せず日時を上書きする
+        // （再実行の確認は画面側で行う。SC-123）
         application.checkIn();
 
         // チェックインの実行者はapplicationsの行に残らないため、ログに記録する（docs/30_詳細設計/33_共通詳細設計書.md 6.1）
@@ -318,7 +325,7 @@ public class ApplicationService {
         );
     }
 
-    // キャンセル待ちの順位計算（要件定義書§8）: 自分より申込日時が古い、同一イベント
+    // キャンセル待ちの順位計算（AP-031のwaitlistRank）: 自分より申込日時が古い、同一イベント
     // （区分がある場合は同一区分）の「キャンセル待ち」件数＋1。キャンセル待ち以外はNULL
     private Long calculateWaitlistRank(Application application) {
         if (!Integer.valueOf(ApplicationStatus.WAITLISTED).equals(application.getStatus())) {

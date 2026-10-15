@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-023の申込状況・実績画面（E-6）。
+// 実行環境: ブラウザ側。SC-130 申込状況・実績画面（/admin/reports、AP-130）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { EventReport, ReportApiService, ReportSort } from '../../core/report-api';
@@ -10,12 +10,12 @@ import { EventReport, ReportApiService, ReportSort } from '../../core/report-api
   styleUrl: './admin-report.css',
 })
 /**
- * SC-023 申込状況・実績画面（/admin/reports）を担当するComponent。
+ * SC-130 申込状況・実績画面（/admin/reports）を担当するComponent。
  * イベントごとの申込実績（定員・受付済数・充足率）を一覧表示し、並び替えとCSVダウンロードができる。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
  *   管理者以外のユーザーはアクセスできない（＝管理者専用画面）。
- * - 利用するAngular Service: ReportApiService（実績集計の取得、CSV形式でのダウンロード）。
+ * - 利用するAngular Service: ReportApiService（実績集計の取得、CSV形式でのダウンロード。いずれもAP-130）。
  * - 画面遷移: この画面自体には他画面への遷移リンクは無い。
  */
 export class AdminReport implements OnInit {
@@ -48,7 +48,7 @@ export class AdminReport implements OnInit {
 
   /**
    * 「CSVダウンロード」ボタン（(click)="downloadCsv()"）から呼ばれる処理。
-   * API-09 format=csv。X-User-Idヘッダが必要なため、Blobとして取得してからダウンロードさせる。
+   * AP-130 format=csv。X-User-Idヘッダが必要なため、Blobとして取得してからダウンロードさせる。
    * URL.createObjectURL()でBlob（バイナリデータ）を一時的なURLに変換し、<a>タグのクリックを
    * JavaScriptから実行することでファイルダウンロードを発生させている。
    */

@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-022のイベント管理一覧（E-5）。
-// GET /api/eventsはSC-020と同じAPIを流用する（API設計書の備考の通り）。
+// 実行環境: ブラウザ側。SC-120 イベント管理画面（/admin/events）。
+// 一覧の取得はSC-020と同じAPI（AP-020 GET /api/events）を使う（docs/20_基本設計/21_画面基本設計書.md 4.4）。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -12,12 +12,12 @@ import { EventApiService, EventSummary } from '../../core/event-api';
   styleUrl: './admin-event-list.css',
 })
 /**
- * SC-022 イベント管理一覧画面（/admin/events）を担当するComponent。
- * 管理者が主催する全イベント（受付中・受付終了を含む）をカード形式で一覧表示する。
+ * SC-120 イベント管理画面（/admin/events）を担当するComponent。
+ * 削除されていない全イベント（受付中・受付終了を含む）をカード形式で一覧表示する。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
  *   管理者以外のユーザーはアクセスできない（＝管理者専用画面）。
- * - 利用するAngular Service: EventApiService（一覧取得・削除・複製元の詳細取得）。
+ * - 利用するAngular Service: EventApiService（一覧取得AP-020・削除AP-122・複製元の詳細取得AP-021）。
  * - 画面遷移（いずれもRouterLinkまたはrouter.navigateで実装）:
  *   - 「＋ 新規登録」→ /admin/events/new（AdminEventForm）
  *   - 「削除済みイベント」→ /admin/events/deleted（AdminDeletedEvents）
@@ -40,7 +40,7 @@ export class AdminEventList implements OnInit {
   /**
    * 各カードの「複製」ボタン（(click)="duplicate(event)"）から呼ばれる処理。
    * 複製元イベントの詳細（AP-021）を取得し、新規登録フォームへ値を持って遷移する。
-   * バックエンドAPIは呼ばない（開催日時・申込締切は複製対象外のため、新規登録と同じ入力チェックを通す）
+   * ここでは登録APIは呼ばない（開催日時・申込締切は複製対象外のため、新規登録と同じ入力チェックを通してから登録する）
    */
   protected duplicate(event: EventSummary): void {
     // どのイベントを複製処理中かをsignalに記録する（ボタンの表示切り替えに使う）
@@ -82,7 +82,7 @@ export class AdminEventList implements OnInit {
       // 成功したら一覧を再取得する（削除したイベントは一覧から消える）
       next: () => this.loadEvents(),
       error: (err) => {
-        // 受付済の申込がある場合は400（業務エラー）、権限が無ければ403が返る（API設計書 API-08）
+        // 受付済の申込がある場合は400（R-07・E-B-013）、権限が無ければ403が返る（AP-122）
         const message = err.error?.message ?? '削除に失敗しました。';
         alert(message);
       },

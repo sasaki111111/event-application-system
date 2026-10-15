@@ -1,6 +1,6 @@
-// 実行環境: ブラウザ側。SC-022のイベント登録・編集フォーム（E-5）。
-// ルートに:idがあれば編集モード（PUT）、無ければ新規登録モード（POST）として動く。
-// 機能追加: 主催者名・画像URL・アンケート文言・定員区分（複数、追加/削除可能）の入力欄。
+// 実行環境: ブラウザ側。SC-121 イベント登録・編集画面（docs/30_詳細設計/30_画面詳細設計書.md SC-121）。
+// ルートに:idがあれば編集モード（PUT、AP-121）、無ければ新規登録モード（POST、AP-120）として動く。
+// 基本項目に加え、主催者名・画像URL・アンケート文言・参加区分（複数、追加/削除可能）の入力欄を持つ。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -29,13 +29,13 @@ const REQUIRED_MESSAGES: Record<string, string> = {
   styleUrl: './admin-event-form.css',
 })
 /**
- * SC-022 イベント登録・編集フォーム画面を担当するComponent。
+ * SC-121 イベント登録・編集画面を担当するComponent。
  * ルート（app.routes.ts）に:idがある場合（/admin/events/:id/edit）は編集モード、
  * 無い場合（/admin/events/new）は新規登録モードとして同じComponent・同じ画面で動く。
  *
  * - ルーティング定義（app.routes.ts）で両ルートとも authGuard・adminGuard が設定されており、
  *   管理者以外のユーザーはアクセスできない（＝管理者専用画面）。
- * - 利用するAngular Service: EventApiService（イベント詳細取得・新規作成・更新）。
+ * - 利用するAngular Service: EventApiService（イベント詳細取得AP-021・新規作成AP-120・更新AP-121）。
  * - フォームの入力管理には Angular の Reactive Forms（ReactiveFormsModule / FormBuilder）を使う。
  *   テンプレート側で value/eventを直接書き換えるのではなく、Component側で保持する
  *   FormGroup（this.form）に対して入力値・入力チェック（Validators）をまとめて管理する方式。
@@ -93,11 +93,11 @@ export class AdminEventForm implements OnInit {
     capacity: [1, [Validators.required, Validators.min(1)]],
     applicationDeadline: ['', Validators.required],
     description: [''],
-    // 機能追加（イベント情報の拡張）
+    // 任意項目（主催者名・画像URL・アンケート文言）
     organizerName: [''],
     imageUrl: [''],
     extraQuestion: [''],
-    // 機能追加（定員区分）: 区分を1件以上入力した場合はcapacityが自動計算され、上の定員入力は無視される
+    // 参加区分: 区分を1件以上入力した場合はcapacityが自動計算され、上の定員入力は無視される
     ticketTypes: this.fb.nonNullable.array<ReturnType<typeof this.newTicketTypeGroup>>([]),
   });
 
@@ -137,7 +137,7 @@ export class AdminEventForm implements OnInit {
     this.ticketTypesArray.removeAt(index);
   }
 
-  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、docs/20_基本設計/22_テーブル定義書.md）
+  // 区分が1件以上ある場合、定員は区分の合計として表示のみ行う（実際の計算・保存はbackend側、docs/20_基本設計/22_テーブル定義書.md 4.2）
   protected get ticketTypesCapacitySum(): number {
     // reduceで各区分（group）のcapacity値を順番に足し合わせ、合計値を求める
     return this.ticketTypesArray.controls.reduce((sum, group) => sum + (group.value.capacity ?? 0), 0);

@@ -1,5 +1,6 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。my-applications.tsの単体テスト。
 // APIはHttpClientを使わずService自体をモック（useValue）で差し替える。見た目は対象外、ロジックのみ検証する。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.4（UT-MY-）のテストケースと1対1で対応する。
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ApplicationApiService, MyApplication } from '../core/application-api';

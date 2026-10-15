@@ -1,5 +1,6 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-list.tsの単体テスト。
 // 一覧取得・並び替え・詳細展開・申込・お気に入りトグルのロジックを検証する。見た目は対象外。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.2（UT-LIST-）のテストケースと1対1で対応する。
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -114,7 +115,6 @@ describe('EventList', () => {
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([3, 1, 2]);
   });
 
-  // toggleExpand(id)で、該当イベントのEventApiService.detail()が呼ばれ、展開状態・詳細が設定されることを確認
   // 開催済み（開催日時が過去）のイベントは、開催日時が最も古くても一覧の末尾に並ぶことを確認
   it('並び替え: 開催済みのイベントは末尾に並ぶ（既定の開催日時順）', () => {
     eventApi.list.mockReturnValue(
@@ -157,6 +157,7 @@ describe('EventList', () => {
     expect(component.sortedEvents().map((e: EventSummary) => e.id)).toEqual([7, 2, 3, 1]);
   });
 
+  // toggleExpand(id)で、該当イベントのEventApiService.detail()が呼ばれ、展開状態・詳細が設定されることを確認
   it('詳細展開: toggleExpandでイベント詳細を取得する', () => {
     const component = createComponent() as any;
 

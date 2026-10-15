@@ -22,7 +22,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 // 実行環境: サーバー側（JVM）。applicationsテーブルへの問い合わせ口。
 public interface ApplicationRepository extends JpaRepository<Application, Long> {
 
-    // 受付済数の集計（acceptedCount／充足率）に使う。テーブル定義書§5「カラムにしない派生値」
+    // 受付済数の集計（acceptedCount／充足率）に使う。集計値はカラムに持たず都度数える
+    // （docs/20_基本設計/22_テーブル定義書.md 6章「その他の方針」）
     // countByEvent_IdAndStatus = 「event_id=? AND status=? の件数」に相当するSQLが自動生成される
     long countByEvent_IdAndStatus(Long eventId, Integer status);
 
@@ -35,29 +36,30 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     // existsBy... = 「1件でも存在すればtrue」に相当するSQL（EXISTS）が自動生成される
     boolean existsByEvent_IdAndStatusIn(Long eventId, Collection<Integer> statuses);
 
-    // 二重申込チェック（同一ユーザー×同一イベントに「受付済」が既に無いか）
+    // 同一ユーザー×同一イベントに、指定した状況の申込があるか。現在は呼び出し元が無い
+    // （二重申込チェックは、受付済・キャンセル待ちの両方を見る下のexistsByUser_IdAndEvent_IdAndStatusInを使う）
     boolean existsByUser_IdAndEvent_IdAndStatus(Long userId, Long eventId, Integer status);
 
-    // 機能追加（キャンセル待ち）: 二重申込チェックを受付済・キャンセル待ちの両方に対して行う
+    // 二重申込チェック（R-03）: 受付済・キャンセル待ちの両方に対して行う
     boolean existsByUser_IdAndEvent_IdAndStatusIn(Long userId, Long eventId, Collection<Integer> statuses);
 
-    // 機能追加（キャンセル待ちの繰り上げ、区分の無いイベント）: 対象イベントで最も古いキャンセル待ちを1件取得する
+    // キャンセル待ちの繰り上げ（R-05、区分の無いイベント）: 対象イベントで最も古いキャンセル待ちを1件取得する
     // findFirstBy...OrderBy...Asc = 条件に合う行を昇順に並べた上で先頭1件だけを取得するSQLが自動生成される
     Optional<Application> findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(Long eventId, Integer status);
 
-    // 機能追加（キャンセル待ちの繰り上げ、区分単位）: 対象区分で最も古いキャンセル待ちを1件取得する
+    // キャンセル待ちの繰り上げ（R-05、区分単位）: 対象区分で最も古いキャンセル待ちを1件取得する
     Optional<Application> findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc(Long ticketTypeId, Integer status);
 
-    // 機能追加（キャンセル待ちの順位計算、区分の無いイベント）: 自分より申込日時が古いキャンセル待ちの件数
+    // キャンセル待ちの順位計算（AP-031のwaitlistRank、区分の無いイベント）: 自分より申込日時が古いキャンセル待ちの件数
     long countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(Long eventId, Integer status, LocalDateTime appliedAt);
 
-    // 機能追加（キャンセル待ちの順位計算、区分単位）: 自分より申込日時が古いキャンセル待ちの件数
+    // キャンセル待ちの順位計算（AP-031のwaitlistRank、区分単位）: 自分より申込日時が古いキャンセル待ちの件数
     long countByTicketType_IdAndStatusAndAppliedAtLessThan(Long ticketTypeId, Integer status, LocalDateTime appliedAt);
 
-    // AP-031: 自分の申込一覧（申込日時の降順、テーブル定義書のidx_app_user_appliedを使う想定）
+    // AP-031・AP-142: 申込一覧（申込日時の降順、テーブル定義書8章のidx_app_user_appliedを使う想定）
     List<Application> findByUser_IdOrderByAppliedAtDesc(Long userId);
 
-    // AP-125: 当日受付の申込者一覧（申込日時の昇順、機能追加）
+    // AP-125: 当日受付の申込者一覧（申込日時の昇順）
     List<Application> findByEvent_IdOrderByAppliedAtAsc(Long eventId);
 
     // AP-130 format=csv: 申込実績の明細一覧（開催日時順）。ステータス問わず全件が対象だが、

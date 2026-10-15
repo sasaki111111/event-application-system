@@ -22,12 +22,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// お気に入り登録（AP-040）・解除（AP-041）・一覧（AP-042）。一般ユーザー・管理者の両方が使える（要件定義書§4）。
+// お気に入り登録（AP-040）・解除（AP-041）・一覧（AP-042）。一般ユーザー・管理者の両方が使える（docs/20_基本設計/20_機能設計書.md 4.4）。
+// あわせて、管理者専用のお気に入り総数取得（AP-131）も担当する。
 /**
  * イベントのお気に入り登録（AP-040）・解除（AP-041）・一覧（AP-042）、お気に入り総数取得（AP-131）のHTTP入口を担当するController。
  * フロントエンドのcore/favorite-api.ts（FavoriteApiService）から呼ばれ、内部ではFavoriteServiceの各メソッドに処理を委譲する。
  */
-@Tag(name = "お気に入り", description = "イベントのお気に入り登録・解除・一覧（AP-040〜18）")
+@Tag(name = "お気に入り", description = "イベントのお気に入り登録・解除・一覧、お気に入り総数（AP-040〜AP-042、AP-131）")
 @RestController
 public class FavoriteController {
 
@@ -39,7 +40,7 @@ public class FavoriteController {
         this.authContext = authContext;
     }
 
-    // AP-040 POST /api/favorites。既に登録済みなら200、新規なら201（冪等、要件定義書E9）
+    // AP-040 POST /api/favorites。既に登録済みなら200、新規なら201（冪等、docs/30_詳細設計/32_処理詳細設計書.md R-12）
     /**
      * イベントをお気に入り登録する（AP-040）。フロントエンドのcore/favorite-api.ts（FavoriteApiService#add）から呼ばれ、
      * FavoriteService#addに処理を委譲する。

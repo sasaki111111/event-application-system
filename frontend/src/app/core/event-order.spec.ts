@@ -1,4 +1,5 @@
 // 実行環境: テスト実行時。開催済みのイベントを末尾に並べる共通処理（event-order.ts）の単体テスト。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.5（UT-ORD-）のテストケースと1対1で対応する。
 import { isHeld, moveHeldEventsLast } from './event-order';
 
 describe('event-order', () => {

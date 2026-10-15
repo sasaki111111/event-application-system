@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。イベントコメント（AP-050〜21）の業務ロジック。
-// 開催前後を問わず投稿可能。削除は投稿者本人または管理者のみ。
+// 実行環境: サーバー側（JVM）。イベントコメント（AP-050〜AP-052、AP-132、AP-144、AP-150）の業務ロジック。
+// 開催前後を問わず投稿可能。削除は投稿者本人または管理者のみ（R-13）。
 /**
  * イベントコメントの一覧（AP-050）・投稿（AP-051）・削除（AP-052）、管理者向けの総数取得（AP-132）・
  * 全件一覧（AP-150）・利用者別履歴（AP-144）の業務ロジックを担当するService。
@@ -50,6 +50,7 @@ public class EventCommentService {
      */
     @Transactional(readOnly = true)
     public List<EventCommentResponse> list(Long eventId, Long currentUserId) {
+        // 対象イベントが存在し、削除済みでないことを確認する（無ければ404・E-B-001）
         requireEvent(eventId);
         // comment -> toResponse(comment, currentUserId): ラムダ式。引数commentを受け取り、
         // toResponse()を呼んだ結果を返す小さな関数をその場で定義している（中括弧やreturnを省略した書き方）。
@@ -73,17 +74,19 @@ public class EventCommentService {
         Event event = requireEvent(eventId);
         EventComment parentComment = null;
         if (parentCommentId != null) {
-            // 返信先は同一イベントのコメントであることを要する。削除済み（論理削除）のコメントへの返信は許可する
+            // 返信先は同一イベントのコメントであることを要する（C-06・E-B-016）。削除済み（論理削除）のコメントへの返信は許可する
             parentComment = eventCommentRepository.findByIdAndEvent_Id(parentCommentId, eventId)
                     .orElseThrow(() -> new NotFoundException("返信先のコメントが見つかりません"));
         }
+        // コメントを保存する。投稿の成功はログに出力しない（投稿者・日時はevent_commentsの行から確認できるため。
+        // docs/20_基本設計/24_方式設計書.md 6.2）
         EventComment saved = eventCommentRepository.save(
                 new EventComment(event, userRepository.getReferenceById(userId), body, parentComment));
         return toResponse(saved, userId);
     }
 
-    // AP-052: 削除可否チェック。投稿者本人または管理者のみ削除可能。
-    // 返信が1件も無ければ物理削除、1件以上あれば返信との参照関係を保つため論理削除する
+    // AP-052: 削除可否チェック。投稿者本人または管理者のみ削除可能（R-13・E-A-004）。
+    // 返信が1件も無ければ物理削除、1件以上あれば返信との参照関係を保つため論理削除する（R-14）
     /**
      * コメントを削除する（AP-052）。CommentController#deleteから呼ばれる。投稿者本人・管理者のいずれでもない場合は
      * ForbiddenExceptionを投げ、GlobalExceptionHandlerにより403（Forbidden）になる。
@@ -94,6 +97,7 @@ public class EventCommentService {
      */
     @Transactional
     public void delete(Long userId, boolean isAdmin, Long commentId) {
+        // 削除対象のコメントを取得する（存在しなければ404・E-B-011）
         EventComment comment = eventCommentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("コメントが見つかりません"));
 
@@ -102,6 +106,8 @@ public class EventCommentService {
             throw new ForbiddenException("削除できません");
         }
 
+        // 実行者はevent_commentsの行に残らない（物理削除では行自体も消える）ため、どちらの場合もログに記録する
+        // （docs/30_詳細設計/33_共通詳細設計書.md 6.1）
         if (eventCommentRepository.existsByParentComment_Id(commentId)) {
             comment.softDelete();
             log.info("コメント論理削除完了 commentId={} eventId={} 実行者userId={}",
@@ -145,9 +151,9 @@ public class EventCommentService {
                 .toList();
     }
 
-    // 全コメント一覧（SC-150コメントモデレーション、AP-150）。有効なコメントのみを対象とする
+    // 全コメント一覧（SC-150コメント管理、AP-150）。有効なコメントのみを対象とする
     /**
-     * SC-150（コメントモデレーション画面）向けに、全イベント横断の有効なコメント一覧を取得する（AP-150）。
+     * SC-150（コメント管理画面）向けに、全イベント横断の有効なコメント一覧を取得する（AP-150）。
      * CommentController#listAllから呼ばれる。
      *
      * @return コメント一覧（投稿日時降順、論理削除されたものは除く）
@@ -171,6 +177,7 @@ public class EventCommentService {
                 .orElseThrow(() -> new NotFoundException("イベントが見つかりません"));
     }
 
+    // 論理削除されたコメントの本文の代わりに返す固定の文言（AP-050・AP-144。実際の本文は返さない）
     private static final String DELETED_BODY_PLACEHOLDER = "このコメントは削除されました";
 
     private EventCommentResponse toResponse(EventComment comment, Long currentUserId) {

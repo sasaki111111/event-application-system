@@ -30,7 +30,8 @@ import org.junit.jupiter.api.Test;
  * JUnit5とMockitoを使用する。Repository（DBアクセスを担うクラス）はすべてモック化（偽装）し、
  * 本物のDBに接続せずに「既に登録済みなら新規作成しない」といった冪等性のルールだけを検証する。
  */
-// 実行環境: サーバー側（JVM）。N-2: FavoriteServiceの業務ロジック（要件定義書§8 E9の冪等性）のユニットテスト。
+// 実行環境: サーバー側（JVM）。FavoriteServiceの業務ロジック（R-12の冪等性）の単体テスト。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.4（UT-FAV-）のテストケースと1対1で対応する。
 // JUnit5＋Mockito。Repositoryは全てモック化し、DBに触れずにビジネスロジックだけを検証する。
 class FavoriteServiceTest {
 
@@ -85,7 +86,7 @@ class FavoriteServiceTest {
         verify(favoriteRepository).save(any(Favorite.class));
     }
 
-    // 機能（冪等）: 既に登録済みのイベントに再度登録しても新規作成はされず、既存の1件をそのまま返す（要件定義書§8 E9）
+    // 正常系（冪等）: 既に登録済みのイベントに再度登録しても新規作成はされず、既存の1件をそのまま返す（R-12）
     @Test
     void add_機能_既に登録済みなら新規作成せず既存を返す() {
         Event event = mock(Event.class);
@@ -119,7 +120,7 @@ class FavoriteServiceTest {
         verify(favoriteRepository, never()).save(any());
     }
 
-    // 機能（冪等）: 未登録のイベントを解除してもエラーにならない（要件定義書§8 E9）
+    // 正常系（冪等）: 未登録のイベントを解除してもエラーにならない（R-12）
     @Test
     void remove_機能_未登録でもエラーにならない() {
         // 未登録の状態で解除を実行しても例外が発生しないことを確認する（メソッド呼び出し自体が検証になる）

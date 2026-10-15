@@ -1,6 +1,7 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。auth-guard.tsの単体テスト。
 // TestBedの使い方はadmin-guard.spec.tsと同様（LoginUserStoreのログイン状態を変えて、
 // authGuardの戻り値（true／UrlTree）を確認する）。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.7（UT-AUTHG-）のテストケースと1対1で対応する。
 // TestBed: Angularのテスト用DIコンテナ
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';

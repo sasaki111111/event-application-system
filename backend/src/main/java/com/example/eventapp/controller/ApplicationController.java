@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。
-// イベント申込API（AP-030）、自分の申込一覧API（AP-031）、申込キャンセルAPI（AP-032）。
+// イベント申込API（AP-030）、自分の申込一覧API（AP-031）、申込キャンセルAPI（AP-032）、チェックインAPI（AP-126、管理者のみ）。
 /**
  * Controller（コントローラー）層のクラス。Controllerは、ブラウザ（Angular）から送られてくる
  * HTTPリクエスト（GET/POST/PUT/DELETEなど）を最初に受け取る「入口」の役割を持つ。
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  * そのインスタンスを生成して渡してくれる（コンストラクタインジェクション、DI＝Dependency Injection）。
  * {@code new ApplicationService(...)}のようなコードをどこにも書く必要がない。
  */
-@Tag(name = "申込", description = "イベント申込・自分の申込一覧・キャンセル・チェックイン（AP-030〜15）")
+@Tag(name = "申込", description = "イベント申込・自分の申込一覧・キャンセル・チェックイン（AP-030〜AP-032、AP-126）")
 @RestController
 public class ApplicationController {
 
@@ -54,8 +54,9 @@ public class ApplicationController {
         this.validator = validator;
     }
 
-    // AP-030 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403 要件定義書E7）
+    // AP-030 POST /api/applications（一般のみ、本人のuserIdに紐付け。管理者は403・E-A-005）
     // 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
+    // （docs/20_基本設計/23_API基本設計書.md 2.5、docs/30_詳細設計/33_共通詳細設計書.md 2.1）
     /**
      * AP-030: イベントへの参加を申し込む。フロントエンドのApplicationApiService.apply()から呼ばれ、
      * 内部ではApplicationService.apply()に処理を委ねる。
@@ -125,7 +126,7 @@ public class ApplicationController {
         applicationService.cancel(userId, id);
     }
 
-    // AP-126 PUT /api/applications/{id}/check-in（管理者のみ、機能追加）
+    // AP-126 PUT /api/applications/{id}/check-in（管理者のみ）
     /**
      * AP-126: 当日受付でのチェックインを記録する。フロントエンドのCheckInApiService.checkIn()から呼ばれ、
      * 内部ではApplicationService.checkIn()に処理を委ねる。{@code @PutMapping}はHTTP PUTリクエストを
@@ -148,7 +149,7 @@ public class ApplicationController {
         return applicationService.checkIn(id);
     }
 
-    // 管理者による申込を防ぐ（AP-030、要件定義書E7）。ここで例外を投げると、最終的にGlobalExceptionHandlerが
+    // 管理者による申込を防ぐ（AP-030、E-A-005）。ここで例外を投げると、最終的にGlobalExceptionHandlerが
     // キャッチしてHTTPステータス403として応答する
     private void requireGeneral() {
         // ログイン中の利用者が管理者かどうかを判定する

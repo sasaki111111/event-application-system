@@ -62,12 +62,12 @@ export class AdminUserList implements OnInit {
     this.registerEmail.set(value);
   }
 
-  /** 指定した項目名（field）について、管理者登録フォームに表示すべきサーバー側エラーを返す（無ければnull）。 */
-  /** 初期パスワード入力欄の入力値をsignalに反映する。 */
+  /** 管理者登録フォームの「初期パスワード」入力欄（(input)="onRegisterPasswordInput(...)"）から呼ばれる処理。 */
   protected onRegisterPasswordInput(value: string): void {
     this.registerPassword.set(value);
   }
 
+  /** 指定した項目名（field）について、管理者登録フォームに表示すべきサーバー側エラーを返す（無ければnull）。 */
   protected registerFieldError(field: string): string | null {
     return this.registerFieldErrors().find((e) => e.field === field)?.message ?? null;
   }
@@ -75,7 +75,7 @@ export class AdminUserList implements OnInit {
   /**
    * 管理者登録フォームの送信（(submit)="...registerAdmin()"）から呼ばれる処理。
    * AP-145: 既存の管理者のみ実行できる。作成されるのは常に管理者。
-   * 名前・メールアドレスの入力チェックはサーバー側で行われ、400エラー＋errors配列が
+   * 名前・メールアドレス・パスワードの入力チェックはサーバー側で行われ、400エラー＋errors配列が
    * 返ってきた場合にregisterFieldErrorsへ反映して各入力欄の下にエラー文を表示する。
    */
   protected registerAdmin(): void {
@@ -84,7 +84,7 @@ export class AdminUserList implements OnInit {
     this.registerFieldErrors.set([]);
     this.registering.set(true);
 
-    // 入力されている名前・メールアドレスで管理者登録APIを呼び出す
+    // 入力されている名前・メールアドレス・初期パスワードで管理者登録APIを呼び出す
     this.userApi.registerAdmin(this.registerName(), this.registerEmail(), this.registerPassword()).subscribe({
       next: () => {
         // 成功したら登録中状態を解除し、入力欄を空に戻し、利用者一覧を再取得する

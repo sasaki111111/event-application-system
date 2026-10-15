@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。/admin/**への画面遷移を管理者以外は通さないルートガード（E-7）。
-// 画面遷移図「管理者以外が/admin/*にアクセス→イベント一覧」に対応。ルート側でauthGuardの後に適用するため、
+// 実行環境: ブラウザ側。/admin/**への画面遷移を管理者以外は通さないルートガード。
+// docs/30_詳細設計/33_共通詳細設計書.md 5.4「一般利用者が管理者向けの画面を開いた→SC-020へ」に対応。ルート側でauthGuardの後に適用するため、
 // ここに来る時点でログイン済み（currentUserIdはnullでない）であることが前提。
 //
 // [Angularの基礎: ルートガードとは] 指定した画面（ルート）へ遷移する直前に、Angular Routerが
@@ -11,13 +11,13 @@
 import { inject } from '@angular/core';
 // CanActivateFn: ルートガードとして使う関数の型。Router: 画面遷移やUrlTree生成を行うサービス
 import { CanActivateFn, Router } from '@angular/router';
-// ログイン中ユーザー（userId・role）を保持するストア
+// LoginUserStore: ログイン中ユーザー（userId・利用者区分コード）を保持するストア
 import { LoginUserStore } from './login-user-store';
 
 /**
  * 管理者専用ルート（/admin/**）用のガード。CanActivateFn型で実装する「関数型ガード」。
  * app.routes.tsの管理者向けルートでcanActivate: [authGuard, adminGuard]として登録されており、
- * authGuardでログイン済みと確認された後に、続けてこの関数がロールを判定する。
+ * authGuardでログイン済みと確認された後に、続けてこの関数が利用者区分を判定する。
  *
  * @returns ログイン中ユーザーが管理者ならtrue（遷移を許可）。管理者でない場合は、
  *          イベント一覧（/events）へ遷移先を差し替えるUrlTreeを返す。
@@ -27,7 +27,7 @@ export const adminGuard: CanActivateFn = () => {
   // Angularの依存注入（DI）の仕組みを使ってサービスのインスタンスを取り出せる関数。
   // クラスのコンストラクタ注入と同じDIコンテナから取得する。
   const loginUserStore = inject(LoginUserStore);
-  // isAdmin()はcomputed（login-user-store.ts）で、現在のroleが"admin"かどうかを返す
+  // isAdmin()はcomputed（login-user-store.ts）で、現在の利用者区分コードが管理者（2）かどうかを返す
   if (loginUserStore.isAdmin()) {
     // 管理者なので、このまま/admin/**への遷移を許可する
     return true;

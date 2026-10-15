@@ -20,7 +20,7 @@
 } @else if (errorMessage()) {
   <p class="error">{{ errorMessage() }}</p>
 } @else if (viewMode() === 'calendar') {
-  <!-- 開催カレンダー表示（機能追加）。月の切替ボタンと、曜日・日付のマス -->
+  <!-- 開催カレンダー表示。月の切替ボタンと、曜日・日付のマス -->
   <div class="calendar">
     <div class="calendar-header">
       <button type="button" class="btn-sm" (click)="previousMonth()">← 前月</button>
@@ -54,7 +54,7 @@
     }
   </div>
 } @else {
-  <!-- （機能追加）: 一覧表示のみで有効な並び替え -->
+  <!-- 一覧表示のみで有効な並び替え -->
   <div class="toolbar">
     <label>
       並び替え:
@@ -78,7 +78,7 @@
           } @else {
             <span class="badge badge-neutral">受付終了</span>
           }
-          <!-- 機能追加（お気に入り） -->
+          <!-- お気に入りの登録・解除ボタン -->
           <button
             type="button"
             class="btn-favorite"
@@ -159,7 +159,7 @@
               }
 
               @if (isAdmin) {
-                <!-- 要件定義書E7: 管理者は申込できない -->
+                <!-- 管理者は申込できない（E-A-005） -->
                 <p class="note">管理者アカウントでは申込できません。</p>
               } @else if (detail.open) {
                 @if (detail.remaining <= 0) {

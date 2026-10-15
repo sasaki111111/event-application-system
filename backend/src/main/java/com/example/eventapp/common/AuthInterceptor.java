@@ -18,8 +18,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * {@code addInterceptors}メソッド側で設定している。
  */
 // 実行環境: サーバー側（JVM）。Controllerの処理が始まる直前に必ず通る「関所」（HandlerInterceptor）。
-// docs/20_基本設計/24_方式設計書.md: X-User-Idヘッダからログインユーザーを解決する（パスワードの照合はログイン時のみ行う）。
-// ヘッダ無し／存在しないuserId／退会済み（匿名化済み）のuserIdは401（GlobalExceptionHandlerが変換）。
+// docs/20_基本設計/24_方式設計書.md 3.2: X-User-Idヘッダからログインユーザーを解決する（パスワードの照合はログイン時のみ行う）。
+// ヘッダ無し／数値でない／存在しないuserId／退会済み（匿名化済み）のuserIdは401・E-A-001
+// （docs/30_詳細設計/33_共通詳細設計書.md 5.2。GlobalExceptionHandlerが変換）。
 // どのURLに適用するか（/api/**、ただしlogin/pingは除外）はWebConfigで設定している。
 public class AuthInterceptor implements HandlerInterceptor {
 
@@ -48,8 +49,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 軽い会員登録（機能追加）: POST /api/usersはログイン前に呼ばれるため認証不要。
-        // GET /api/users（ユーザー一覧、管理者専用）はこの対象外＝通常通り認証・権限チェックされる。
+        // 利用者登録（AP-011）: POST /api/usersはログイン前に呼ばれるため認証不要。
+        // GET /api/users（AP-140 利用者一覧、管理者専用）はこの対象外＝通常通り認証・権限チェックされる。
         // HTTPメソッドがPOSTであり、かつリクエストのパスが"/api/users"と完全一致するかを判定する
         if ("POST".equalsIgnoreCase(request.getMethod()) && "/api/users".equals(request.getRequestURI())) {
             return true;

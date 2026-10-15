@@ -84,7 +84,7 @@
           <td>{{ user.userId }}</td>
           <td><a [routerLink]="['/admin/users', user.userId]">{{ user.name }}</a></td>
           <td>{{ user.email }}</td>
-          <!-- ロール（管理者／一般）のバッジに加え、退会済みの場合は追加でバッジを表示する -->
+          <!-- 利用者区分（管理者／一般利用者）のバッジに加え、退会済みの場合は追加でバッジを表示する -->
           <td>
             @if (user.roleCode === RoleCode.ADMIN) {
               <span class="badge badge-neutral">{{ user.roleName }}</span>

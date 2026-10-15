@@ -1,10 +1,12 @@
-// 実行環境: ブラウザ側。SC-010ログイン画面から呼ぶ、認証不要の窓口（機能追加）。
+// 実行環境: ブラウザ側。SC-010ログイン画面から呼ぶ、認証不要の窓口（AP-010・AP-011）と、
+// SC-011パスワード変更画面から呼ぶパスワード変更（AP-012、要認証）。
 // ログイン前はLoginUserStoreが空でauthHeaderInterceptorがX-User-Idを付けないため、
-// これらのAPI（backend側でAuthInterceptor対象外）はヘッダ無しでそのまま呼べる。
+// ログイン・利用者登録（backend側でAuthInterceptor対象外）はヘッダ無しでそのまま呼べる。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+// AP-010・AP-011のレスポンス（backendのUserResponseと対応。パスワードは含まれない）
 export interface UserResponse {
   userId: number;
   name: string;
@@ -18,15 +20,14 @@ export interface UserResponse {
 const API_BASE_URL = 'http://localhost:8080/api';
 
 /**
- * 認証不要（ログイン前）のバックエンドAPI（ログイン・簡易会員登録）を呼び出すサービス。
- * ログイン画面（Login）から利用される想定。
+ * ログイン・利用者登録・パスワード変更のバックエンドAPIを呼び出すサービス。
+ * ログイン画面（Login）・パスワード変更画面（PasswordChange）から利用される。
  */
 @Injectable({ providedIn: 'root' })
 export class LoginApiService {
   constructor(private readonly http: HttpClient) {}
 
-  /** メールアドレスでログインする。存在しなければbackendが401を返す。 */
-  /** メールアドレスとパスワードでログインする（AP-010）。 */
+  /** メールアドレスとパスワードでログインする（AP-010）。一致しなければbackendが401を返す。 */
   login(email: string, password: string): Observable<UserResponse> {
     return this.http.post<UserResponse>(`${API_BASE_URL}/login`, { email, password });
   }

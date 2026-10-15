@@ -1,4 +1,5 @@
-// 実行環境: ブラウザ側。機能追加（ソフトデリート）: 削除済みイベントの確認・復元画面（/admin/events/deleted）。
+// 実行環境: ブラウザ側。SC-122 削除済みイベント画面（/admin/events/deleted）。
+// 削除（論理削除）したイベントの確認（AP-123）・復元（AP-124）・複製を行う。
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -11,7 +12,7 @@ import { DeletedEvent, EventApiService } from '../../core/event-api';
   styleUrl: './admin-deleted-events.css',
 })
 /**
- * 削除済みイベントの確認・復元画面（/admin/events/deleted）を担当するComponent。
+ * SC-122 削除済みイベント画面（/admin/events/deleted）を担当するComponent。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
  *   管理者以外のユーザーはアクセスできない（＝管理者専用画面）。

@@ -51,10 +51,12 @@ public class ReportService {
      */
     @Transactional(readOnly = true)
     public List<EventReportResponse> summarize(String sort) {
+        // 削除済みでないイベントを開催日時昇順で取得し、イベントごとに受付済数・充足率を集計する
         List<EventReportResponse> reports = new ArrayList<>(
                 eventRepository.findAllByDeletedAtIsNullOrderByStartAtAsc().stream().map(this::toReport).toList()
         );
 
+        // sort=accepted_descの場合のみ受付済数の降順に並べ替える（それ以外は開催日時昇順のまま）
         if ("accepted_desc".equals(sort)) {
             reports.sort(Comparator.comparingLong(EventReportResponse::acceptedCount).reversed());
         }
@@ -94,6 +96,7 @@ public class ReportService {
         csv.append(BOM); // ExcelでUTF-8を文字化けせずに開けるようにするため付与
         csv.append("イベント名,申込者名,申込日時,ステータス,アンケート回答,参加区分\r\n");
 
+        // 状況（受付済・キャンセル待ち・キャンセル済）を問わず、削除済みでないイベントの申込を全件出力する
         List<Application> applications = applicationRepository.findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc();
         for (Application application : applications) {
             String ticketTypeName = application.getTicketType() != null ? application.getTicketType().getName() : null;
@@ -105,16 +108,19 @@ public class ReportService {
                     .append(csvField(ticketTypeName)).append("\r\n");
         }
 
+        // CSV出力はデータベースに痕跡が残らないため、ログに記録する（docs/30_詳細設計/33_共通詳細設計書.md 6.1）
         log.info("申込実績CSV出力完了 件数={} 実行者userId={}",
                 applications.size(), authContext.getCurrentUser().userId());
         return csv.toString();
     }
 
-    // CSVインジェクション対策（docs/30_詳細設計/31_API詳細設計書.md AP-130）対象の先頭文字。
+    // CSVを開いたときの数式実行への対策（docs/20_基本設計/24_方式設計書.md 8章）の対象となる先頭文字。
     // Excel等の表計算ソフトが数式として解釈しうる文字（=, +, -, @）およびタブ・改行文字。
     private static final String FORMULA_TRIGGER_CHARS = "=+-@\t\r";
 
+    // CSVの1項目分の値を組み立てる（docs/30_詳細設計/32_処理詳細設計書.md 8章「CSVフィールドのエスケープ」）
     private String csvField(String value) {
+        // 値が無い（NULL）項目は空欄にする
         if (value == null) {
             return "";
         }
@@ -122,6 +128,7 @@ public class ReportService {
             // 先頭にシングルクォートを付与し、表計算ソフトに数式ではなく文字列として読ませる
             value = "'" + value;
         }
+        // 値の中のダブルクォートは2つ重ねてエスケープし、カンマ・ダブルクォート・改行を含む場合は全体をダブルクォートで囲む
         String escaped = value.replace("\"", "\"\"");
         boolean needsQuoting = value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r");
         return needsQuoting ? "\"" + escaped + "\"" : escaped;

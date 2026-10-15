@@ -43,7 +43,8 @@ import org.mockito.ArgumentCaptor;
  * 「このメソッドが呼ばれたらこの値を返す」という振る舞いだけを設定することで、実際のDBに接続せずに
  * 業務ロジック（定員判定・キャンセル待ちへの繰り上げ等）だけを検証する。
  */
-// 実行環境: サーバー側（JVM）。G-1: ApplicationServiceの業務ロジック（要件定義書§8＋機能追加のキャンセル待ち・定員区分）のユニットテスト。
+// 実行環境: サーバー側（JVM）。ApplicationServiceの業務ロジック（docs/30_詳細設計/32_処理詳細設計書.md 5章の業務ルール）の単体テスト。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 2.1（UT-APP-）のテストケースと1対1で対応する。
 // JUnit5＋Mockito。Repositoryは全てモック化し、DBに触れずにビジネスロジックだけを検証する。
 class ApplicationServiceTest {
 
@@ -140,7 +141,7 @@ class ApplicationServiceTest {
         verifyNoInteractions(applicationRepository);
     }
 
-    // 異常系: 申込締切または開催日時を過ぎたイベントへの申込は拒否される（要件定義書§8 E2）
+    // 異常系: 申込締切または開催日時を過ぎたイベントへの申込は拒否される（R-01・E-B-002）
     @Test
     void apply_異常系_受付終了のイベントには申込できない() {
         Event closedEvent = mock(Event.class);
@@ -154,7 +155,7 @@ class ApplicationServiceTest {
         verifyNoInteractions(applicationRepository);
     }
 
-    // 機能追加: 受付済の申込数が定員に達しているイベントに申込むと、エラーにはならず「キャンセル待ち」で登録される
+    // 正常系: 受付済の申込数が定員に達しているイベントに申込むと、エラーにはならず「キャンセル待ち」で登録される
     @Test
     void apply_機能追加_定員に達していればキャンセル待ちで登録される() {
         // 定員3のイベントを用意する
@@ -179,7 +180,7 @@ class ApplicationServiceTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(ApplicationStatus.WAITLISTED);
     }
 
-    // 異常系: 同一ユーザーが同一イベントにすでに「受付済」で申し込んでいれば二重申込は拒否される（要件定義書§8 E3）
+    // 異常系: 同一ユーザーが同一イベントにすでに「受付済」で申し込んでいれば二重申込は拒否される（R-03・E-B-003）
     @Test
     void apply_異常系_二重申込はできない() {
         Event event = openEvent(5);
@@ -196,7 +197,7 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).save(any());
     }
 
-    // 機能追加: すでに「キャンセル待ち」で申し込んでいる場合も二重申込は拒否される
+    // 異常系: すでに「キャンセル待ち」で申し込んでいる場合も二重申込は拒否される（R-03）
     @Test
     void apply_機能追加_キャンセル待ち中の二重申込もできない() {
         Event event = openEvent(1);
@@ -209,7 +210,7 @@ class ApplicationServiceTest {
                 .hasMessage("すでに申し込み済みです");
     }
 
-    // 正常系: 受付済かつ開催日時前の申込は取消できる（要件定義書§8）
+    // 正常系: 受付済かつ開催日時前の申込は取消できる（R-04）
     @Test
     void cancel_正常系_受付済かつ開催前なら取消できる() {
         // 申込者となるUserをモック化する
@@ -231,7 +232,7 @@ class ApplicationServiceTest {
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.CANCELLED);
     }
 
-    // 機能追加: 受付済をキャンセルすると、最も古いキャンセル待ちが自動的に受付済へ繰り上がる
+    // 正常系: 受付済をキャンセルすると、最も古いキャンセル待ちが自動的に受付済へ繰り上がる（R-05）
     @Test
     void cancel_機能追加_受付済のキャンセルでキャンセル待ちが繰り上がる() {
         User owner = mock(User.class);
@@ -257,7 +258,7 @@ class ApplicationServiceTest {
         assertThat(waitlisted.getStatus()).isEqualTo(ApplicationStatus.ACCEPTED);
     }
 
-    // 機能追加: キャンセル待ちの申込自体も取消できる（繰り上げは発生しない＝枠が空いていないため）
+    // 正常系: キャンセル待ちの申込自体も取消できる（繰り上げは発生しない＝枠が空いていないため）
     @Test
     void cancel_機能追加_キャンセル待ちの申込も取消できる() {
         User owner = mock(User.class);
@@ -295,7 +296,7 @@ class ApplicationServiceTest {
         assertThat(application.getStatus()).isEqualTo(ApplicationStatus.ACCEPTED);
     }
 
-    // 異常系: すでにキャンセル済み、または開催日時を過ぎた申込は取消できない（要件定義書§8 E4）
+    // 異常系: すでにキャンセル済み、または開催日時を過ぎた申込は取消できない（R-04・E-B-010）
     @Test
     void cancel_異常系_開催日時を過ぎた申込は取消できない() {
         User owner = mock(User.class);
@@ -331,7 +332,7 @@ class ApplicationServiceTest {
         return ticketType;
     }
 
-    // 正常系（機能追加：定員区分）: 区分の定員に余裕があれば、その区分の受付済数で判定し受付済になる
+    // 正常系（参加区分）: 区分の定員に余裕があれば、その区分の受付済数で判定し受付済になる
     @Test
     void apply_機能追加_区分の定員に余裕があれば受付済で申込できる() {
         // イベント全体の定員は999（十分大きい）だが、区分（定員2）の方で判定されることを確認するテスト
@@ -360,7 +361,7 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).countByEvent_IdAndStatus(anyLong(), any());
     }
 
-    // 機能追加（定員区分）: 区分の定員に達していれば、イベント全体に空きがあってもその区分はキャンセル待ちになる
+    // 正常系（参加区分）: 区分の定員に達していれば、イベント全体に空きがあってもその区分はキャンセル待ちになる
     @Test
     void apply_機能追加_区分の定員に達していればキャンセル待ちで登録される() {
         Event event = openEvent(999);
@@ -381,7 +382,7 @@ class ApplicationServiceTest {
         assertThat(response.statusCode()).isEqualTo(ApplicationStatus.WAITLISTED);
     }
 
-    // 異常系（機能追加：定員区分）: 区分があるイベントで区分未指定は400（要件定義書§8 E12）
+    // 異常系（参加区分）: 区分があるイベントで区分未指定は400（C-03・E-B-004）
     @Test
     void apply_異常系_区分があるのに未指定なら区分を選択してくださいで拒否される() {
         Event event = openEvent(999);
@@ -397,7 +398,7 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).save(any());
     }
 
-    // 異常系（機能追加：定員区分）: 対象イベントに属さない区分の指定は404（要件定義書§8 E11）
+    // 異常系（参加区分）: 対象イベントに属さない区分の指定は404（E-B-005）
     @Test
     void apply_異常系_存在しない区分を指定すると指定された区分が見つかりませんで拒否される() {
         Event event = openEvent(999);
@@ -415,7 +416,7 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).save(any());
     }
 
-    // 異常系（機能追加：定員区分）: 区分の無いイベントに区分を指定した場合も404（32_処理詳細設計書 4章 AP-030 No.7）
+    // 異常系（参加区分）: 区分の無いイベントに区分を指定した場合も404（docs/30_詳細設計/32_処理詳細設計書.md 4章 AP-030 No.7）
     @Test
     void apply_異常系_区分の無いイベントに区分を指定すると指定された区分が見つかりませんで拒否される() {
         Event event = openEvent(999);
@@ -432,7 +433,7 @@ class ApplicationServiceTest {
         verify(applicationRepository, never()).save(any());
     }
 
-    // 機能追加（定員区分）: 区分ありの申込をキャンセルすると、同じ区分で最も古いキャンセル待ちが繰り上がる
+    // 正常系（参加区分）: 区分ありの申込をキャンセルすると、同じ区分で最も古いキャンセル待ちが繰り上がる
     @Test
     void cancel_機能追加_区分単位でキャンセル待ちが繰り上がる() {
         User owner = mock(User.class);
@@ -462,7 +463,7 @@ class ApplicationServiceTest {
                 .findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(anyLong(), any());
     }
 
-    // 正常系（機能追加：定員区分）: 自分の申込一覧でキャンセル待ちの順位が区分単位で計算される
+    // 正常系（参加区分）: 自分の申込一覧でキャンセル待ちの順位が区分単位で計算される
     @Test
     void myApplications_機能追加_区分単位でキャンセル待ちの順位が計算される() {
         User user = mock(User.class);
@@ -507,7 +508,7 @@ class ApplicationServiceTest {
                 .countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan(anyLong(), any(), any());
     }
 
-    // 正常系（機能追加：当日受付）: 申込者一覧が申込日時昇順で返り、区分名・チェックイン状況を含む
+    // 正常系（当日受付）: 申込者一覧が申込日時昇順で返り、区分名・チェックイン状況を含む
     @Test
     void listAttendees_正常系_申込者一覧を返す() {
         Event event = mock(Event.class);
@@ -535,11 +536,11 @@ class ApplicationServiceTest {
         assertThat(result.get(0).ticketTypeName()).isEqualTo("一般枠");
         // まだチェックインしていないのでnullであることを確認する
         assertThat(result.get(0).checkedInAt()).isNull();
-        // （機能追加）: 申込時アンケートへの回答が当日受付一覧にも含まれる
+        // 申込時アンケートへの回答が当日受付一覧にも含まれる
         assertThat(result.get(0).extraAnswer()).isEqualTo("会場までは電車で向かいます");
     }
 
-    // 正常系（機能追加：当日受付）: 区分の無いイベントの申込はticketTypeNameがNULL
+    // 正常系（当日受付）: 区分の無いイベントの申込はticketTypeNameがNULL
     @Test
     void listAttendees_正常系_区分が無ければticketTypeNameはNULL() {
         Event event = mock(Event.class);
@@ -553,7 +554,7 @@ class ApplicationServiceTest {
 
         // 区分が無いのでticketTypeNameはnullであることを確認する
         assertThat(result.get(0).ticketTypeName()).isNull();
-        // （機能追加）: アンケート未回答（コンストラクタ既定値NULL）の場合はextraAnswerもNULL
+        // アンケート未回答（コンストラクタ既定値NULL）の場合はextraAnswerもNULL
         assertThat(result.get(0).extraAnswer()).isNull();
     }
 
@@ -566,7 +567,7 @@ class ApplicationServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
-    // 正常系（機能追加：当日受付）: 受付済の申込はチェックインできる
+    // 正常系（当日受付）: 受付済の申込はチェックインできる
     @Test
     void checkIn_正常系_受付済の申込はチェックインできる() {
         User user = mock(User.class);
@@ -625,7 +626,7 @@ class ApplicationServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
-    // 正常系（UT-APP-07）: キャンセル済の申込しか無いイベントには再申込できる
+    // 正常系（UT-APP-N03）: キャンセル済の申込しか無いイベントには再申込できる
     @Test
     void apply_正常系_キャンセル済の申込のみなら再申込できる() {
         Event event = openEvent(5);
@@ -650,7 +651,7 @@ class ApplicationServiceTest {
         assertThat(ApplicationStatus.ACTIVE_STATUSES).doesNotContain(ApplicationStatus.CANCELLED);
     }
 
-    // 境界（UT-APP-12）: 現在時刻が申込締切ちょうどなら受付中（締切「以前」は受付）と判定される。
+    // 境界（UT-APP-N06）: 現在時刻が申込締切ちょうどなら受付中（締切「以前」は受付）と判定される。
     // apply()は現在時刻をLocalDateTime.now()で取得するため時刻を固定できない。そこで、apply()が受付可否の判定に
     // 使っているEvent#isOpen(現在時刻)に、固定した時刻を直接渡して境界の挙動を確認する。
     @Test
@@ -667,7 +668,7 @@ class ApplicationServiceTest {
         assertThat(event.isOpen(deadline.plusSeconds(1))).isFalse();
     }
 
-    // 異常系（UT-APP-19）: キャンセル済の申込は再度取消できない
+    // 異常系（UT-APP-E09）: キャンセル済の申込は再度取消できない
     @Test
     void cancel_異常系_キャンセル済の申込は取消できない() {
         User owner = mock(User.class);
@@ -686,7 +687,7 @@ class ApplicationServiceTest {
                 .findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc(anyLong(), any());
     }
 
-    // 正常系（UT-APP-27）: チェックイン済みの申込に再度チェックインすると、日時が最新の実行時刻に更新される
+    // 正常系（UT-APP-N16）: チェックイン済みの申込に再度チェックインすると、日時が最新の実行時刻に更新される
     @Test
     void checkIn_正常系_チェックイン済みに再実行すると日時が更新される() throws InterruptedException {
         User user = mock(User.class);

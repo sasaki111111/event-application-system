@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 // 実行環境: サーバー側（JVM）。イベント登録(AP-120)・編集(AP-121)のリクエストボディ。
-// バリデーション内容はAPI設計書 AP-120/08の制約に対応。
+// バリデーション内容はdocs/30_詳細設計/33_共通詳細設計書.md 3.1のE-V-010〜E-V-021に対応（AP-120・AP-121で同じエラーIDを使う）。
 @ValidEventDates
 public record EventUpsertRequest(
         @NotBlank(message = "イベント名を入力してください") @Size(max = 100, message = "100文字以内で入力してください")
@@ -24,7 +24,7 @@ public record EventUpsertRequest(
         @NotBlank(message = "場所を入力してください") @Size(max = 100, message = "100文字以内で入力してください")
         @Pattern(regexp = ValidationPatterns.NO_CONTROL_CHARS, message = "使用できない文字が含まれています") String place,
 
-        // 要件定義書§8: 参加区分が1件以上ある場合は必須ではない（区分の定員合計で自動算出。EventService.resolveCapacity()参照）。
+        // R-11・C-02: 参加区分が1件以上ある場合は必須ではない（区分の定員合計で自動算出。EventService.resolveCapacity()参照）。
         // 区分が無い場合は必須（Bean ValidationではなくService層で判定する。ticketTypeIdの要否判定と同じ考え方）
         @Min(value = 1, message = "1以上で入力してください") Integer capacity,
 
@@ -36,7 +36,7 @@ public record EventUpsertRequest(
         @Size(max = 100, message = "100文字以内で入力してください")
         @Pattern(regexp = ValidationPatterns.NO_CONTROL_CHARS, message = "使用できない文字が含まれています") String organizerName,
 
-        // 画像URLインジェクション対策（docs/30_詳細設計/33_共通詳細設計書.md）: http/https以外のスキーム（javascript:等）を拒否する
+        // 不正なURLの登録への対策（docs/20_基本設計/24_方式設計書.md 8章）: http/https以外のスキーム（javascript:等）を拒否する
         @Size(max = 500, message = "500文字以内で入力してください")
         @Pattern(regexp = ValidationPatterns.HTTP_URL, message = "httpまたはhttpsで始まるURLを入力してください") String imageUrl,
 

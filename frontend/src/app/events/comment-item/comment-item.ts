@@ -1,7 +1,7 @@
 // 実行環境: ブラウザ側。イベントコメントの1件分を表示する再帰コンポーネント（返信の無制限階層表示）。
 // 自分自身を子コメントの描画に再利用することで、何階層の返信でもインデント表示できる。
 // APIの呼び出しはこのコンポーネントでは行わず、reply／delete出力イベントを親へバブルさせ、
-// 最終的にevent-detail.ts側でAPIを呼んで一覧を再取得する（既存のpostComment/deleteCommentと同じ流れに統一するため）。
+// 最終的にevent-detail.ts側でAPIを呼んで一覧を再取得する（event-detail.tsのpostComment/onDeleteCommentと同じ流れに統一するため）。
 // `input()`／`output()`は、親Component⇔子Component間でデータをやり取りするためのAngularの機能。
 // `input()`は親から渡される値（プロパティ）を受け取る入口、`output()`は子から親へイベントを
 // 発信する出口。従来の`@Input()`/`@Output()`デコレータの代わりに使える新しい書き方。
@@ -23,7 +23,7 @@ export interface CommentReplyEvent {
  *
  * 入力（input）:
  * - `comment`: 表示するコメント1件分のデータ（子コメントの配列を含む）。
- * - `isAdmin`: ログイン中ユーザーが管理者かどうか（削除ボタンの表示判定に使う）。
+ * - `isAdmin`: ログイン中ユーザーが管理者かどうか（削除ボタンの表示判定に使う。本人の投稿または管理者なら表示）。
  *
  * 出力（output）:
  * - `reply`: 返信フォームで投稿された時に発行する（親コメントID＋本文）。

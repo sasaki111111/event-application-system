@@ -1,5 +1,6 @@
 // 実行環境: ブラウザ側（テスト実行時はNode.js上でVitest／jsdomにより再現）。event-search.tsの単体テスト。
-// 追加した並び替えロジック（フロント側のみの計算）を中心に検証する。画面の見た目は対象外。
+// キーワード・開催日での絞り込みと並び替え（フロント側のみの計算）を検証する。画面の見た目は対象外。
+// 各テストはdocs/40_テスト/41_単体テスト仕様書.md 3.3（UT-SRCH-）のテストケースと1対1で対応する。
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { EventApiService, EventSummary } from '../../core/event-api';
@@ -101,7 +102,6 @@ describe('EventSearch', () => {
     expect(component.filteredEvents()).toHaveLength(3);
   });
 
-  // onSortOrderChange('accepted_desc')で、申込数（acceptedCount）の降順に並び替わることを確認
   // 開催済み（開催日時が過去）のイベントは、開催日時が最も古くても検索結果の末尾に並ぶことを確認
   it('並び替え: 開催済みのイベントは検索結果の末尾に並ぶ', () => {
     const component = createComponent() as any;
@@ -126,6 +126,7 @@ describe('EventSearch', () => {
     expect(component.filteredEvents().map((e: EventSummary) => e.id)).toEqual([2, 9]);
   });
 
+  // onSortOrderChange('accepted_desc')で、申込数（acceptedCount）の降順に並び替わることを確認
   it('並び替え: 申込数の多い順', () => {
     const component = createComponent() as any;
 

@@ -15,7 +15,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      # ddl-auto: none = Hibernateにテーブルを自動作成/変更させない（DDLはC-1で手動適用する方針）
+      # ddl-auto: none = Hibernateにテーブルを自動作成/変更させない（DDLはdb/schema.sqlを手動で適用する方針）
       ddl-auto: none
     # open-in-view: false = Controllerの処理が終わった後までDB接続を開いたままにしない。
     # trueのままだと画面表示側の都合でDB接続が長時間保持され、意図しない遅延読み込みが起きやすくなる

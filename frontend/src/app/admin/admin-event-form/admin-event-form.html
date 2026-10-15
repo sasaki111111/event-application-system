@@ -96,7 +96,7 @@
       }
     </div>
 
-    <!-- 機能追加（イベント情報の拡張）: いずれも任意項目 -->
+    <!-- 主催者名・画像URL・アンケート文言: いずれも任意項目 -->
     <div class="field">
       <label for="organizerName">主催者名</label>
       <input id="organizerName" type="text" formControlName="organizerName" maxlength="100" />
@@ -114,7 +114,7 @@
     </div>
 
     <!--
-      機能追加（定員区分）: 参加区分の繰り返し入力ブロック。
+      参加区分の繰り返し入力ブロック。
       formArrayName="ticketTypes" でFormArray（複数件の入力グループ）と結び付け、
       @forで区分の数だけ行を繰り返し表示する。[formGroupName]="i" で各行をFormArray内の
       i番目のFormGroupと結び付けている。

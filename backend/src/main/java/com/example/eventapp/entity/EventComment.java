@@ -40,7 +40,7 @@ public class EventComment {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // AP-050/20のレスポンスに即値が必要なためDB任せにせずJava側で設定する
+    // AP-050・AP-051のレスポンスに即値が必要なためDB任せにせずJava側で設定する
     // （Favorite.createdAtと同じ考え方。コメントは編集不可のため業務上はこれが唯一のタイムスタンプ）
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -99,7 +99,7 @@ public class EventComment {
         return createdAt;
     }
 
-    // 削除可否チェック（要件定義書§8 E10）で使う本人判定
+    // 削除可否チェック（R-13）で使う本人判定
     public boolean isOwnedBy(Long userId) {
         return user.getId().equals(userId);
     }

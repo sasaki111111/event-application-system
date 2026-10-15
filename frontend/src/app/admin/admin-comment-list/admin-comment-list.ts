@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-150 コメントモデレーション画面（/admin/comments）。
+// 実行環境: ブラウザ側。SC-150 コメント管理画面（/admin/comments）。
 // 全イベント横断で有効な（論理削除されていない）コメントを確認し、削除できる管理者専用画面。
 // イベント別・投稿者別の絞り込みは提供しないが、各行にイベント名・投稿者名を表示し、
 // どのイベント・誰の投稿かが常にわかるようにする。
@@ -13,13 +13,13 @@ import { CommentApiService, CommentModeration } from '../../core/comment-api';
   styleUrl: './admin-comment-list.css',
 })
 /**
- * SC-150 コメントモデレーション画面（/admin/comments）を担当するComponent。
+ * SC-150 コメント管理画面（/admin/comments）を担当するComponent。
  *
  * - ルーティング定義（app.routes.ts）でこのパスには authGuard・adminGuard が設定されており、
  *   管理者以外のユーザーはアクセスできない（＝管理者専用画面）。
- * - 利用するAngular Service: CommentApiService（全イベント横断でのコメント一覧取得、削除）。
- * - 画面遷移: この画面自体には他画面への遷移リンクは無く、ヘッダー等の共通ナビゲーションから
- *   この画面へ入ってくる想定。削除操作のみ行い、一覧はその場で更新される。
+ * - 利用するAngular Service: CommentApiService（全イベント横断でのコメント一覧取得AP-150、削除AP-052）。
+ * - 画面遷移: この画面自体には他画面への遷移リンクは無く、共通ナビの「コメント管理」から
+ *   この画面へ入ってくる。削除操作のみ行い、一覧はその場で更新される。
  */
 export class AdminCommentList implements OnInit {
   protected readonly comments = signal<CommentModeration[]>([]);

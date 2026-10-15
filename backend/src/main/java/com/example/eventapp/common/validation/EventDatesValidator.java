@@ -11,8 +11,8 @@ import jakarta.validation.ConstraintValidatorContext;
 //     検証失敗時のメッセージ・検証ロジックの実装クラスを宣言する。
 //   ・EventDatesValidator（このクラス、検証ロジック側）: `ConstraintValidator<ValidEventDates, 対象の型>`を
 //     実装し、isValid()メソッドに実際の検証処理を書く。
-// `@Valid`でEventUpsertRequestを検証するとき、Spring（Bean Validation）がValidEventDatesの
-// `validatedBy`で指定されたこのクラスを自動的に呼び出す。
+// EventUpsertRequestを検証するとき（EventControllerが権限チェックの後にValidator#validateを呼ぶ）、
+// Bean ValidationがValidEventDatesの`validatedBy`で指定されたこのクラスを自動的に呼び出す。
 /**
  * {@link ValidEventDates}アノテーションの実際の検証ロジック。
  * {@code ConstraintValidator<ValidEventDates, EventUpsertRequest>}を実装しているため、

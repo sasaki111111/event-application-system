@@ -18,10 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 実行環境: サーバー側（JVM）。軽い会員登録・メールアドレスでのログイン・ユーザー一覧（いずれも機能追加）の業務ロジック。
-// パスワードはBCryptでハッシュ化して保存する。この経路で登録できるのは常に一般ユーザーのみ（管理者の登録はregisterAdmin）。
+// 実行環境: サーバー側（JVM）。ログイン・利用者登録・パスワード変更・退会・利用者一覧・管理者アカウント登録・降格の業務ロジック。
+// パスワードはBCryptでハッシュ化して保存する。利用者登録（register）で登録できるのは常に一般ユーザーのみ（管理者の登録はregisterAdmin）。
 /**
- * ログイン・利用者登録（AP-010・AP-011）、利用者一覧（AP-140）、管理者アカウント登録（AP-145）、
+ * ログイン・利用者登録・パスワード変更（AP-010〜AP-012）、利用者一覧（AP-140）、管理者アカウント登録（AP-145）、
  * 利用者詳細の基本情報取得（AP-141）、管理者権限の降格（AP-146）、利用者の匿名化／退会（AP-013）の
  * 業務ロジックを担当するService。UserControllerの各メソッドから呼ばれ、DBアクセスにはUserRepositoryを使う。
  */
@@ -60,7 +60,7 @@ public class UserService {
     @Transactional
     public UserResponse register(String name, String email, String password) {
         email = normalizeEmail(email);
-        // 利用者列挙対策（docs/20_基本設計/24_方式設計書.md）: 「既に登録済み」と直接断定せず、
+        // 利用者の存在を推測させないための対策（docs/20_基本設計/24_方式設計書.md 3.5、E-B-015）: 「既に登録済み」と直接断定せず、
         // ログインを促す形にする。管理者登録（registerAdmin）は管理者専用かつ利用者一覧から
         // 既存メールアドレスを確認できるため、こちらは明確なメッセージのままとする
         if (userRepository.existsByEmail(email)) {
@@ -88,18 +88,20 @@ public class UserService {
     @Transactional
     public UserResponse registerAdmin(String name, String email, String password) {
         email = normalizeEmail(email);
+        // 管理者専用のため、重複の事実をそのまま伝える（docs/20_基本設計/24_方式設計書.md 3.5、R-15・E-B-015）
         if (userRepository.existsByEmail(email)) {
             throw new BusinessException("このメールアドレスは既に登録されています");
         }
 
         User saved = userRepository.save(
                 new User(name, email, passwordEncoder.encode(password), RoleCode.ADMIN));
+        // 登録の実行者はusersの行に残らないため、ログに記録する（docs/30_詳細設計/33_共通詳細設計書.md 6.1）
         log.info("管理者アカウント登録完了 userId={} 実行者userId={}",
                 saved.getId(), authContext.getCurrentUser().userId());
         return toResponse(saved);
     }
 
-    // POST /api/login: メールアドレスで利用者を特定し、パスワードを照合する
+    // AP-010 POST /api/login: メールアドレスで利用者を特定し、パスワードを照合する
     /**
      * メールアドレスとパスワードでログインする（AP-010）。UserController#loginから呼ばれる。
      * 該当する利用者が存在しない場合・退会済みの場合・パスワードが一致しない場合は、いずれも同じメッセージの
@@ -111,6 +113,7 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public UserResponse login(String email, String password) {
+        // 正規化したメールアドレスで利用者を検索する。見つからなければ、パスワード不一致と同じメッセージで401にする
         User user = userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new UnauthorizedException(LOGIN_FAILED_MESSAGE));
         // 退会済みの利用者はpassword_hashがNULLのため照合できない（ログイン不可）。
@@ -138,22 +141,24 @@ public class UserService {
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("利用者が見つかりません"));
+        // 現在のパスワードが一致しなければ変更しない（R-23・E-B-023）
         if (user.getPasswordHash() == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new BusinessException("現在のパスワードが正しくありません");
         }
+        // 新しいパスワードをハッシュ化して上書きする。ログイン状態はそのまま維持する（docs/20_基本設計/24_方式設計書.md 3.3）
         user.changePassword(passwordEncoder.encode(newPassword));
         // 変更内容（何が変わったか）はデータベースから分からないため、ログに記録する。パスワード自体は出力しない
         log.info("パスワード変更完了 userId={}", user.getId());
     }
 
-    // メールアドレスの表記ゆれ対策（docs/30_詳細設計/33_共通詳細設計書.md）: 前後の空白を除去し小文字化してから
+    // メールアドレスの表記ゆれ対策（docs/30_詳細設計/33_共通詳細設計書.md 2.1「メールアドレスの正規化」）: 前後の空白を除去し小文字化してから
     // 重複チェック・検索・保存を行う。`eventapp`データベースの照合順序（utf8mb4_ja_0900_as_cs）は大文字小文字を
     // 区別するため、正規化しないと同じメールアドレスが別アカウントとして扱われてしまう。
     private String normalizeEmail(String email) {
         return email == null ? null : email.strip().toLowerCase(Locale.ROOT);
     }
 
-    // GET /api/users: ユーザー一覧（管理者専用、権限チェックはController側）
+    // AP-140 GET /api/users: 利用者一覧（管理者専用、権限チェックはController側）
     /**
      * 登録済み利用者の一覧を取得する（AP-140）。UserController#listから呼ばれる
      * （管理者権限の確認はController側で完了済み）。
@@ -170,7 +175,7 @@ public class UserService {
     // AP-141: 利用者詳細（SC-141）の表示対象利用者の基本情報。管理者専用、権限チェックはController側
     /**
      * 指定した利用者の基本情報を取得する（AP-141）。UserController#getUserから呼ばれるほか、
-     * applicationsOf／favoritesOf／commentsOf（AP-142・28・31）の中でも対象利用者の存在確認
+     * applicationsOf／favoritesOf／commentsOf（AP-142〜AP-144）の中でも対象利用者の存在確認
      * （存在しなければNotFoundExceptionを投げ、GlobalExceptionHandlerが404にする）に使われる。
      *
      * @param id 対象利用者ID
@@ -180,10 +185,11 @@ public class UserService {
     public UserResponse getById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("利用者が見つかりません"));
+        // 退会済みの利用者も対象に含める（画面側でanonymizedAtにより「退会済み」と表示する）
         return toResponse(user);
     }
 
-    // AP-146: 管理者権限の降格（管理者のみ。権限チェックはController側）。roleをgeneralに変更するのみ。
+    // AP-146: 管理者権限の降格（管理者のみ。権限チェックはController側）。利用者区分コードを一般利用者（1）に変更するのみ。
     // 管理者が1人のみの状態での降格は禁止する（docs/30_詳細設計/32_処理詳細設計書.md R-17）
     /**
      * 指定した利用者（管理者）を一般利用者に変更する（AP-146）。UserController#demoteから呼ばれる
@@ -197,9 +203,11 @@ public class UserService {
     public UserResponse demote(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("利用者が見つかりません"));
+        // 既に一般利用者なら降格できない（R-16・E-B-019）
         if (!user.isAdmin()) {
             throw new BusinessException("既に一般利用者です");
         }
+        // システム全体で管理者が対象者1人のみなら降格できない（R-17・E-B-020）
         if (userRepository.countByRoleCode(RoleCode.ADMIN) <= 1) {
             throw new BusinessException("最後の管理者は降格できません");
         }
@@ -211,10 +219,10 @@ public class UserService {
 
     // AP-013: 利用者の匿名化（退会）。本人、または管理者が実行できる（権限チェックはここで行う）。
     // 対象が管理者の場合は実行不可（先にAP-146で降格する必要がある、docs/30_詳細設計/32_処理詳細設計書.md R-18）。
-    // 物理削除ではなく、名前・メールアドレスを固定の文言・形式に置き換えるのみ（申込等の履歴は残す）
+    // 物理削除ではなく、名前・メールアドレスを固定の文言・形式に置き換え、パスワードを無効化するのみ（申込等の履歴は残す）
     /**
      * 指定した利用者を匿名化（退会）する（AP-013）。UserController#anonymizeから呼ばれる。
-     * 他のAdmin専用メソッドと異なり、本人か管理者かの判定はController側のauthContext.requireAdmin()
+     * 他の管理者専用メソッドと異なり、本人か管理者かの判定はController側のauthContext.requireAdmin()
      * ではなくこのメソッド自身が行う（本人にも実行を許すため）。本人・管理者のいずれでもない場合は
      * ForbiddenException（403）、対象が管理者または既に退会済みの場合はBusinessException（400）になる。
      *
@@ -227,16 +235,20 @@ public class UserService {
     public UserResponse anonymize(Long id, Long requestingUserId, boolean requestingIsAdmin) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("利用者が見つかりません"));
+        // 本人、または管理者のみ実行できる（R-20・E-A-007）
         boolean isSelf = requestingUserId.equals(id);
         if (!requestingIsAdmin && !isSelf) {
             throw new ForbiddenException("権限がありません");
         }
+        // 管理者は退会できない。先に降格が必要（R-18・E-B-021）
         if (user.isAdmin()) {
             throw new BusinessException("管理者は退会できません");
         }
+        // 既に退会済みなら再度は退会できない（R-19・E-B-022）
         if (user.isAnonymized()) {
             throw new BusinessException("既に退会済みです");
         }
+        // 名前・メールアドレスの置き換えとパスワードの無効化（R-24）を行う
         user.anonymize();
         log.info("利用者匿名化完了 userId={} 実行者userId={}", user.getId(), requestingUserId);
         return toResponse(user);

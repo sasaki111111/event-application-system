@@ -1,10 +1,10 @@
-// 実行環境: ブラウザ側。バックエンド（機能追加：イベントコメント、API-20〜22）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（イベントコメントAP-050〜AP-052、コメント総数AP-132、全コメント一覧AP-150）を呼び出すサービス。
 // HTTP通信を行うAngular標準のサービス
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-// API-20・API-21のレスポンス1件分（backendのEventCommentResponseと対応）
+// AP-050・AP-051のレスポンス1件分（backendのEventCommentResponseと対応）
 export interface EventComment {
   id: number;
   userName: string;
@@ -12,13 +12,13 @@ export interface EventComment {
   createdAt: string;
   // ログイン中ユーザー本人の投稿か（削除ボタンの表示可否に使う）
   mine: boolean;
-  // （機能追加）: 返信先のコメントID（返信でない場合はNULL）
+  // 返信先のコメントID（返信でない場合はNULL）
   parentCommentId: number | null;
-  // （機能追加）: 返信が残っているため論理削除されたコメントか。trueの場合bodyは固定の削除済み表示文言になる
+  // 返信が残っているため論理削除されたコメントか。trueの場合bodyは固定の削除済み表示文言になる
   deleted: boolean;
 }
 
-// （機能追加）: コメントを親子構造に組み立てた1件分（木構造への組み立てはフロントエンド側で行う）
+// コメントを親子構造に組み立てた1件分（木構造への組み立てはフロントエンド側で行う）
 export interface CommentNode {
   comment: EventComment;
   children: CommentNode[];
@@ -44,7 +44,8 @@ export interface CommentModeration {
   createdAt: string;
 }
 
-// （機能追加）: フラットなコメント配列（parentCommentId付き）から、表示用の木構造を組み立てる。
+// フラットなコメント配列（parentCommentId付き）から、表示用の木構造を組み立てる
+// （docs/30_詳細設計/32_処理詳細設計書.md 8章「コメントの木構造への組み立て」、SC-022で使用）。
 // 投稿日時昇順（APIの返す順）を各階層でもそのまま維持する
 /**
  * @param comments list()で取得したフラットなコメント配列（parentCommentIdで親子関係を表す）
@@ -78,27 +79,28 @@ export function buildCommentTree(comments: EventComment[]): CommentNode[] {
 const API_BASE_URL = 'http://localhost:8080/api';
 
 /**
- * イベントコメント（投稿・一覧取得・削除）およびコメント管理（件数・モデレーション一覧）に関する
- * バックエンドAPIを呼び出すサービス。イベント詳細画面（コメント投稿・一覧・削除）、マイページ
- * （自分のコメント履歴）、管理者のコメント管理画面から利用される想定。
+ * イベントコメント（投稿・一覧取得・削除）およびコメント管理（件数・全コメント一覧）に関する
+ * バックエンドAPIを呼び出すサービス。イベント詳細画面（コメント投稿・一覧・削除）、管理者ダッシュボード
+ * （コメント総数）、管理者のコメント管理画面（全コメント一覧・削除）から利用される。
+ * 利用者詳細画面のコメント履歴（AP-144）はuser-api.tsが取得する。
  */
 @Injectable({ providedIn: 'root' })
 export class CommentApiService {
   constructor(private readonly http: HttpClient) {}
 
-  /** イベントに投稿されたコメント一覧を取得する（API-20、投稿日時の昇順、フラットな配列）。 */
+  /** イベントに投稿されたコメント一覧を取得する（AP-050、投稿日時の昇順、フラットな配列）。 */
   list(eventId: number): Observable<EventComment[]> {
     // 指定イベントのコメント一覧をGETで取得する
     return this.http.get<EventComment[]>(`${API_BASE_URL}/events/${eventId}/comments`);
   }
 
-  /** イベントにコメントを投稿する（API-21）。parentCommentIdを指定すると、そのコメントへの返信として投稿する。 */
+  /** イベントにコメントを投稿する（AP-051）。parentCommentIdを指定すると、そのコメントへの返信として投稿する。 */
   post(eventId: number, body: string, parentCommentId?: number): Observable<EventComment> {
     // 本文（body）と返信先ID（parentCommentId、通常の投稿ならundefined）をボディに入れてPOSTする
     return this.http.post<EventComment>(`${API_BASE_URL}/events/${eventId}/comments`, { body, parentCommentId });
   }
 
-  /** コメントを削除する（API-22、投稿者本人または管理者のみ。返信が残っている場合はサーバー側で論理削除される）。 */
+  /** コメントを削除する（AP-052、投稿者本人または管理者のみ。返信が残っている場合はサーバー側で論理削除される）。 */
   remove(commentId: number): Observable<void> {
     // 対象コメントIDに対してDELETEリクエストを送る
     return this.http.delete<void>(`${API_BASE_URL}/comments/${commentId}`);

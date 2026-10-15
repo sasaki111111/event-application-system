@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。SC-020の詳細部分（イベント詳細＋申込）。
+// 実行環境: ブラウザ側。SC-022 イベント詳細・申込画面（/events/:id）。
 // `ActivatedRoute`は、現在表示中のURL（/events/:id等）のパラメータ（:idの値）や
 // クエリパラメータ（?from=search等）を読み取るためのAngularのService。
 import { CommonModule } from '@angular/common';
@@ -12,7 +12,7 @@ import { LoginUserStore } from '../../core/login-user-store';
 import { CommentItem, CommentReplyEvent } from '../comment-item/comment-item';
 
 /**
- * SC-020イベント詳細画面（イベント詳細の表示・申込・お気に入り・コメント）を担当するComponent。
+ * SC-022 イベント詳細・申込画面（イベント詳細の表示・申込・お気に入り・コメント）を担当するComponent。
  * `implements OnInit`は、`ngOnInit`というライフサイクルフックのメソッドを必ず持つことを
  * TypeScriptに伝える宣言（下のngOnInitで説明）。
  *
@@ -20,10 +20,10 @@ import { CommentItem, CommentReplyEvent } from '../comment-item/comment-item';
  * - `ActivatedRoute`: URLの`:id`パラメータ（表示するイベントID）と、戻り先を決めるための
  *   クエリパラメータ（`from=search`等）を読み取る。
  * - `Router`: 申込完了後に申込完了画面へ遷移するために使う。
- * - `EventApiService`: イベント詳細取得API（API-02）の呼び出し。
- * - `ApplicationApiService`: 申込API（API-03）の呼び出し。
+ * - `EventApiService`: イベント詳細取得API（AP-021）の呼び出し。
+ * - `ApplicationApiService`: 申込API（AP-030）の呼び出し。
  * - `FavoriteStore`: お気に入り登録状態を画面間で共有する状態管理（登録・解除もここから行う）。
- * - `CommentApiService`: コメントの一覧取得・投稿・削除APIの呼び出し。
+ * - `CommentApiService`: コメントの一覧取得・投稿・削除API（AP-050〜AP-052）の呼び出し。
  * - `LoginUserStore`: ログイン中ユーザーが管理者かどうかの判定に使う。
  *
  * 画面遷移: 起点はevent-list.ts（一覧のリンク）やevent-search.ts（検索結果のリンク）。
@@ -43,14 +43,14 @@ export class EventDetail implements OnInit {
   protected readonly applying = signal(false);
   protected readonly applyErrorMessage = signal<string | null>(null);
 
-  // 機能追加（定員区分・アンケート）: 申込フォームの入力状態
+  // 申込フォームの入力状態（選択中の参加区分・アンケート回答）
   protected readonly selectedTicketTypeId = signal<number | null>(null);
   protected readonly extraAnswer = signal('');
 
-  // 機能追加（お気に入り）: 登録済みかどうかはFavoriteStore（画面間で共有）から参照する
+  // お気に入り: 登録済みかどうかはFavoriteStore（画面間で共有）から参照する
   protected readonly favoriteBusy = signal(false);
 
-  // 機能追加（イベントコメント）。commentTreeは返信を親子構造に組み立てたもの（表示用）
+  // イベントコメント。commentTreeは返信を親子構造に組み立てたもの（表示用）
   protected readonly commentTree = signal<CommentNode[]>([]);
   protected readonly commentBody = signal('');
   protected readonly postingComment = signal(false);
@@ -74,7 +74,7 @@ export class EventDetail implements OnInit {
     protected readonly loginUserStore: LoginUserStore,
   ) {}
 
-  // 要件定義書E7: 管理者は申込できない。ボタン自体を出さない。role基準で判定する
+  // 管理者は申込できない（E-A-005）。ボタン自体を出さない。利用者区分コードで判定する
   protected get isAdmin(): boolean {
     return this.loginUserStore.isAdmin();
   }
@@ -112,13 +112,13 @@ export class EventDetail implements OnInit {
       },
     });
 
-    // 機能追加（お気に入り）: 一般ユーザー・管理者の両方が使える（要件定義書§4）。取得失敗はボタン未反映のままになるだけ
+    // お気に入りは一般ユーザー・管理者の両方が使える（docs/20_基本設計/20_機能設計書.md 4.2）。取得失敗はボタン未反映のままになるだけ
     this.favoriteStore.ensureLoaded().subscribe({ error: () => {} });
 
     this.loadComments();
   }
 
-  // 機能追加（イベントコメント）: 開催前後を問わず投稿可能（要件定義書§4）。
+  // イベントコメント: 開催前後を問わず投稿可能。
   // APIはフラットな配列で返すため、表示用に親子構造（commentTree）へ組み立てる
   /** コメント一覧を取得し直す。コメントの投稿・返信・削除が成功した後に毎回呼ばれる。 */
   private loadComments(): void {
@@ -167,7 +167,7 @@ export class EventDetail implements OnInit {
     });
   }
 
-  // API-22: 投稿者本人または管理者のみ削除可能（要件定義書§8 E10）。ボタン自体はmineがtrueの時のみ表示。
+  // AP-052: 投稿者本人または管理者のみ削除可能（R-13）。ボタン自体も本人の投稿（mine）または管理者の場合のみ表示する。
   // 返信が残っている場合はサーバー側で論理削除される（一覧には残り、本文が削除済み表示に置き換わる）
   /** app-comment-itemの`(delete)`出力イベントで呼ばれる。確認ダイアログの後、コメントを削除する。 */
   protected onDeleteComment(commentId: number): void {
@@ -180,7 +180,7 @@ export class EventDetail implements OnInit {
     });
   }
 
-  // 機能追加（お気に入り）: 登録・解除はどちらも冪等（要件定義書§8 E9）
+  // お気に入り: 登録・解除はどちらも冪等（R-12）
   /** 「☆/★ お気に入り」ボタン（(click)）で呼ばれる。登録済みなら解除、未登録なら登録する。 */
   protected toggleFavorite(): void {
     this.favoriteBusy.set(true);
@@ -209,8 +209,9 @@ export class EventDetail implements OnInit {
     this.extraAnswer.set(value);
   }
 
-  // API-03: 定員超過・締切超過・二重申込は業務エラー（400、message付き）としてバックエンドが返す。
-  // 区分があるイベントで未選択のまま送信すると400「区分を選択してください」（要件定義書E12）
+  // AP-030: 締切超過・二重申込は業務エラー（400、message付き）としてバックエンドが返す。
+  // 定員超過はエラーにならず、キャンセル待ちとして登録される（R-02。申込完了画面に状況が表示される）。
+  // 区分があるイベントで未選択のまま送信すると400「区分を選択してください」（E-B-004）
   /** 「申し込む」ボタン（(click)）で呼ばれる。申込APIを呼び、成功したら申込完了画面へ遷移する。 */
   protected apply(): void {
     this.applyErrorMessage.set(null);

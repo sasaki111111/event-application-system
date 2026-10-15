@@ -35,8 +35,8 @@ public class Event {
     @Column(length = 1000)
     private String description;
 
-    // 機能追加（ソフトデリート）: NULL=有効、日時あり=削除済み。物理削除はせず、管理者が「削除済み
-    // イベント」画面から復元できるようにする。
+    // 論理削除: NULL=有効、日時あり=削除済み。物理削除はせず、管理者が「削除済み
+    // イベント」画面（SC-122）から復元できるようにする。
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -139,22 +139,22 @@ public class Event {
         return extraQuestion;
     }
 
-    // 受付中か（要件定義書§4）：現在 <= 申込締切 かつ 現在 < 開催日時
+    // 受付中か（R-01）：現在 <= 申込締切 かつ 現在 < 開催日時
     public boolean isOpen(LocalDateTime now) {
         return !now.isAfter(applicationDeadline) && now.isBefore(startAt);
     }
 
-    // 機能追加（ソフトデリート）: 物理削除の代わりに削除日時を記録する
+    // イベント削除（AP-122）: 物理削除の代わりに削除日時を記録する（論理削除）
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
 
-    // 機能追加（ソフトデリートの復元）
+    // イベント復元（AP-124）: 削除日時を消して有効な状態に戻す
     public void restore() {
         this.deletedAt = null;
     }
 
-    // 機能追加（定員区分）: 区分を保存した際、capacityを区分の定員合計に同期させる
+    // 区分を保存した際、capacityを区分の定員合計に同期させる（R-11）
     // （区分の無いイベントではEventUpsertRequest.capacity()がそのまま定員になるため呼び出さない）
     public void syncCapacityFromTicketTypes(int totalCapacity) {
         this.capacity = totalCapacity;

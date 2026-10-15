@@ -31,19 +31,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-// 実行環境: サーバー側（JVM、localhost:8080）。ログイン（機能追加：メールアドレス方式）・
-// 軽い会員登録（機能追加）・ユーザー一覧（機能追加：管理者向けマスタ確認用）・
-// 管理者アカウント登録（AP-145、機能追加）・利用者詳細（AP-141〜28）・管理者権限の降格（AP-146）・利用者の匿名化（AP-013）。
+// 実行環境: サーバー側（JVM、localhost:8080）。ログイン（AP-010）・利用者登録（AP-011）・パスワード変更（AP-012）・
+// 利用者の匿名化（AP-013）・利用者一覧（AP-140）・利用者詳細（AP-141〜AP-144）・管理者アカウント登録（AP-145）・
+// 管理者権限の降格（AP-146）。
 // login・registerはログイン前（未認証）に呼ばれるため、認証不要（WebConfig／AuthInterceptor参照）。
 // @Operationの説明文はdocs/30_詳細設計/31_API詳細設計書.mdの記載と一致させる（食い違いが出たら実装＝Swagger UIを正とし本書を見直す）
 /**
- * ログイン・利用者登録（AP-010・AP-011）、利用者一覧（AP-140）、管理者アカウント登録（AP-145）、
- * 利用者詳細（AP-141〜28・AP-144）、管理者権限の降格（AP-146）、利用者の匿名化／退会（AP-013）のHTTP入口を担当するController。
+ * ログイン・利用者登録・パスワード変更（AP-010〜AP-012）、利用者の匿名化／退会（AP-013）、利用者一覧（AP-140）、
+ * 利用者詳細（AP-141〜AP-144）、管理者アカウント登録（AP-145）、管理者権限の降格（AP-146）のHTTP入口を担当するController。
  * フロントエンドのcore/login-api.ts（LoginApiService）・core/user-api.ts（UserApiService）から呼ばれ、
  * 内部ではUserServiceのほか、ApplicationService・FavoriteService・EventCommentServiceの各メソッドにも処理を委譲する
  * （SC-141利用者詳細画面で、申込・お気に入り・コメントの履歴を他のAPIと共通のロジックで取得するため）。
  */
-@Tag(name = "利用者", description = "ログイン・利用者登録・利用者一覧・管理者アカウント登録・利用者詳細・管理者権限の降格・利用者の匿名化（AP-010〜03, AP-145〜28, AP-146, AP-013）")
+@Tag(name = "利用者", description = "ログイン・利用者登録・パスワード変更・利用者の匿名化・利用者一覧・利用者詳細・管理者アカウント登録・管理者権限の降格（AP-010〜AP-013、AP-140〜AP-146）")
 @RestController
 public class UserController {
 
@@ -65,43 +65,43 @@ public class UserController {
         this.validator = validator;
     }
 
-    // POST /api/login（認証不要）。メールアドレスからユーザーを特定し、そのロールを返す
+    // AP-010 POST /api/login（認証不要）。メールアドレスとパスワードで本人確認し、利用者ID・利用者区分を返す
     /**
-     * メールアドレスでログインする（AP-010）。フロントエンドのcore/login-api.ts（LoginApiService#login）から呼ばれ、
+     * メールアドレスとパスワードでログインする（AP-010）。フロントエンドのcore/login-api.ts（LoginApiService#login）から呼ばれ、
      * UserService#loginに処理を委譲する。このAPIはWebConfig／AuthInterceptorの対象外として設定されており、
      * ログイン前（未認証）でも呼び出せる。
      *
-     * @param request ログインに使うメールアドレス
-     * @return ログインした利用者の情報
+     * @param request ログインに使うメールアドレス・パスワード
+     * @return ログインした利用者の情報（パスワード・ハッシュ値は含めない）
      */
     @Operation(summary = "AP-010 ログイン",
             description = "メールアドレスとパスワードにより本人確認を行い、認証状態を確立する。"
                     + "メールアドレスが未登録、退会済み、またはパスワードが一致しない場合は401を返す。認証不要で呼び出せる。")
     @PostMapping("/api/login")
     public UserResponse login(@Valid @RequestBody LoginRequest request) {
-        // UserServiceに、リクエストのメールアドレスを渡してログイン処理を依頼し、その結果をそのまま返す
+        // UserServiceに、リクエストのメールアドレス・パスワードを渡してログイン処理を依頼し、その結果をそのまま返す
         return userService.login(request.email(), request.password());
     }
 
-    // POST /api/users（認証不要。作成されるのは常に一般ユーザー）
+    // AP-011 POST /api/users（認証不要。作成されるのは常に一般ユーザー）
     /**
      * 新規利用者登録を行う（AP-011）。フロントエンドのcore/login-api.ts（LoginApiService#register）から呼ばれ、
      * UserService#registerに処理を委譲する。loginと同様、認証不要で呼び出せる。
      *
-     * @param request 名前・メールアドレス
+     * @param request 名前・メールアドレス・パスワード
      * @return 登録された利用者の情報
      */
     @Operation(summary = "AP-011 利用者登録",
-            description = "名前・メールアドレスによる新規利用者登録。作成されるのは常に一般利用者（管理者としての登録はできない）。"
+            description = "名前・メールアドレス・パスワードによる新規利用者登録。作成されるのは常に一般利用者（管理者としての登録はできない）。"
                     + "登録後はそのままログイン状態となる。メールアドレスが登録済みの場合は400を返す。認証不要で呼び出せる。")
     @PostMapping("/api/users")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse register(@Valid @RequestBody UserRegisterRequest request) {
-        // UserServiceに、名前・メールアドレスを渡して登録処理を依頼し、その結果をそのまま返す
+        // UserServiceに、名前・メールアドレス・パスワードを渡して登録処理を依頼し、その結果をそのまま返す
         return userService.register(request.name(), request.email(), request.password());
     }
 
-    // GET /api/users（管理者のみ。マスタ確認用の一覧）
+    // AP-140 GET /api/users（管理者のみ。SC-140利用者管理の一覧）
     /**
      * 登録済み利用者の一覧を取得する（AP-140）。フロントエンドのcore/user-api.ts（UserApiService#list）から呼ばれ、
      * UserService#listに処理を委譲する。authContext.requireAdmin()により管理者以外は403になる。
@@ -119,17 +119,17 @@ public class UserController {
     }
 
     // AP-145 POST /api/admins（管理者のみ。作成されるのは常に管理者）
-    // API設計書§2.5: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
+    // docs/20_基本設計/23_API基本設計書.md 2.5: 権限チェックを先に行うため@Validは使わず、権限チェック後に手動でバリデーションする
     /**
      * 新たな管理者アカウントを登録する（AP-145）。フロントエンドのcore/user-api.ts（UserApiService#registerAdmin）
      * から呼ばれ、UserService#registerAdminに処理を委譲する。authContext.requireAdmin()により
      * 管理者以外は403になる（一般利用者は管理者アカウントを作れない）。
      *
-     * @param request 名前・メールアドレス
+     * @param request 名前・メールアドレス・パスワード
      * @return 登録された管理者アカウントの情報
      */
     @Operation(summary = "AP-145 管理者アカウント登録",
-            description = "既存の管理者が、名前・メールアドレスを指定して新たな管理者アカウントを登録する。作成されるのは常に管理者。"
+            description = "既存の管理者が、名前・メールアドレス・パスワードを指定して新たな管理者アカウントを登録する。作成されるのは常に管理者。"
                     + "一般利用者によるアクセスは403、メールアドレスが登録済みの場合は400を返す。管理者のみ実行できる。")
     @PostMapping("/api/admins")
     @ResponseStatus(HttpStatus.CREATED)
@@ -138,7 +138,7 @@ public class UserController {
         authContext.requireAdmin();
         // リクエスト内容を手動でバリデーションする（違反があれば、ここで例外が投げられる）
         validate(request);
-        // UserServiceに、名前・メールアドレスを渡して管理者登録を依頼し、その結果をそのまま返す
+        // UserServiceに、名前・メールアドレス・パスワードを渡して管理者登録を依頼し、その結果をそのまま返す
         return userService.registerAdmin(request.name(), request.email(), request.password());
     }
 
@@ -278,7 +278,7 @@ public class UserController {
      * @return 匿名化後の利用者情報
      */
     @Operation(summary = "AP-013 利用者の匿名化（退会）",
-            description = "指定した利用者を匿名化（退会）する。名前・メールアドレスを固定の文言・形式に置き換え、"
+            description = "指定した利用者を匿名化（退会）する。名前・メールアドレスを固定の文言・形式に置き換えてパスワードを無効化し、"
                     + "申込等の履歴は残したまま行を保持する（物理削除ではない）。本人、または管理者が実行できる。"
                     + "対象が存在しない場合は404、対象が管理者の場合（先に管理者権限の降格が必要）、"
                     + "または既に退会済みの場合は400、本人・管理者以外によるアクセスは403を返す。")

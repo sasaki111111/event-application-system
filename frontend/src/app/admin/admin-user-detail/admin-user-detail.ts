@@ -1,5 +1,5 @@
 // 実行環境: ブラウザ側。SC-141 利用者詳細画面（/admin/users/:id）。
-// 管理者が特定の利用者の基本情報・申込一覧・お気に入り一覧を確認するための画面。
+// 管理者が特定の利用者の基本情報・申込一覧・お気に入り一覧・コメント履歴を確認するための画面（AP-141〜AP-144）。
 // キャンセル・お気に入り解除等、対象利用者に代わる操作はできない（利用者本人向けのSC-030とは役割が異なる）。
 // 管理者権限の降格（AP-146）・利用者の匿名化（AP-013）のみ、この画面から実行できる例外的な操作とする。
 import { CommonModule } from '@angular/common';
@@ -27,7 +27,7 @@ import { STATUS_CODE, ROLE_CODE } from '../../core/codes';
  * - 利用するAngular Service: UserApiService（利用者本体・申込・お気に入り・コメント履歴の取得、
  *   管理者権限の降格、利用者の匿名化（退会処理））。
  * - 画面遷移: 「← 利用者管理に戻る」（RouterLink）で /admin/users（AdminUserList）へ戻る。
- *   この画面へは利用者一覧画面の各行から遷移してくる想定。
+ *   この画面へは利用者管理画面（SC-140）の各行の利用者名から遷移してくる。
  * - 対象利用者に代わるキャンセル・お気に入り解除等の操作はできない（利用者本人向けの画面とは役割が異なる）。
  *   管理者権限の降格・利用者の匿名化のみ、この画面から実行できる例外的な操作。
  */
@@ -39,7 +39,7 @@ export class AdminUserDetail implements OnInit {
   protected readonly user = signal<UserSummary | null>(null);
   protected readonly applications = signal<MyApplication[]>([]);
   protected readonly favorites = signal<FavoriteEvent[]>([]);
-  // （機能追加）: コメント履歴。論理削除済みのコメントも含む
+  // コメント履歴（AP-144）。論理削除済みのコメントも含む
   protected readonly comments = signal<UserComment[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);

@@ -15,7 +15,7 @@
   <!-- イベント名とお気に入りボタン -->
   <div class="title-row">
     <h1>{{ e.name }}</h1>
-    <!-- 機能追加（お気に入り） -->
+    <!-- お気に入りの登録・解除ボタン -->
     <button
       type="button"
       class="btn-favorite"
@@ -26,7 +26,7 @@
     >
       {{ favoriteStore.isFavorited(e.id) ? '★ お気に入り済み' : '☆ お気に入りに追加' }}
     </button>
-    <!-- （機能追加）: お気に入り登録件数 -->
+    <!-- お気に入り登録件数 -->
     <span class="note">お気に入り {{ e.favoriteCount }}件</span>
   </div>
 
@@ -64,7 +64,7 @@
 
   <!-- 申込フォーム（参加区分の選択・アンケート）。管理者または受付終了の場合は表示しない -->
   @if (!isAdmin && e.open) {
-    <!-- 機能追加（定員区分）: 区分があるイベントのみ選択欄を表示する -->
+    <!-- 参加区分: 区分があるイベントのみ選択欄を表示する -->
     @if (e.ticketTypes.length > 0) {
       <div class="field">
         <label for="ticketType">参加区分 <span class="required">*</span></label>
@@ -80,7 +80,7 @@
       </div>
     }
 
-    <!-- 機能追加（申込時アンケート）: イベントにextraQuestionが設定されている場合のみ表示 -->
+    <!-- 申込時アンケート: イベントにextraQuestionが設定されている場合のみ表示 -->
     @if (e.extraQuestion) {
       <div class="field">
         <label for="extraAnswer">{{ e.extraQuestion }}</label>
@@ -97,7 +97,7 @@
 
   <!-- 申込ボタン、または申込できない理由の案内文（管理者／受付終了／満席） -->
   @if (isAdmin) {
-    <!-- 要件定義書E7: 管理者は申込できない -->
+    <!-- 管理者は申込できない（E-A-005） -->
     <p class="note">管理者アカウントでは申込できません。</p>
   } @else if (e.open) {
     @if (e.remaining <= 0) {
@@ -115,7 +115,7 @@
     <p class="error">{{ applyErrorMessage() }}</p>
   }
 
-  <!-- 機能追加（イベントコメント）: 開催前後を問わず投稿可能 -->
+  <!-- イベントコメント: 開催前後を問わず投稿可能 -->
   <section class="comments">
     <h2>コメント</h2>
 

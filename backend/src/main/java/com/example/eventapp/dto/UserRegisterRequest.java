@@ -6,7 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-// 実行環境: サーバー側（JVM）。POST /api/users（軽い会員登録、機能追加）のリクエストボディ。
+// 実行環境: サーバー側（JVM）。AP-011 POST /api/users（利用者登録）・AP-145 POST /api/admins（管理者アカウント登録）の
+// 共通のリクエストボディ（同じDTOを使うため、エラーIDも共通。docs/30_詳細設計/33_共通詳細設計書.md 3.1）。
 // パスワードは入力されたままの値を受け取る（ハッシュ化・照合はUserServiceが行う）。
 public record UserRegisterRequest(
         @NotBlank(message = "名前を入力してください") @Size(max = 100, message = "100文字以内で入力してください")
@@ -22,7 +23,7 @@ public record UserRegisterRequest(
         @Pattern(regexp = ValidationPatterns.PASSWORD, message = ValidationPatterns.PASSWORD_MESSAGE) String password
 ) {
     // メールアドレスの前後の空白は、形式チェック（@Email）より前に取り除く
-    // （docs/30_詳細設計/33_共通詳細設計書.md「メールアドレスの正規化」）。
+    // （docs/30_詳細設計/33_共通詳細設計書.md 2.1「メールアドレスの正規化」）。
     // recordのコンパクトコンストラクタは、JSONからこのオブジェクトが作られる時点で実行されるため、
     // 利用者登録（@Valid）・管理者アカウント登録（Controller内の手動検証）のどちらでも、
     // 検証は空白を除いた後の値に対して行われる。小文字化はUserService#normalizeEmailが行う

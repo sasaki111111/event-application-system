@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。backendの/api/users（GET、管理者専用のユーザー一覧）・
-// /api/admins（POST、AP-145：管理者アカウント登録）を呼び出す窓口。
+// 実行環境: ブラウザ側。backendの利用者管理API（利用者一覧AP-140、利用者詳細AP-141〜AP-144、
+// 管理者アカウント登録AP-145、降格AP-146）と退会（AP-013）を呼び出す窓口。
 // ログイン・一般ユーザー登録用のPOST呼び出しはcore/login-api.tsが担当する（そちらは認証不要のため分けている）。
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
@@ -8,6 +8,7 @@ import { MyApplication } from './application-api';
 import { FavoriteEvent } from './favorite-api';
 import { UserComment } from './comment-api';
 
+// 利用者情報（backendのUserResponseと対応）
 export interface UserSummary {
   userId: number;
   name: string;
@@ -31,7 +32,7 @@ const API_BASE_URL = 'http://localhost:8080/api';
 export class UserApiService {
   constructor(private readonly http: HttpClient) {}
 
-  /** 利用者一覧を取得する（管理者専用）。 */
+  /** 利用者一覧を取得する（AP-140、管理者専用、利用者ID昇順）。 */
   list(): Observable<UserSummary[]> {
     return this.http.get<UserSummary[]>(`${API_BASE_URL}/users`);
   }

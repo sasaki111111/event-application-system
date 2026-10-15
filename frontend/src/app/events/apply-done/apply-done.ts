@@ -1,5 +1,5 @@
-// 実行環境: ブラウザ側。SC-020の申込完了画面（/events/:id/done）。
-// API設計書の備考どおり、専用APIは無く「申込APIのレスポンスをそのまま表示する」だけの画面。
+// 実行環境: ブラウザ側。SC-023 申込完了画面（/events/:id/done）。
+// 専用APIは無く「申込API（AP-030）のレスポンスをそのまま表示する」だけの画面（docs/20_基本設計/21_画面基本設計書.md 4.3）。
 // そのためRouterのnavigation stateで結果を受け取る＝ページの再読み込みには対応しない。
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
@@ -8,7 +8,7 @@ import { ApplicationResponse } from '../../core/application-api';
 import { STATUS_CODE } from '../../core/codes';
 
 /**
- * 申込完了画面（SC-020の一部、/events/:id/done）を担当するComponent。
+ * SC-023 申込完了画面（/events/:id/done）を担当するComponent。
  * APIは呼ばず、event-detail.tsやevent-list.tsが`router.navigate(...)`で遷移する際に
  * 渡した申込結果（state）をそのまま表示するだけの画面。
  *

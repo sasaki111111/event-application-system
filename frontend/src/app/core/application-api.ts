@@ -1,4 +1,4 @@
-// 実行環境: ブラウザ側。バックエンド（イベント申込、自分の申込一覧、申込キャンセル）を呼び出すサービス。
+// 実行環境: ブラウザ側。バックエンド（イベント申込AP-030、自分の申込一覧AP-031、申込キャンセルAP-032）を呼び出すサービス。
 // backendのApplicationController・各Responseと対応。
 //
 // [Angularの基礎: Serviceとは] 「@Injectable」が付いたクラスはAngularのサービスと呼ばれる、
@@ -25,7 +25,7 @@ import { Observable } from 'rxjs';
 export interface ApplicationResponse {
   id: number;
   eventId: number;
-  // 機能追加（定員区分）: 区分の無いイベントへの申込はNULL
+  // 申し込んだ参加区分のID。区分の無いイベントへの申込はNULL
   ticketTypeId: number | null;
   userId: number;
   /** 申込状況コード（STATUS_CODE参照）。表示の切り替えの判定に使う。 */
@@ -35,7 +35,7 @@ export interface ApplicationResponse {
   appliedAt: string;
 }
 
-// API-04のレスポンス1件分（backendのMyApplicationResponseと対応）
+// AP-031（AP-142も同形式）のレスポンス1件分（backendのMyApplicationResponseと対応）
 export interface MyApplication {
   id: number;
   eventId: number;
@@ -46,7 +46,7 @@ export interface MyApplication {
   /** 申込状況の表示名（コードマスタの値）。 */
   statusName: string;
   appliedAt: string;
-  // 機能追加（定員区分）: キャンセル待ちの順位（1始まり）。キャンセル待ち以外はNULL
+  // キャンセル待ちの順位（1始まり。区分があるイベントは区分内の順位）。キャンセル待ち以外はNULL
   waitlistRank: number | null;
 }
 
@@ -64,9 +64,9 @@ export class ApplicationApiService {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * イベントに申し込む（API-03）。一般利用者以上が対象で、本人のuserIdに紐付けられる
+   * イベントに申し込む（AP-030）。一般利用者のみが対象（管理者は403）で、本人のuserIdに紐付けられる
    * （userIdはHTTPヘッダ経由でバックエンドが自動判定するため引数には含めない）。
-   * ticketTypeId・extraAnswerは、定員区分やアンケートがあるイベントの場合のみ指定する（機能追加）。
+   * ticketTypeId・extraAnswerは、参加区分やアンケートがあるイベントの場合のみ指定する。
    */
   apply(eventId: number, ticketTypeId?: number, extraAnswer?: string): Observable<ApplicationResponse> {
     // HttpClient.post(): 第1引数がリクエスト先URL、第2引数がリクエストボディ（JSONになる）。
@@ -78,13 +78,13 @@ export class ApplicationApiService {
     });
   }
 
-  /** ログイン中ユーザー本人の申込一覧を取得する（API-04、申込日時の降順）。マイページで使用。 */
+  /** ログイン中ユーザー本人の申込一覧を取得する（AP-031、申込日時の降順）。マイページで使用。 */
   myApplications(): Observable<MyApplication[]> {
     // HttpClient.get(): 指定URLにGETリクエストを送るObservableを返す
     return this.http.get<MyApplication[]>(`${API_BASE_URL}/my/applications`);
   }
 
-  /** 本人の申込をキャンセルする（API-05）。 */
+  /** 本人の申込をキャンセルする（AP-032）。 */
   cancel(applicationId: number): Observable<void> {
     // HttpClient.delete(): 指定URLにDELETEリクエストを送るObservableを返す
     return this.http.delete<void>(`${API_BASE_URL}/applications/${applicationId}`);

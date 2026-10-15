@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // 実行環境: サーバー側（JVM）。イベント一覧・詳細、登録・編集・削除・復元の業務ロジック。
 /**
- * イベント一覧・詳細取得（AP-020・AP-021）、削除済み一覧（AP-123）、登録・更新・削除・復元（AP-120〜10）の業務ロジックを
+ * イベント一覧・詳細取得（AP-020・AP-021）、登録・更新・削除（AP-120〜AP-122）、削除済み一覧（AP-123）、復元（AP-124）の業務ロジックを
  * 担当するService。EventController（list／getDetail／listDeleted／create／update／delete／restore）から呼ばれ、
  * DBアクセスにはEventRepository・ApplicationRepository・TicketTypeRepository・FavoriteRepositoryを使う。
  */
@@ -72,8 +72,8 @@ public class EventService {
                 .toList();
     }
 
-    // 機能追加（ソフトデリート）: 管理者の「削除済みイベント」一覧（AP-123）
-    // description〜ticketTypesは、SC-122からのイベント複製に必要な項目として追加
+    // AP-123: 管理者の「削除済みイベント」一覧
+    // description〜ticketTypesは、SC-122からのイベント複製に使う項目
     /**
      * 削除済み（論理削除）のイベント一覧を取得する（AP-123）。EventController#listDeletedから呼ばれる
      * （管理者権限の確認はController側で完了済み）。
@@ -82,6 +82,7 @@ public class EventService {
      */
     @Transactional(readOnly = true)
     public List<DeletedEventResponse> listDeleted() {
+        // 削除済み（deleted_atに日時あり）のイベントを開催日時昇順で取得し、区分一覧を含めたレスポンスに変換する
         return eventRepository.findAllByDeletedAtIsNotNullOrderByStartAtAsc().stream()
                 .map(event -> new DeletedEventResponse(
                         event.getId(),
@@ -123,6 +124,7 @@ public class EventService {
      */
     @Transactional
     public EventDetailResponse create(EventUpsertRequest request) {
+        // リクエストの内容からイベントを組み立てる（定員はresolveCapacityで決定する。R-11）
         Event event = new Event(
                 request.name(),
                 request.startAt(),
@@ -135,7 +137,9 @@ public class EventService {
                 request.extraQuestion()
         );
         Event saved = eventRepository.save(event);
+        // 参加区分を保存し、区分があればcapacityを区分の定員合計に同期する
         List<TicketType> ticketTypes = saveTicketTypes(saved, request.ticketTypes());
+        // 登録の実行者はeventsの行に残らないため、ログに記録する（docs/30_詳細設計/33_共通詳細設計書.md 6.1）
         log.info("イベント登録完了 eventId={} 実行者userId={}", saved.getId(), authContext.getCurrentUser().userId());
         return toDetail(saved, ticketTypes);
     }
@@ -150,7 +154,9 @@ public class EventService {
      */
     @Transactional
     public EventDetailResponse update(Long id, EventUpsertRequest request) {
+        // 対象イベントを取得する（存在しない、または削除済みなら404・E-B-001）
         Event event = findByIdOrThrow(id);
+        // 変更内容を反映する（トランザクション終了時にJPAが変更を検知してUPDATEする）
         event.applyChanges(
                 request.name(),
                 request.startAt(),
@@ -162,12 +168,13 @@ public class EventService {
                 request.imageUrl(),
                 request.extraQuestion()
         );
+        // 参加区分を全置換する（指定が無ければ既存の区分を維持する）
         List<TicketType> ticketTypes = saveTicketTypes(event, request.ticketTypes());
         log.info("イベント更新完了 eventId={} 実行者userId={}", event.getId(), authContext.getCurrentUser().userId());
         return toDetail(event, ticketTypes);
     }
 
-    // 要件定義書§8: 定員は「参加区分が1件も無い場合のみ」必須。区分がある場合は区分の定員合計を用いる
+    // R-11・C-02: 定員は「参加区分が1件も無い場合のみ」必須。区分がある場合は区分の定員合計を用いる
     // （最終的な値はこの後saveTicketTypes()が区分の定員合計で再同期するため、ここでの計算は暫定値でよい。
     // 区分もcapacityも無ければ、ticketTypeIdの要否判定（ApplicationService.resolveTicketType）と同じ考え方でエラーとする）
     private Integer resolveCapacity(EventUpsertRequest request, Event existingEvent) {
@@ -184,11 +191,12 @@ public class EventService {
                 return existing.stream().mapToInt(TicketType::getCapacity).sum();
             }
         }
+        // 定員も区分も無ければ定員を決定できないためエラーにする（E-B-006）
         throw new BusinessException("定員を入力してください");
     }
 
-    // AP-122: イベント削除。受付済の申込が1件でもあれば400、指定IDが無ければ404
-    // 機能追加（ソフトデリート）: 物理削除ではなくdeleted_atを立てるのみ。「削除済みイベント」画面から復元できる。
+    // AP-122: イベント削除。受付済の申込が1件でもあれば400（R-07・E-B-013）、指定IDが無ければ404
+    // 物理削除ではなくdeleted_atを立てるのみ（論理削除）。「削除済みイベント」画面（SC-122）から復元できる。
     /**
      * イベントを削除（論理削除）する（AP-122）。EventController#deleteから呼ばれる。
      *
@@ -204,7 +212,7 @@ public class EventService {
         log.info("イベント削除完了 eventId={} 実行者userId={}", event.getId(), authContext.getCurrentUser().userId());
     }
 
-    // 機能追加（ソフトデリートの復元）。削除済みでなければ404。
+    // AP-124: イベント復元。削除済みでなければ404（R-08・E-B-014）。
     /**
      * 削除済みのイベントを復元する（AP-124）。EventController#restoreから呼ばれる。
      *
@@ -220,13 +228,13 @@ public class EventService {
         return toDetail(event);
     }
 
-    // 機能追加（定員区分）: 区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
+    // 参加区分の全置換。requestsがnull＝区分の指定なし（既存の区分に手を加えない）。
     // 戻り値は更新後の区分一覧（呼び出し側がtoDetail()で再度クエリしなくて済むように）。
     // 既存の区分に受付済・キャンセル待ちの申込が残っている場合は変更を拒否する（docs/30_詳細設計/32_処理詳細設計書.md AP-120／AP-121 No.6参照）。
     private List<TicketType> saveTicketTypes(Event event, List<TicketTypeRequest> requests) {
         if (requests == null) {
             // 区分を変更しない場合でも、既存の区分があるイベントはcapacityを区分の合計に保つ
-            // （docs/20_基本設計/22_テーブル定義書.md「区分がある場合はcapacityは区分の合計」との矛盾を防ぐ。
+            // （docs/20_基本設計/22_テーブル定義書.md 4.2「参加区分を設定している間は、区分の定員合計を反映する」との矛盾を防ぐ。
             // リクエストのcapacityは区分の無いイベントの場合のみ有効に使われる）
             List<TicketType> existing = ticketTypeRepository.findByEvent_Id(event.getId());
             if (!existing.isEmpty()) {
@@ -238,6 +246,7 @@ public class EventService {
         // そうしないと、区分の無いイベントに初めて区分を追加した際、既存の申込がどの区分にも
         // 属さないまま区分単位の定員判定・繰り上げから漏れてしまう
         if (applicationRepository.existsByEvent_IdAndStatusIn(event.getId(), ApplicationStatus.ACTIVE_STATUSES)) {
+            // R-09・E-B-007
             throw new BusinessException("区分に申込があるため変更できません");
         }
         // try/catch: DBの外部キー制約違反はDataIntegrityViolationExceptionとしてSpring Data JPAが投げる。
@@ -253,17 +262,19 @@ public class EventService {
             ticketTypeRepository.flush();
         } catch (DataIntegrityViolationException e) {
             // 上のチェックは受付済・キャンセル待ちのみを見ているため、キャンセル済の申込が
-            // 区分を参照したまま残っているケースはここで拾う（fk_applications_ticket_typeはRESTRICT）
+            // 区分を参照したまま残っているケースはここで拾う（fk_applications_ticket_typeはRESTRICT。E-B-017）
             throw new BusinessException("区分に申込の履歴が残っているため変更できません");
         }
+        // 空の配列＝区分をすべて解除した（区分の無いイベントにする）場合は、削除のみで終わる
         if (requests.isEmpty()) {
             return List.of();
         }
         long distinctNames = requests.stream().map(TicketTypeRequest::name).distinct().count();
         if (distinctNames < requests.size()) {
-            // 同一イベント内での区分名の重複を禁止する（テーブル定義書§4.3）
+            // 同一イベント内での区分名の重複を禁止する（R-10・E-B-008、docs/20_基本設計/22_テーブル定義書.md 4.3）
             throw new BusinessException("区分名が重複しています");
         }
+        // 新しい区分を保存し、イベントのcapacityを区分の定員合計に同期する
         List<TicketType> saved = requests.stream()
                 .map(request -> ticketTypeRepository.save(new TicketType(event, request.name(), request.capacity())))
                 .toList();
@@ -332,11 +343,11 @@ public class EventService {
     }
 
     private long countAccepted(Long eventId) {
-        // 対象件数が小さい前提（要件定義書§2）のため、イベントごとに1クエリで数える簡潔な実装にしている
+        // 学内の小規模な利用を前提とする（docs/20_基本設計/24_方式設計書.md 9章）ため、イベントごとに1クエリで数える簡潔な実装にしている
         return applicationRepository.countByEvent_IdAndStatus(eventId, ApplicationStatus.ACCEPTED);
     }
 
-    // （機能追加）: お気に入り登録件数。countAccepted()と同様、イベントごとに1クエリで数える
+    // お気に入り登録件数（favoriteCount）。countAccepted()と同様、イベントごとに1クエリで数える
     private long countFavorites(Long eventId) {
         return favoriteRepository.countByEvent_Id(eventId);
     }

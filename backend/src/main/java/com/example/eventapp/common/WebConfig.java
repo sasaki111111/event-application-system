@@ -37,14 +37,14 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 回数制限（docs/20_基本設計/24_方式設計書.md、機能追加）は認証の有無によらず最初に適用する
+        // 回数制限（docs/20_基本設計/24_方式設計書.md 8章）は認証の有無によらず最初に適用する
         // （未認証でのログイン総当たり・登録スパムも抑止対象のため）。
         // RateLimitInterceptorを登録し、対象パスを"/api/**"（API配下すべて）とする
         registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/**");
 
-        // ログイン・ping（起動確認用）は認証不要（docs/30_詳細設計/31_API詳細設計書.md）。
-        // POST /api/users（軽い会員登録、機能追加）はAuthInterceptor側でメソッド単位に個別許可している
+        // ログイン（AP-010）・ping（AP-900 稼働確認）は認証不要（docs/30_詳細設計/33_共通詳細設計書.md 5.1）。
+        // POST /api/users（AP-011 利用者登録）はAuthInterceptor側でメソッド単位に個別許可している
         // （GET /api/usersは一覧＝管理者専用のため、パス単位でここに含めるとGETまで無認証になってしまう）。
         // AuthInterceptorを登録し、"/api/**"を対象にしつつ"/api/login"と"/api/ping"だけは除外する
         registry.addInterceptor(new AuthInterceptor(userRepository, authContext))

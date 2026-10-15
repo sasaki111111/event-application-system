@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 // 実行環境: サーバー側（JVM、localhost:8080）。ブラウザ（Angular）やcurlからのHTTPリクエストを
-// 最初に受け取るController層。B-3: 起動確認用の疎通エンドポイント。業務APIはD以降で実装する。
+// 最初に受け取るController層。稼働確認（AP-900）と、ログイン中利用者情報の確認（AP-014）を担当する。
 /**
  * 稼働確認（AP-900）・ログイン中利用者情報確認（AP-014）用のController。他のControllerと異なり、
  * フロントエンド（Angular）の画面からは呼ばれない（開発・動作確認時にブラウザやcurlから直接呼ぶための窓口）。
  * {@code /api/ping}はPingService#pongに処理を委譲し、{@code /api/whoami}はAuthContextから直接値を返すのみで、
  * Service層を経由しない。
  */
-@Tag(name = "稼働確認", description = "稼働確認・ログイン中利用者情報取得（AP-014〜24）")
+@Tag(name = "稼働確認", description = "稼働確認・ログイン中利用者情報取得（AP-900、AP-014）")
 @RestController
 public class PingController {
 
@@ -44,7 +44,8 @@ public class PingController {
         return pingService.pong();
     }
 
-    // B-5: 利用者の識別（AuthInterceptor→AuthContext）の疎通確認用。業務APIではない。
+    // AP-014: 利用者の識別（AuthInterceptor→AuthContext）の確認用。業務APIではない
+    // （Service層を経由しない例外。docs/30_詳細設計/32_処理詳細設計書.md 2章）。
     /**
      * 現在の認証状態（ログイン中利用者の情報）を確認する（AP-014）。開発・動作確認用で、Service層は使わず
      * AuthContextが保持する値をそのまま返す。

@@ -28,7 +28,7 @@ public class Application {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    // 申し込んだ区分。対象イベントに区分が無い場合はNULL（区分単位の申込ロジックは今後の対応で使用）
+    // 申し込んだ区分。対象イベントに区分が無い場合はNULL（区分があるイベントでは、定員判定・繰り上げ・順位計算を区分単位で行う）
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ticket_type_id")
     private TicketType ticketType;
@@ -42,11 +42,11 @@ public class Application {
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
 
-    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 AP-030）
+    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（docs/30_詳細設計/31_API詳細設計書.md AP-030）
     @Column(name = "extra_answer", length = 500)
     private String extraAnswer;
 
-    // 当日受付でチェックインされた日時。NULL＝未チェックイン（機能追加）
+    // 当日受付（AP-126）でチェックインされた日時。NULL＝未チェックイン
     @Column(name = "checked_in_at")
     private LocalDateTime checkedInAt;
 
@@ -70,12 +70,12 @@ public class Application {
         this(user, event, ApplicationStatus.ACCEPTED);
     }
 
-    // 機能追加（キャンセル待ち）: 定員超過時は最初から「キャンセル待ち」で作る
+    // 申込状況を指定して作る（定員超過時は最初から「キャンセル待ち」で作る。R-02）
     public Application(User user, Event event, Integer status) {
         this(user, event, null, status, null);
     }
 
-    // 機能追加（定員区分）: 区分単位の申込用。ticketTypeは区分の無いイベントへの申込ではNULL
+    // 区分・アンケート回答を含めて作る（AP-030）。ticketTypeは区分の無いイベントへの申込ではNULL
     public Application(User user, Event event, TicketType ticketType, Integer status, String extraAnswer) {
         this.user = user;
         this.event = event;
@@ -122,12 +122,12 @@ public class Application {
         this.status = ApplicationStatus.CANCELLED;
     }
 
-    // 機能追加（キャンセル待ちの繰り上げ）: 受付済の枠が空いた時にキャンセル待ちから昇格させる
+    // キャンセル待ちの繰り上げ（R-05）: 受付済の枠が空いた時にキャンセル待ちから昇格させる
     public void promote() {
         this.status = ApplicationStatus.ACCEPTED;
     }
 
-    // 機能追加（当日受付）: チェックイン可否チェック（要件定義書§8 E8）はService側で行う
+    // チェックイン（AP-126）: チェックイン可否チェック（R-06）はService側で行う。再実行時は日時を上書きする
     public void checkIn() {
         this.checkedInAt = LocalDateTime.now();
     }

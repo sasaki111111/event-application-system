@@ -1,7 +1,7 @@
 // 実行環境: ブラウザ側。SC-010ログイン画面（メールアドレスとパスワードによるログイン、および利用者登録）。
-// 要件定義書: 「ログイン画面でメールアドレスとパスワードを入力すると、
-// そのユーザーの利用者区分を自動判定してそれぞれの画面へ遷移する」。
-// 機能追加：利用者登録（名前・メールアドレス・パスワードで一般ユーザーを作成し、そのままログインする）も同じ画面に持つ。
+// ログイン（F-010、AP-010）: メールアドレスとパスワードを入力すると、そのユーザーの利用者区分を
+// 自動判定してそれぞれの画面へ遷移する。
+// 利用者登録（F-011、AP-011）: 名前・メールアドレス・パスワードで一般ユーザーを作成し、そのままログインする。同じ画面に持つ。
 // `inject()`は、Angularの依存性注入（DI）の仕組みでService等のインスタンスを取得する関数。
 // コンストラクタの引数で受け取る書き方（event-detail.ts等を参照）と役割は同じで、
 // クラスのフィールド定義の中で直接呼び出せる点が異なる（新しいComponentではこちらが主流）。
@@ -20,16 +20,16 @@ interface FieldError {
 }
 
 /**
- * SC-010ログイン画面を担当するComponent。
+ * SC-010 ログイン・利用者登録画面を担当するComponent。
  * 1つの画面に「ログイン」フォームと「新規登録」フォームの2つを持つ。
  *
  * 使用するAngular Service:
- * - `LoginUserStore`: ログイン中ユーザー（id・ロール）をアプリ全体で共有する状態。
+ * - `LoginUserStore`: ログイン中ユーザー（id・利用者区分コード）をアプリ全体で共有する状態。
  *   ログイン・登録に成功した際にここへ記録する。
  * - `Router`: ログイン・登録成功後に別の画面へ遷移するために使う。
- * - `LoginApiService`: ログインAPI・会員登録APIの呼び出しをまとめたService。
+ * - `LoginApiService`: ログインAPI（AP-010）・利用者登録API（AP-011）の呼び出しをまとめたService。
  *
- * 画面遷移: ログイン成功時はロールに応じて管理者ダッシュボード（/admin/dashboard）か
+ * 画面遷移: ログイン成功時は利用者区分に応じて管理者ダッシュボード（/admin/dashboard）か
  * イベント一覧（/events）へ遷移する。新規登録成功時は常にイベント一覧（/events）へ遷移する。
  */
 @Component({
@@ -63,7 +63,7 @@ export class Login {
     this.email.set(value);
   }
 
-  /** ログインフォームの送信（submit）で呼ばれる。メールアドレスのみでログインAPIを呼び出す。 */
+  /** ログインフォームの送信（submit）で呼ばれる。メールアドレスとパスワードでログインAPIを呼び出す。 */
   protected onPasswordInput(value: string): void {
     this.password.set(value);
   }
@@ -95,17 +95,17 @@ export class Login {
       next: (user) => {
         // 通信が終わったのでローディング状態を解除する
         this.loading.set(false);
-        // ログイン中ユーザー情報（id・ロール）をアプリ全体で共有する状態に記録する
+        // ログイン中ユーザー情報（id・利用者区分コード）をアプリ全体で共有する状態に記録する
         this.loginUserStore.login(String(user.userId), user.roleCode);
-        // ロールに応じて管理者ダッシュボードかイベント一覧へ画面遷移する
+        // 利用者区分に応じて管理者ダッシュボードかイベント一覧へ画面遷移する
         this.router.navigateByUrl(user.roleCode === ROLE_CODE.ADMIN ? '/admin/dashboard' : '/events');
       },
       error: (err) => {
         // 失敗した場合もローディング状態を解除する
         this.loading.set(false);
-        // サーバーからのメッセージをそのまま表示する。該当メールアドレスが無い場合（401）のメッセージは、
-        // 利用者列挙対策のため登録の有無を断定しない文言（E-A-006）になっているので、画面側で言い換えない
-        // （docs/20_基本設計/24_方式設計書.md）
+        // サーバーからのメッセージをそのまま表示する。ログイン失敗（401）のメッセージは、
+        // 利用者の存在を推測させないため登録の有無を断定しない文言（E-A-006）になっているので、画面側で言い換えない
+        // （docs/20_基本設計/24_方式設計書.md 3.5・5.3）
         this.errorMessage.set(err.error?.message ?? 'ログインに失敗しました。');
       },
     });
@@ -135,7 +135,7 @@ export class Login {
   }
 
   // 登録できるのは常に一般ユーザー（管理者アカウントは利用者管理画面から管理者が登録する）
-  /** 新規登録フォームの送信（submit）で呼ばれる。名前・メールアドレスで会員登録APIを呼び出す。 */
+  /** 新規登録フォームの送信（submit）で呼ばれる。名前・メールアドレス・パスワードで利用者登録APIを呼び出す。 */
   protected register(): void {
     // これから送信するので、前回表示していたエラーメッセージ（全体・項目別）を消す
     this.registerErrorMessage.set(null);
@@ -143,7 +143,7 @@ export class Login {
     // 通信中であることを示すフラグをtrueにする
     this.registering.set(true);
 
-    // 会員登録APIを呼び出す。成功時はnext、失敗時はerrorの処理が実行される
+    // 利用者登録APIを呼び出す。成功時はnext、失敗時はerrorの処理が実行される
     this.loginApi.register(this.registerName(), this.registerEmail(), this.registerPassword()).subscribe({
       next: (created) => {
         // 通信が終わったのでローディング状態を解除する

@@ -1,133 +1,144 @@
 # 13-03 DB・SQL確認表
 
-[13_システム動作・実装対応チェックリスト.md](13_システム動作・実装対応チェックリスト.md) の補助資料。`docs/02_テーブル定義書.md`に定義された6テーブルについて、実際のDDL（`backend/src/main/resources/db/schema.sql`）・Entity（`backend/src/main/java/.../entity/`）・Repository（`.../repository/`）を突き合わせ、各テーブルがどの機能からどう使われているかを整理する。
+[13_システム動作・実装対応チェックリスト.md](13_システム動作・実装対応チェックリスト.md)の補助資料。`docs/20_基本設計/22_テーブル定義書.md`に定義された8テーブルについて、DDL（`backend/src/main/resources/db/schema.sql`）・Entity（`backend/src/main/java/com/example/eventapp/entity/`）・Repository（`.../repository/`）を突き合わせ、各テーブルがどの機能からどう使われているかを整理する。
 
-（2026-10-01更新：`users.anonymized_at`列の追加〔利用者の退会＝匿名化、F-17〕を反映）
+DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成が中心で、`@Query`でJPQLを直接書いているのは悲観ロック用の3か所（`EventRepository#findByIdForUpdate`、`TicketTypeRepository#findByIdAndEvent_IdForUpdate`・`#findByIdForUpdate`）のみである。実行されるSQLはメソッド単位の処理内容として記載する（`application.yml`の`show-sql`は`false`）。
 
-DBアクセスはSpring Data JPAのメソッド名からのクエリ自動生成が中心で、生SQL（`@Query`）は悲観ロック用の3箇所のみ。ORM層で自動生成されるSQLは実行時ログ（`show-sql`は本番`application.yml`では`false`）で確認する運用のため、本表ではメソッド単位でSQL相当の処理内容を記載する。
+`schema.sql`は、H2のMySQL互換モードで`schema.sql`→`seed.sql`を実行する`SchemaScriptTest`で、記述の誤りが無いことを確認している（他のテストはEntityからテーブルを自動生成するため、スクリプト自体は検証されない）。
 
 ---
 
-## 1. users（利用者）
+## 1. roles（利用者区分マスタ）・application_statuses（申込状況マスタ）
 
-- **用途**：一般利用者・管理者の識別。パスワードは保持しない（ダミー認証、要件定義書§8）。退会（匿名化）の対象でもある（F-17）。
-- **Entity**：`entity/User.java`（`role`は`"general"`/`"admin"`の文字列、DBに列挙型制約は無くアプリ側で担保。`demote()`でrole変更、`anonymize()`でname/email置換と`anonymizedAt`設定、`isAnonymized()`で判定という業務ロジックを自身が持つ）
-- **Repository**：`repository/UserRepository.java`
-  - `findById`（JPA標準）：`AuthInterceptor.preHandle()`が`X-User-Id`ヘッダの値でログインユーザーを解決する際に使用（毎リクエスト、認証対象APIすべて）。解決したユーザーが`isAnonymized()`済みの場合は未存在と同様401にする
-  - `existsByEmail`：`UserService.register()`／`registerAdmin()`（AP-02/AP-25）の重複チェック（`normalizeEmail()`で正規化後）
-  - `findByEmail`：`UserService.login()`（AP-01、正規化後のメールアドレスで検索）
-  - `findAllByOrderByIdAsc`：`UserService.list()`（AP-03）
-  - `countByRole`：`UserService.demote()`（AP-33）が、対象を降格すると管理者が0人になってしまわないかを判定するために使用
-  - `getReferenceById`：`ApplicationService.apply()`／`FavoriteService.add()`／`EventCommentService.post()`が、既に存在確認済みのuserIdからDBに問い合わせずプロキシ参照を得るために使用（N+1回避）
-- **INSERTタイミング**：AP-02（一般ユーザー登録）／AP-25（管理者登録）、初期データは`db/seed.sql`（id=1一般／id=2管理者）
-- **SELECTタイミング**：毎リクエストの認証（`findById`）、ログイン（`findByEmail`）、一覧（AP-03）
-- **UPDATEタイミング**：AP-33（`role`を`"general"`に変更）、AP-34（`name`・`email`を固定文言・形式に置換、`anonymized_at`を設定）
-- **DELETEタイミング**：無し（物理削除は提供しない。退会〔AP-34〕も物理削除ではなく匿名化で行う設計）
-- **制約**：`email`に`UNIQUE`（`uk_users_email`）→アプリ側の`existsByEmail`チェックとDB制約の二重防御。退会時は`email`を利用者IDに基づく一意な文字列（`withdrawn-{id}@invalid.example`）に置き換えることでこの制約を満たしたまま匿名化する。`role`はNOT NULLのみでCHECK制約は無い（アプリ側で`"general"`/`"admin"`固定値のみ書き込む設計により担保）。
-- **他テーブルとの関連**：`applications.user_id`／`favorites.user_id`／`event_comments.user_id`から参照（いずれも`ON DELETE RESTRICT`。利用者は物理削除されない＝退会〔匿名化〕であっても行は残るため実運用で発火しない）。
-- **結果**：✓* 確認済み（`ApiIntegrationTest`のAP-33・AP-34関連ケースで裏付けあり）
+- **用途**：区分値のコードと表示名の対応を持つコードマスタ。コード値そのものを主キーとする（`docs/20_基本設計/22_テーブル定義書.md`1.5・4.7・4.8）。
+- **コード値**：roles＝1（一般利用者）・2（管理者）、application_statuses＝1（受付済）・2（キャンセル待ち）・9（キャンセル済）。
+- **Entity**：`RoleMaster.java`・`ApplicationStatusMaster.java`。コード値はJava側でも`RoleCode`・`ApplicationStatus`の定数として持ち、判定に使う（表示名は持たない）。
+- **Repository**：`RoleRepository`・`ApplicationStatusRepository`（`findById`のみ使用）。`CodeNameResolver`がコードから表示名を取得する。
+- **INSERT**：`seed.sql`のみ。登録・変更を行う画面・APIは無い。
+- **SELECT**：利用者区分・申込状況を返す全API（応答に`roleName`・`statusName`を付ける）、CSV出力のステータス列。
+- **制約**：表示名に`UNIQUE`。`users.role_code`・`applications.status_code`から外部キーで参照され（`ON DELETE RESTRICT`）、コードマスタに無い値は登録できない。
 
-## 2. events（イベント）
+## 2. users（利用者）
 
-- **用途**：イベント開催情報。ソフトデリート方式（`deleted_at`）。
-- **Entity**：`entity/Event.java`（`isOpen()`, `softDelete()`, `restore()`, `syncCapacityFromTicketTypes()`という業務ロジックをEntity自身が持つ＝ドメインモデル的設計）
-- **Repository**：`repository/EventRepository.java`
-  - `findAllByDeletedAtIsNullOrderByStartAtAsc`：AP-04（一覧、`idx_events_start_at`使用想定）
-  - `findAllByDeletedAtIsNotNullOrderByStartAtAsc`：AP-06（削除済み一覧）
-  - `findByIdAndDeletedAtIsNull`：AP-05詳細取得、AP-08更新、AP-12申込時のイベント存在確認、AP-16お気に入り登録時、AP-19〜21コメント関連のイベント存在確認、AP-11当日受付一覧のイベント存在確認 — 有効イベントに限定した参照はすべてこのメソッドを経由
-  - `findByIdAndDeletedAtIsNotNull`：AP-10復元
-  - `findByIdForUpdate`（`@Lock(PESSIMISTIC_WRITE)`、`SELECT ... FOR UPDATE`相当）：区分の無いイベントへの申込（AP-12）・キャンセル時の繰り上げ（AP-14）で、定員判定から更新までの間の排他制御に使用（`docs/06_詳細設計書.md`7-7）
-- **INSERTタイミング**：AP-07（管理者のイベント登録）
-- **SELECTタイミング**：AP-04/05/06/11/12/14/16/19/20/21ほぼ全機能から参照
-- **UPDATEタイミング**：AP-08（内容変更）、AP-09（`deleted_at`設定＝論理削除）、AP-10（`deleted_at`解除＝復元）、AP-07/AP-08の区分保存時に`capacity`を区分合計へ同期（`syncCapacityFromTicketTypes()`経由）
-- **DELETEタイミング**：物理削除は通常運用で発生しない（`EventService`に物理削除の呼び出し経路が無い。テストの`eventRepository.deleteAll()`はテスト用の後始末のみ）
-- **制約**：`chk_events_capacity CHECK (capacity >= 1)`。`application_deadline`が`start_at`以前であることはDB制約に無くアプリ側（`@ValidEventDates`/`EventDatesValidator`）で担保（`schema.sql`のコメントに明記）。
-- **インデックス**：`idx_events_start_at`（一覧の開催日時昇順ソート用）
-- **結果**：✓ 確認済み
+- **用途**：一般利用者・管理者。退会（匿名化）した利用者も行は残す。
+- **Entity**：`User.java`。`role_code`は`Integer`。`isAdmin()`・`demote()`・`changePassword()`・`anonymize()`・`isAnonymized()`を持つ。
+- **Repository**：`UserRepository.java`
+  - `findById`：`AuthInterceptor`が毎リクエスト`X-User-Id`から利用者を特定する。AP-012・AP-013・AP-141〜AP-146の対象の取得
+  - `findByEmail`：AP-010（正規化後のメールアドレスで検索）
+  - `existsByEmail`：AP-011・AP-145の重複チェック（R-15）
+  - `findAllByOrderByIdAsc`：AP-140
+  - `countByRoleCode`：AP-146で管理者が対象者1人だけでないかを判定（R-17）
+  - `getReferenceById`：`ApplicationService#apply`・`FavoriteService#add`・`EventCommentService#post`が、確認済みの利用者IDからDBに問い合わせずに参照を得る
+- **INSERT**：AP-011（`role_code=1`）、AP-145（`role_code=2`）。初期データは`seed.sql`の3件（ID=1 一般ユーザー、ID=2 管理者、ID=3 退会確認用ユーザー。初期パスワードはいずれも`Test1234`のハッシュ値）。
+- **UPDATE**：AP-012（`password_hash`）、AP-146（`role_code`を1に）、AP-013（`name`・`email`の置き換え、`password_hash`をNULL、`anonymized_at`を設定）。
+- **DELETE**：無し（退会は匿名化で行い、物理削除はしない）。
+- **制約**：`uk_users_email`（Serviceの`existsByEmail`との二重の防止）。退会時はメールアドレスを利用者IDにもとづく`withdrawn-{id}@invalid.example`に置き換えるため、一意性を保ったまま匿名化できる。`fk_users_role`（rolesへの外部キー）。
+- **パスワード**：`password_hash`はBCryptのハッシュ値（`VARCHAR(100)`、退会時はNULL）。パスワードそのものはどこにも保存しない。
 
-## 3. ticket_types（参加区分）
+## 3. events（イベント）
 
-- **用途**：イベントを複数枠に分けた定員管理（機能追加）。区分未設定イベントでは0件。
-- **Entity**：`entity/TicketType.java`
-- **Repository**：`repository/TicketTypeRepository.java`
-  - `findByEvent_Id`：AP-05詳細表示、AP-09編集フォーム初期値
-  - `existsByEvent_Id`：AP-12申込時「区分が1件以上あるか」の判定（`ApplicationService.resolveTicketType()`）
-  - `findByIdAndEvent_Id`（非ロック版は未使用、ロック版のみ実使用）
-  - `deleteByEvent_Id`：AP-07/AP-08保存時の全置換（削除→再作成）
-  - `findByIdAndEvent_IdForUpdate`（`@Lock`）：AP-12申込時、対象イベントに属する区分かの検証と排他ロックを同時に行う
-  - `findByIdForUpdate`（`@Lock`）：AP-14キャンセル時の繰り上げ対象決定前のロック取得
-- **INSERTタイミング**：AP-07/AP-08で`ticketTypes`が指定された場合（`EventService.saveTicketTypes()`）
-- **SELECTタイミング**：AP-05/09/12/14
-- **UPDATEタイミング**：無し（内容変更は全置換＝DELETE→INSERTで実現、個別UPDATEは行わない）
-- **DELETEタイミング**：AP-08で区分の内容を変更するたび（既存の対象イベントの区分を全削除してから再作成）。ただし対象イベントに有効な申込（受付済／キャンセル待ち）が残っていれば`EventService.saveTicketTypes()`が事前に`BusinessException`を投げ、削除自体を実行しない。
-- **制約**：`chk_ticket_types_capacity CHECK (capacity >= 1)`、`uk_ticket_types_event_name UNIQUE(event_id, name)`（同一イベント内の区分名重複をDB制約でも防止、アプリ側の`distinctNames`チェックと二重防御）。`fk_ticket_types_event ON DELETE CASCADE`。
-- **結果**：✓ 確認済み
+- **用途**：イベントの開催情報。削除は論理削除（`deleted_at`）。
+- **Entity**：`Event.java`。`isOpen()`（R-01）・`softDelete()`・`restore()`・`syncCapacityFromTicketTypes()`を持つ。
+- **Repository**：`EventRepository.java`
+  - `findAllByDeletedAtIsNullOrderByStartAtAsc`：AP-020、AP-130（集計）
+  - `findAllByDeletedAtIsNotNullOrderByStartAtAsc`：AP-123
+  - `findByIdAndDeletedAtIsNull`：AP-021・AP-121・AP-122・AP-125・AP-030・AP-040・AP-050・AP-051（有効なイベントに限った参照はすべてこれを使う）
+  - `findByIdAndDeletedAtIsNotNull`：AP-124（R-08）
+  - `findByIdForUpdate`（`@Lock(PESSIMISTIC_WRITE)`）：区分の無いイベントへの申込（AP-030）・キャンセル時の繰り上げ（AP-032）の排他制御
+- **INSERT**：AP-120。
+- **UPDATE**：AP-121（内容の変更）、AP-122（`deleted_at`を設定）、AP-124（`deleted_at`をNULLに）、AP-120・AP-121で参加区分を保存したときの`capacity`の同期。
+- **DELETE**：API経由では発生しない（イベントの削除は論理削除のみ）。
+- **制約**：`chk_events_capacity CHECK (capacity >= 1)`。申込締切が開催日時より前であることはDB制約にせず、`@ValidEventDates`で担保する。
+- **インデックス**：`idx_events_start_at`（開催日時の昇順の一覧）。
 
-## 4. applications（申込）
+## 4. ticket_types（参加区分）
 
-- **用途**：イベントへの参加申込。`status`は`受付済`/`キャンセル待ち`/`キャンセル済`の3値（`entity/ApplicationStatus.java`で定数化）。
-- **Entity**：`entity/Application.java`（`cancel()`, `promote()`, `checkIn()`という状態遷移メソッドを持つ）
-- **Repository**：`repository/ApplicationRepository.java`（メソッド一覧は[13-01_設計・コード対応表.md](13-01_設計・コード対応表.md)参照）。主なクエリ：
-  - `countByEvent_IdAndStatus` / `countByTicketType_IdAndStatus`：定員判定（AP-12）・一覧のacceptedCount（AP-04/05/18）・削除可否（AP-09）
-  - `existsByUser_IdAndEvent_IdAndStatusIn`：二重申込チェック（AP-12）
-  - `existsByEvent_IdAndStatusIn`：区分変更可否チェック（AP-07/08）
-  - `findFirstBy..._IdAndStatusOrderByAppliedAtAsc`（区分あり/無し2種）：繰り上げ対象取得（AP-14）
-  - `countBy..._StatusAndAppliedAtLessThan`（区分あり/無し2種）：キャンセル待ち順位計算（AP-13）
-  - `findByUser_IdOrderByAppliedAtDesc`：マイページ（AP-13）
-  - `findByEvent_IdOrderByAppliedAtAsc`：当日受付一覧（AP-11）
-  - `findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc`：CSV出力（AP-22、削除済みイベント紐づき分を除外。出力列はイベント名・申込者名・申込日時・ステータス・アンケート回答・参加区分の6列で、`ReportService#csvField`がCSVインジェクション対策〔先頭が`=+-@`等の値へのシングルクォート付与〕も行う）
-- **INSERTタイミング**：AP-12（申込）
-- **SELECTタイミング**：ほぼ全機能（一覧の受付数、詳細、マイページ、当日受付、実績集計/CSV）
-- **UPDATEタイミング**：AP-14（キャンセル：対象を`キャンセル済`に、かつ繰り上げ対象を`受付済`に＝1トランザクション内で最大2行UPDATE）、AP-15（チェックイン：`checked_in_at`更新、再実行時は上書き）
-- **DELETEタイミング**：無し（物理削除経路は存在しない。取消は論理的な状態変更のみ）
-- **制約**：`(user_id, event_id)`にUNIQUE制約を意図的に設けていない（テーブル定義書§4.4のとおり、キャンセル後の再申込を許容するため。二重申込防止はアプリ側の`status IN ('受付済','キャンセル待ち')`存在チェックのみで担保＝DB制約による最終防御が無い設計であることに留意）。`fk_applications_ticket_type ON DELETE RESTRICT`（申込が残る区分は削除不可というルールをDBレベルでも保証）。
-- **インデックス**：`idx_app_event_status_user`（定員判定・二重申込チェック）、`idx_app_user_applied`（マイページ）、`idx_app_ticket_type_status`（区分単位の定員判定）
-- **同時実行制御**：`docs/06_詳細設計書.md`7-7で悲観ロック方式が確定。`applications`テーブル自体はロックせず、親（`events`または`ticket_types`）の行をロックすることで同一対象への同時書き込みを直列化する設計（`EventRepository.findByIdForUpdate`/`TicketTypeRepository.findByIdAndEvent_IdForUpdate`/`findByIdForUpdate`）。`ApiIntegrationTest.o01_同時に申し込んでも定員を超えて受付済にならない`で2スレッド同時実行を検証し合格。
-- **結果**：✓* 確認済み（自動テストで同時実行含め検証済み）
+- **用途**：イベントの定員を複数の区分に分ける。区分の無いイベントでは0件。
+- **Entity**：`TicketType.java`（区分名の一意制約を`@UniqueConstraint`でも定義し、テスト用のH2にも同じ制約を付ける）。
+- **Repository**：`TicketTypeRepository.java`
+  - `findByEvent_Id`：AP-021・AP-123の区分一覧、AP-120・AP-121での既存区分の定員合計
+  - `existsByEvent_Id`：AP-030で区分の有無を判定（C-03）
+  - `deleteByEvent_Id`：AP-120・AP-121での全置換（削除→再登録）
+  - `findByIdAndEvent_IdForUpdate`（`@Lock`）：AP-030で、対象イベントの区分かの確認と排他ロックを同時に行う
+  - `findByIdForUpdate`（`@Lock`）：AP-032の繰り上げ前のロック
+- **INSERT**：AP-120・AP-121で`ticketTypes`を指定した場合。
+- **UPDATE**：無し（変更は全置換で行う）。
+- **DELETE**：AP-120・AP-121で`ticketTypes`を指定した場合（受付済・キャンセル待ちの申込が残っていれば、削除の前に400で拒否。R-09）。キャンセル済の申込が参照している場合は`fk_applications_ticket_type`（RESTRICT）の違反を400（E-B-017）に変換する。
+- **制約**：`chk_ticket_types_capacity CHECK (capacity >= 1)`、`uk_ticket_types_event_name UNIQUE(event_id, name)`（Serviceの重複チェックとの二重の防止、R-10）、`fk_ticket_types_event ON DELETE CASCADE`。
 
-## 5. favorites（お気に入り）
+## 5. applications（申込）
 
-- **用途**：利用者のイベントお気に入り登録（機能追加）。
-- **Entity**：`entity/Favorite.java`
-- **Repository**：`repository/FavoriteRepository.java`
-  - `findByUser_IdAndEvent_Id`：AP-16登録時の冪等判定
-  - `deleteByUser_IdAndEvent_Id`：AP-17解除（0件でもエラーなし）
-  - `findByUser_IdOrderByCreatedAtDesc`：AP-18一覧
-- **INSERTタイミング**：AP-16（未登録時のみ）
-- **SELECTタイミング**：AP-16（既存確認）、AP-18
-- **DELETEタイミング**：AP-17
-- **制約**：`uk_favorites_user_event UNIQUE(user_id, event_id)`（重複防止をDB制約でも保証、アプリ側の`findByUser_IdAndEvent_Id`チェックと二重防御）。`fk_favorites_event ON DELETE CASCADE`／`fk_favorites_user ON DELETE RESTRICT`。
-- **結果**：✓ 確認済み
+- **用途**：イベントへの参加申込。申込状況は`status_code`（1受付済・2キャンセル待ち・9キャンセル済）。
+- **Entity**：`Application.java`。`cancel()`・`promote()`・`checkIn()`を持つ。
+- **Repository**：`ApplicationRepository.java`
+  - `countByEvent_IdAndStatus`・`countByTicketType_IdAndStatus`：定員判定（AP-030）、受付済数（AP-020・AP-021・AP-042・AP-130）、削除可否（AP-122、R-07）
+  - `existsByUser_IdAndEvent_IdAndStatusIn`：二重申込の判定（AP-030、R-03）
+  - `existsByEvent_IdAndStatusIn`：区分の変更可否（AP-120・AP-121、R-09）
+  - `findFirstByEvent_IdAndTicketTypeIsNullAndStatusOrderByAppliedAtAsc`・`findFirstByTicketType_IdAndStatusOrderByAppliedAtAsc`：繰り上げ対象（AP-032、R-05）
+  - `countByEvent_IdAndTicketTypeIsNullAndStatusAndAppliedAtLessThan`・`countByTicketType_IdAndStatusAndAppliedAtLessThan`：キャンセル待ちの順位（AP-031・AP-142）
+  - `findByUser_IdOrderByAppliedAtDesc`：AP-031・AP-142
+  - `findByEvent_IdOrderByAppliedAtAsc`：AP-125
+  - `findAllByEvent_DeletedAtIsNullOrderByEvent_StartAtAsc`：AP-130のCSV（削除済みイベントの申込を除く）
+  - `existsByUser_IdAndEvent_IdAndStatus`：呼び出し元が無い（[13-06](13-06_問題・確認事項.md)No.2）
+- **INSERT**：AP-030。
+- **UPDATE**：AP-032（対象をキャンセル済に、繰り上げがあれば別の1行を受付済に。1トランザクション内で最大2行）、AP-126（`checked_in_at`。再実行時は上書き）。
+- **DELETE**：無し（キャンセルは申込状況の変更で表す）。
+- **制約**：`(user_id, event_id)`にはUNIQUE制約を設けない（キャンセル後の再申込を許すため）。二重申込はServiceの判定と悲観ロックによる直列化で防ぐ。`fk_applications_ticket_type`（RESTRICT）、`fk_applications_status`（application_statusesへの外部キー）。
+- **インデックス**：`idx_app_event_status_user`（定員判定・充足率・二重申込）、`idx_app_user_applied`（申込一覧）、`idx_app_ticket_type_status`（区分単位の判定）。
+- **排他制御**：`applications`自体はロックせず、親の行（区分があれば`ticket_types`、無ければ`events`）を`SELECT ... FOR UPDATE`でロックして、同じ対象への申込・キャンセルを直列化する（`docs/30_詳細設計/32_処理詳細設計書.md`7章）。
 
-## 6. event_comments（イベントコメント）
+## 6. favorites（お気に入り）
 
-- **用途**：イベントに対するコメント（機能追加）。編集機能なし（投稿・削除のみ）。
-- **Entity**：`entity/EventComment.java`（`isOwnedBy(userId)`で削除可否判定用の本人確認）
-- **Repository**：`repository/EventCommentRepository.java`
-  - `findByEvent_IdOrderByCreatedAtAscIdAsc`：AP-19一覧（`created_at`が秒単位のため同一秒内の順序を`id`で確定させる設計、コメントに明記）
-- **INSERTタイミング**：AP-20
-- **SELECTタイミング**：AP-19
-- **DELETEタイミング**：AP-21（投稿者本人または管理者のみ、`EventCommentService.delete()`のロールチェック後）
-- **UPDATEタイミング**：無し（編集機能自体が存在しない、テーブル定義書§4.6の記載と一致）
-- **インデックス**：`idx_event_comments_event_created`（`event_id, created_at`複合）
-- **制約**：追加の一意制約等は無し（テーブル定義書と一致）。`fk_event_comments_event ON DELETE CASCADE`／`fk_event_comments_user ON DELETE RESTRICT`。
-- **結果**：✓ 確認済み
+- **用途**：利用者のイベントのお気に入り登録。登録と解除のみで更新しないため`updated_at`を持たない。
+- **Entity**：`Favorite.java`（`created_at`はAP-040の応答に使うためJava側で設定する）。
+- **Repository**：`FavoriteRepository.java`
+  - `findByUser_IdAndEvent_Id`：AP-040の冪等の判定（R-12）
+  - `deleteByUser_IdAndEvent_Id`：AP-041（0件でもエラーにしない）
+  - `findByUser_IdOrderByCreatedAtDesc`：AP-042・AP-143
+  - `countByEvent_Id`：AP-020・AP-021の`favoriteCount`
+  - `count`（JPA標準）：AP-131
+- **INSERT**：AP-040（未登録の場合のみ）。**DELETE**：AP-041（物理削除）。**UPDATE**：無し。
+- **制約**：`uk_favorites_user_event UNIQUE(user_id, event_id)`、`fk_favorites_event ON DELETE CASCADE`、`fk_favorites_user ON DELETE RESTRICT`。
+
+## 7. event_comments（イベントコメント）
+
+- **用途**：イベントへのコメントと返信（`parent_comment_id`、階層数の制限なし）。編集機能は無い。
+- **Entity**：`EventComment.java`。`isOwnedBy()`（R-13）・`softDelete()`・`isDeleted()`を持つ。
+- **Repository**：`EventCommentRepository.java`
+  - `findByEvent_IdOrderByCreatedAtAscIdAsc`：AP-050（同じ秒の投稿の順序を`id`で確定させる）
+  - `findByIdAndEvent_Id`：AP-051の返信先の確認（C-06）
+  - `existsByParentComment_Id`：AP-052で物理削除か論理削除かを判定（R-14）
+  - `countByDeletedAtIsNull`：AP-132
+  - `findByUser_IdOrderByCreatedAtDescIdDesc`：AP-144（論理削除済みを含む）
+  - `findByDeletedAtIsNullOrderByCreatedAtDesc`：AP-150
+- **INSERT**：AP-051。
+- **UPDATE**：AP-052で返信があるコメントを論理削除（`deleted_at`を設定）。復元は無い。
+- **DELETE**：AP-052で返信が無いコメントを物理削除。
+- **制約**：`fk_event_comments_event ON DELETE CASCADE`、`fk_event_comments_user ON DELETE RESTRICT`、`fk_event_comments_parent ON DELETE RESTRICT`。
+- **インデックス**：`idx_event_comments_event_created`、`idx_event_comments_parent`。
 
 ---
 
 ## テーブル間リレーションの実装確認
 
-| 親 | 子 | 定義書の方針 | schema.sqlでの実装 | 結果 |
+| 親 | 子 | テーブル定義書5章 | schema.sql | 結果 |
 |---|---|---|---|---|
-| users | applications/favorites/event_comments | RESTRICT | `ON DELETE RESTRICT`（3箇所） | ✓ |
-| events | ticket_types/applications/favorites/event_comments | CASCADE | `ON DELETE CASCADE`（4箇所） | ✓ |
-| ticket_types | applications | RESTRICT | `fk_applications_ticket_type ... ON DELETE RESTRICT` | ✓ |
+| roles | users | RESTRICT | `fk_users_role ON DELETE RESTRICT` | ✓ |
+| application_statuses | applications | RESTRICT | `fk_applications_status ON DELETE RESTRICT` | ✓ |
+| users | applications・favorites・event_comments | RESTRICT | `ON DELETE RESTRICT`（3か所） | ✓ |
+| events | ticket_types・applications・favorites・event_comments | CASCADE | `ON DELETE CASCADE`（4か所） | ✓ |
+| ticket_types | applications | RESTRICT | `fk_applications_ticket_type ON DELETE RESTRICT` | ✓ |
+| event_comments（親） | event_comments（返信） | RESTRICT | `fk_event_comments_parent ON DELETE RESTRICT` | ✓ |
 
-events→子テーブルのCASCADEは、イベントの物理削除がAPI経由では発生しない（論理削除のみ）ため、通常運用では発火しない設定である点はテーブル定義書の備考と実装コメント（`schema.sql`）の双方に明記されており、整合している。
+eventsからのCASCADEは、イベントの物理削除がAPI経由では発生しないため、通常の運用では働かない（テーブル定義書5章の備考と`schema.sql`のコメントの両方に記載がある）。
+
+## カラムの並び順
+
+`schema.sql`は、テーブル定義書1.3の並び順（主キー → 外部キー〔イベント→利用者→その他〕 → 業務項目 → 区分コード → 業務上の日時 → 削除・匿名化の日時 → 監査用の日時）に従っている。
 
 ## 初期データ（`db/seed.sql`）
 
-- 固定ユーザー3件（id=1一般／id=2管理者／id=3退会確認用一般ユーザー）：`AuthInterceptor`のダミー認証、ログイン画面（`general@example.com`/`admin@example.com`）で使用する前提とREADMEの記載が一致。id=3（`withdraw-test@example.com`）はAP-34（利用者の退会＝匿名化）の動作確認用に追加したアカウント（`docs/09_認証認可設計書.md`9-3参照）。
-- サンプルイベント約50件＋定員1名の動作確認用イベント1件：カテゴリ・開催日時を分散させた学内サークル・イベント運営を想定した内容（要件定義書§3/§4の想定利用シーンと整合）。
-- 参加区分・お気に入り・コメントの初期データは無し（0件から機能確認する設計）。
-- **結果**：✓ 確認済み（内容を読解し、README記載のログイン用メールアドレスと整合することを確認）
+- コードマスタ：利用者区分2件、申込状況3件。
+- 利用者3件：ID=1 一般ユーザー（`general@example.com`）、ID=2 管理者（`admin@example.com`）、ID=3 退会確認用ユーザー（`withdraw-test@example.com`）。初期パスワードはいずれも`Test1234`（`UserServiceTest`のUT-USR-N09で、記載したハッシュ値と照合できることを確認）。
+- イベント51件：開催日時をばらつかせたサンプル50件と、定員超過（キャンセル待ち）の確認用に定員1名のイベント1件。
+- 参加区分・申込・お気に入り・コメントの初期データは無い。
