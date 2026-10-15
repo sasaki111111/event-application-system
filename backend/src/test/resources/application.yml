@@ -3,12 +3,16 @@
 # 実MySQLの代わりにインメモリDB（H2）を使うことで、MySQLが起動していなくても `mvn test` が通るようにする。
 spring:
   datasource:
+    # mem:testdb = ディスクに保存せずメモリ上だけに作る使い捨てDB。MODE=MySQLでMySQL互換の挙動に近づける
     url: jdbc:h2:mem:testdb;MODE=MySQL
+    # sa / パスワード無し = H2の既定の管理者ユーザー（テスト用の使い捨てDBなので問題ない）
     username: sa
     password:
+    # 接続に使うJDBCドライバのクラス名（H2用）。pom.xmlのh2依存関係が提供する
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:
       # H2は毎回まっさらな状態のため、エンティティ定義から自動でテーブルを作らせる
       ddl-auto: create-drop
+    # open-in-view: false = 本番用application.ymlと同じ設定（Controllerの処理が終わった後までDB接続を保持しない）
     open-in-view: false

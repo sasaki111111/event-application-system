@@ -1,0 +1,51 @@
+<!-- 実行環境: ブラウザ側。comment-item.tsのテンプレート。 -->
+<!-- コメント1件分（投稿者・日時・返信／削除ボタン・本文）。削除済みなら.deletedクラスで見た目を変える -->
+<div class="comment-item" [class.deleted]="comment().comment.deleted">
+  <div class="comment-header">
+    <span class="comment-author">{{ comment().comment.userName }}</span>
+    <span class="comment-date">{{ comment().comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+    <!--
+      @if はAngularの新しい制御構文（条件分岐）。削除済みコメントには返信・削除ボタンを出さない。
+      削除ボタンは「自分の投稿」または「管理者」の場合のみ表示する。
+    -->
+    @if (!comment().comment.deleted) {
+      <button type="button" class="btn-link btn-sm" (click)="toggleReplyForm()">返信</button>
+    }
+    @if ((comment().comment.mine || isAdmin()) && !comment().comment.deleted) {
+      <button type="button" class="btn-link btn-sm" (click)="onDelete()">削除</button>
+    }
+  </div>
+  <p class="comment-body">{{ comment().comment.body }}</p>
+
+  <!-- 返信フォーム（「返信」ボタンを押した時だけ表示） -->
+  @if (replyFormOpen()) {
+    <div class="field reply-form">
+      <textarea
+        rows="2"
+        maxlength="500"
+        placeholder="返信を入力"
+        [value]="replyBody()"
+        (input)="onReplyInput($any($event.target).value)"
+      ></textarea>
+      <button type="button" (click)="submitReply()" [disabled]="!replyBody().trim()">返信を投稿</button>
+    </div>
+  }
+
+  <!--
+    子コメント（返信）の一覧。@forはAngularの新しい制御構文（繰り返し表示）で、
+    track（ここではコメントID）で各要素を一意に識別し、再描画を効率化する。
+    app-comment-itemを自分自身の中で再利用することで、返信の返信…と何階層でも表示できる。
+  -->
+  @if (comment().children.length > 0) {
+    <div class="comment-replies">
+      @for (child of comment().children; track child.comment.id) {
+        <app-comment-item
+          [comment]="child"
+          [isAdmin]="isAdmin()"
+          (reply)="onChildReply($event)"
+          (delete)="onChildDelete($event)"
+        />
+      }
+    </div>
+  }
+</div>

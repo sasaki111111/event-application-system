@@ -2,13 +2,19 @@
 <!-- 実行環境: ブラウザ側。ブラウザが最初に読み込むHTML。<app-root>の中身をmain.tsがJavaScriptで描画する。 -->
 <html lang="en">
 <head>
+  <!-- ページの文字コード -->
   <meta charset="utf-8">
+  <!-- ブラウザのタブに表示されるタイトル -->
   <title>Frontend</title>
+  <!-- SPA（Single Page Application）のURL解決の基準となる基点パス。Angular Routerが
+       ルーティング（app.routes.ts）を組み立てる際にこれを基準にする -->
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
+  <!-- app.tsのルートコンポーネント（セレクタ: app-root）がここに描画される。
+       最初は空のタグだが、main.tsのbootstrapApplication()実行後にAngularが中身を生成する -->
   <app-root></app-root>
 </body>
 </html>

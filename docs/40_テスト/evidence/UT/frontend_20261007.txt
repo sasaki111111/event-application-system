@@ -1,0 +1,78 @@
+❯ Building...
+✔ Building...
+Application bundle generation complete. [2.411 seconds] - 2026-10-07T08:01:03.387Z
+
+
+ RUN  v4.1.11 C:/Users/tk-sasaki/日本ディクス/AI駆動開発教育標準 Ver1.0 - 作業チーム/チーム開発演習_test_佐々木/event-application-system/frontend
+
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > isHeld: 開催日時が現在時刻より前なら開催済み 6ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > isHeld: 開催日時が現在時刻ちょうどなら開催済み（境界） 1ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > isHeld: 開催日時が現在時刻より後なら開催前 1ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > moveHeldEventsLast: 開催済みを末尾に移し、それぞれの中の順序は保つ 2ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > moveHeldEventsLast: 開催済みが無ければ順序は変わらない 1ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > moveHeldEventsLast: 渡された配列そのものは変更せず、新しい配列を返す 2ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > moveHeldEventsLast: すべて開催済みの場合は順序を変えずに返す 1ms
+ ✓  frontend  src/app/core/event-order.spec.ts > event-order > moveHeldEventsLast: 空の配列を渡すと空の配列を返す 1ms
+ ✓  frontend  src/app/core/comment-api.spec.ts > buildCommentTree > 親を持たないコメントはすべてルートになる 6ms
+ ✓  frontend  src/app/core/comment-api.spec.ts > buildCommentTree > parentCommentIdで指定した親の子として組み立てる 1ms
+ ✓  frontend  src/app/core/comment-api.spec.ts > buildCommentTree > 返信の階層数に制限が無く、何階層でも入れ子にできる 1ms
+ ✓  frontend  src/app/core/comment-api.spec.ts > buildCommentTree > 1つの親に複数の返信がある場合、すべて子として並ぶ 2ms
+ ✓  frontend  src/app/core/comment-api.spec.ts > buildCommentTree > 削除済み（deleted: true）のコメントも、返信の親としてそのままツリーに残る 1ms
+ ✓  frontend  src/app/core/auth-guard.spec.ts > authGuard > ログイン中は通過させる（true） 49ms
+ ✓  frontend  src/app/core/auth-guard.spec.ts > authGuard > 未ログインの場合はログイン画面へのUrlTreeを返す 11ms
+ ✓  frontend  src/app/core/admin-guard.spec.ts > adminGuard > 管理者（利用者区分コード＝管理者）は通過させる（true） 39ms
+ ✓  frontend  src/app/core/admin-guard.spec.ts > adminGuard > 一般利用者（利用者区分コード＝一般利用者）はイベント一覧へのUrlTreeを返す（利用者区分コード基準の判定） 12ms
+ ✓  frontend  src/app/core/http-error-interceptor.spec.ts > httpErrorInterceptor > 401を受け取るとログイン状態を解除してログイン画面へ遷移し、エラーは呼び出し元にも伝える 42ms
+ ✓  frontend  src/app/core/http-error-interceptor.spec.ts > httpErrorInterceptor > ログインAPIの401（メールアドレス・パスワードの誤り）ではログイン状態を変えず遷移もしない 12ms
+ ✓  frontend  src/app/core/http-error-interceptor.spec.ts > httpErrorInterceptor > 403（権限エラー）ではログイン状態を変えず遷移もしない 11ms
+ ✓  frontend  src/app/core/http-error-interceptor.spec.ts > httpErrorInterceptor > サーバーに接続できない場合（status 0）は共通のメッセージに置き換える 10ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > 初期表示で申込一覧を取得する 186ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > 初期表示でお気に入り一覧を取得する 17ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > 申込一覧の取得に失敗した場合はエラーメッセージを表示する 15ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > タブ切替でactiveTabが切り替わる 17ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > キャンセル確認でOKした場合、APIを呼び一覧を再取得する 20ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > キャンセル確認でキャンセルした場合、APIを呼ばない 13ms
+ ✓  frontend  src/app/my-applications/my-applications.spec.ts > MyApplications > お気に入り解除でAPIを呼び、ストアを無効化してから一覧を再取得する 11ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 初期状態では開催日時昇順で全件を返す 184ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > キーワードでイベント名を絞り込む 16ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > キーワードで場所を絞り込む（大文字小文字を区別しない） 11ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 開催日（から）で絞り込む 12ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 開催日（まで）で絞り込む 10ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 開催日（から）と（まで）の両方を指定すると、その範囲で絞り込む 9ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 条件をクリアすると絞り込みが解除される 9ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 並び替え: 開催済みのイベントは検索結果の末尾に並ぶ 9ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 並び替え: 絞り込んだ結果の中でも開催済みのイベントは末尾に並ぶ 17ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 並び替え: 申込数の多い順 11ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 並び替え: お気に入り数の多い順 8ms
+ ✓  frontend  src/app/events/event-search/event-search.spec.ts > EventSearch > 並び替え: 申込締切が近い順 10ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 新規登録モード: idが無ければeditModeはfalse 135ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 編集モード: idがあればイベント詳細を取得しフォームへ反映する 22ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > バリデーション: 必須項目が未入力の場合form.invalid 16ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 参加区分: addTicketTypeで行が増える 14ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 参加区分: removeTicketTypeで行が減る 12ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 参加区分の定員合計が正しく計算される 12ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 複製元がある場合、開催日時・申込締切を除く項目が複写される 10ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 初期表示でイベント一覧を取得する 167ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 既定は開催日時昇順 38ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 申込数の多い順 16ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: お気に入り数の多い順 15ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 申込締切が近い順 15ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 複製元が無い場合は何も複写されない 11ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 保存成功時はイベント一覧へ遷移する 15ms
+ ✓  frontend  src/app/admin/admin-event-form/admin-event-form.spec.ts > AdminEventForm > 保存時に入力値エラー（400）が返るとfieldErrorsに反映される 15ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 開催済みのイベントは末尾に並ぶ（既定の開催日時順） 13ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 申込数の多い順でも開催済みのイベントは末尾に並ぶ 11ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 並び替え: 受付終了でも開催前のイベントは末尾に移動しない 12ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 詳細展開: toggleExpandでイベント詳細を取得する 13ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 詳細展開: 同じ行をもう一度押すと閉じる 9ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 申込成功で申込完了画面へ遷移する 11ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > お気に入りトグルでfavoriteStore.toggleを呼ぶ 9ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > お気に入り登録でお気に入り数が即座に1増える 8ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > お気に入り解除でお気に入り数が即座に1減る 8ms
+ ✓  frontend  src/app/events/event-list/event-list.spec.ts > EventList > 管理者の場合isAdminがtrueになる 9ms
+
+ Test Files  9 passed (9)
+      Tests  65 passed (65)
+   Start at  17:01:03
+   Duration  7.88s (transform 1.32s, setup 10.94s, import 2.66s, tests 1.45s, environment 45.66s)
+

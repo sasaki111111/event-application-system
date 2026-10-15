@@ -1,0 +1,76 @@
+<!-- 実行環境: ブラウザ側。admin-checkin.tsのテンプレート。 -->
+<!-- routerLinkはAngularの画面遷移用ディレクティブ。クリックされると/admin/events（イベント管理一覧）へ遷移する -->
+<a class="btn-link" routerLink="/admin/events">← イベント管理に戻る</a>
+
+<h1>当日受付</h1>
+
+<!--
+  @if / @else if / @else はAngularのテンプレート制御構文（新しい記法）。
+  ()が付いた名前（loading()など）はComponent側のsignal()の現在値を読み取っている。
+  読み込み中・エラー・0件・一覧ありの4状態を切り替えて表示する。
+-->
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (attendees().length === 0) {
+  <p>申込者はいません。</p>
+} @else {
+  <!-- 申込者一覧テーブル。1行＝1申込。アンケート設問列は設定がある場合のみ表示される -->
+  <table>
+    <thead>
+      <tr>
+        <th>申込者</th>
+        <th>区分</th>
+        <th>ステータス</th>
+        <th>チェックイン</th>
+        <!-- （機能追加）: アンケート設定があるイベントのみ列を表示し、見出しに質問文言を出す -->
+        @if (extraQuestion()) {
+          <th>{{ extraQuestion() }}</th>
+        }
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- @forはAngularの繰り返し表示構文。trackには各行を一意に識別するキー（applicationId）を指定する -->
+      @for (attendee of attendees(); track attendee.applicationId) {
+        <tr>
+          <td>{{ attendee.userName }}</td>
+          <td>{{ attendee.ticketTypeName ?? '-' }}</td>
+          <!-- 申込ステータスに応じてバッジの色・文言を切り替える -->
+          <td>
+            @if (attendee.statusCode === StatusCode.ACCEPTED) {
+              <span class="badge badge-positive">{{ attendee.statusName }}</span>
+            } @else if (attendee.statusCode === StatusCode.WAITLISTED) {
+              <span class="badge badge-waiting">{{ attendee.statusName }}</span>
+            } @else {
+              <span class="badge badge-neutral">{{ attendee.statusName }}</span>
+            }
+          </td>
+          <!-- チェックイン済みなら日時（dateパイプで整形）、未チェックインなら文言を表示する -->
+          <td>
+            @if (attendee.checkedInAt) {
+              {{ attendee.checkedInAt | date: 'yyyy/MM/dd HH:mm' }}
+            } @else {
+              未チェックイン
+            }
+          </td>
+          <!-- アンケート列（設定がある場合のみ、ヘッダーと同じ条件で表示） -->
+          @if (extraQuestion()) {
+            <td>{{ attendee.extraAnswer ?? '-' }}</td>
+          }
+          <!-- チェックインボタン。(click)はAngularのイベントバインディングで、クリック時にcheckIn()を呼ぶ。
+               [disabled]はプロパティバインディングで、処理中（checkingInIdが自分の行と一致）の間ボタンを無効化する -->
+          <td>
+            @if (attendee.statusCode === StatusCode.ACCEPTED) {
+              <button type="button" class="btn-accent btn-sm"
+                (click)="checkIn(attendee)" [disabled]="checkingInId() === attendee.applicationId">
+                {{ checkingInId() === attendee.applicationId ? '処理中...' : (attendee.checkedInAt ? '再チェックイン' : 'チェックイン') }}
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

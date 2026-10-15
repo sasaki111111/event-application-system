@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。eventsテーブル（テーブル定義書_v1.0.md §2.2）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。eventsテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "events")
 public class Event {
@@ -46,9 +46,6 @@ public class Event {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-    @Column(length = 50)
-    private String category;
-
     // 申込時アンケートの質問文言。NULL＝アンケート無し
     @Column(name = "extra_question", length = 200)
     private String extraQuestion;
@@ -68,10 +65,10 @@ public class Event {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // D-2: イベント登録（API-06）用
+    // イベント登録（AP-120）用
     public Event(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
-            String organizerName, String imageUrl, String category, String extraQuestion) {
+            String organizerName, String imageUrl, String extraQuestion) {
         this.name = name;
         this.startAt = startAt;
         this.place = place;
@@ -80,14 +77,13 @@ public class Event {
         this.description = description;
         this.organizerName = organizerName;
         this.imageUrl = imageUrl;
-        this.category = category;
         this.extraQuestion = extraQuestion;
     }
 
-    // D-2: イベント編集（API-07）用
+    // イベント編集（AP-121）用
     public void applyChanges(String name, LocalDateTime startAt, String place, Integer capacity,
             LocalDateTime applicationDeadline, String description,
-            String organizerName, String imageUrl, String category, String extraQuestion) {
+            String organizerName, String imageUrl, String extraQuestion) {
         this.name = name;
         this.startAt = startAt;
         this.place = place;
@@ -96,7 +92,6 @@ public class Event {
         this.description = description;
         this.organizerName = organizerName;
         this.imageUrl = imageUrl;
-        this.category = category;
         this.extraQuestion = extraQuestion;
     }
 
@@ -138,10 +133,6 @@ public class Event {
 
     public String getImageUrl() {
         return imageUrl;
-    }
-
-    public String getCategory() {
-        return category;
     }
 
     public String getExtraQuestion() {

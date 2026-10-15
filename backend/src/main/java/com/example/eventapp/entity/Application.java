@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
-// 実行環境: サーバー側（JVM）。applicationsテーブル（テーブル定義書_v1.0.md §2.3）に対応するJPAエンティティ。
+// 実行環境: サーバー側（JVM）。applicationsテーブル（docs/20_基本設計/22_テーブル定義書.md）に対応するJPAエンティティ。
 @Entity
 @Table(name = "applications")
 public class Application {
@@ -33,13 +33,22 @@ public class Application {
     @JoinColumn(name = "ticket_type_id")
     private TicketType ticketType;
 
-    // '受付済' または 'キャンセル済'（要件定義書§4）
-    @Column(nullable = false, length = 20)
-    private String status;
+    // 申込状況コード（ApplicationStatus参照。1=受付済、2=キャンセル待ち、9=キャンセル済）。
+    // 表示名はコードマスタ（application_statuses）で管理する
+    @Column(name = "status_code", nullable = false)
+    private Integer status;
 
     // APIレスポンスに即値が必要なためDB任せにせずJava側で設定する（created_at/updated_atとは異なる扱い）
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
+
+    // 申込時アンケートの回答。対象イベントにextraQuestionが無ければ意味を持たない（API設計書 AP-030）
+    @Column(name = "extra_answer", length = 500)
+    private String extraAnswer;
+
+    // 当日受付でチェックインされた日時。NULL＝未チェックイン（機能追加）
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
 
     // created_at/updated_atはDB側のDEFAULT/ON UPDATEに任せる（Java側からは書き込まない）。
     // columnDefinitionはテスト環境（H2、ddl-auto: create-drop）でHibernateがスキーマを自動生成する際に
@@ -56,16 +65,23 @@ public class Application {
         // JPAが利用するデフォルトコンストラクタ
     }
 
-    // D-3: イベント申込（API-03）用。生成した瞬間は必ず「受付済」
+    // イベント申込（AP-030）用。生成した瞬間は必ず「受付済」
     public Application(User user, Event event) {
         this(user, event, ApplicationStatus.ACCEPTED);
     }
 
     // 機能追加（キャンセル待ち）: 定員超過時は最初から「キャンセル待ち」で作る
-    public Application(User user, Event event, String status) {
+    public Application(User user, Event event, Integer status) {
+        this(user, event, null, status, null);
+    }
+
+    // 機能追加（定員区分）: 区分単位の申込用。ticketTypeは区分の無いイベントへの申込ではNULL
+    public Application(User user, Event event, TicketType ticketType, Integer status, String extraAnswer) {
         this.user = user;
         this.event = event;
+        this.ticketType = ticketType;
         this.status = status;
+        this.extraAnswer = extraAnswer;
         this.appliedAt = LocalDateTime.now();
     }
 
@@ -85,7 +101,7 @@ public class Application {
         return ticketType;
     }
 
-    public String getStatus() {
+    public Integer getStatus() {
         return status;
     }
 
@@ -93,7 +109,15 @@ public class Application {
         return appliedAt;
     }
 
-    // D-5: 申込キャンセル（API-05）用
+    public String getExtraAnswer() {
+        return extraAnswer;
+    }
+
+    public LocalDateTime getCheckedInAt() {
+        return checkedInAt;
+    }
+
+    // 申込キャンセル（AP-032）用
     public void cancel() {
         this.status = ApplicationStatus.CANCELLED;
     }
@@ -101,5 +125,10 @@ public class Application {
     // 機能追加（キャンセル待ちの繰り上げ）: 受付済の枠が空いた時にキャンセル待ちから昇格させる
     public void promote() {
         this.status = ApplicationStatus.ACCEPTED;
+    }
+
+    // 機能追加（当日受付）: チェックイン可否チェック（要件定義書§8 E8）はService側で行う
+    public void checkIn() {
+        this.checkedInAt = LocalDateTime.now();
     }
 }

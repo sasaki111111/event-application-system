@@ -1,0 +1,21 @@
+﻿IT-AP07-05〜09 用の Request body
+対象API：POST /api/events（AP-07 イベント登録）　X-User-Id はすべて 2（管理者）
+各ケースの { から } までを全部コピーして、Request body を全部消してから貼り付ける
+
+■ IT-AP07-05：name・place が空、startAt が過去（期待：400、errors に name・place・startAt）
+{ "name": "", "startAt": "2020-01-01T10:00:00", "place": "", "capacity": 5, "applicationDeadline": "2019-12-25T23:59:00" }
+
+■ IT-AP07-06：申込締切＝開催日時（期待：400）
+{ "name": "IT-AP07-06 締切同時刻", "startAt": "2026-12-01T10:00:00", "place": "会場", "capacity": 5, "applicationDeadline": "2026-12-01T10:00:00" }
+
+■ IT-AP07-07 1回目：capacity が 0（期待：400）
+{ "name": "IT-AP07-07 定員0", "startAt": "2026-12-02T10:00:00", "place": "会場", "capacity": 0, "applicationDeadline": "2026-11-25T23:59:00" }
+
+■ IT-AP07-07 2回目：capacity が 1（期待：201）
+{ "name": "IT-AP07-07 定員1", "startAt": "2026-12-02T10:00:00", "place": "会場", "capacity": 1, "applicationDeadline": "2026-11-25T23:59:00" }
+
+■ IT-AP07-08：imageUrl が javascript:（期待：400）
+{ "name": "IT-AP07-08 画像URL", "startAt": "2026-12-03T10:00:00", "place": "会場", "capacity": 5, "applicationDeadline": "2026-11-25T23:59:00", "imageUrl": "javascript:alert(1)" }
+
+■ IT-AP07-09：同じ名前の区分が2件（期待：400「区分名が重複しています」）
+{ "name": "IT-AP07-09 区分重複", "startAt": "2026-12-04T10:00:00", "place": "会場", "applicationDeadline": "2026-11-25T23:59:00", "ticketTypes": [ { "name": "一般", "capacity": 1 }, { "name": "一般", "capacity": 2 } ] }

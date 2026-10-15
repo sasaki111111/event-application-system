@@ -1,0 +1,137 @@
+<!-- 実行環境: ブラウザ側。admin-user-detail.tsのテンプレート。 -->
+<a class="btn-link" routerLink="/admin/users">← 利用者管理に戻る</a>
+
+<!--
+  @if/@else if/@elseで読み込み中・エラー・取得完了の3状態を切り替える。
+  `user(); as u` はsignalの値をuという別名に束ねる書き方（以降このブロック内でu.nameのように使える）
+-->
+@if (loading()) {
+  <p>読み込み中...</p>
+} @else if (errorMessage()) {
+  <p class="error">{{ errorMessage() }}</p>
+} @else if (user(); as u) {
+  <!-- 利用者の基本情報（氏名・メールアドレス・区分・退会状態） -->
+  <h1>{{ u.name }}</h1>
+  <dl class="card-meta">
+    <dt>メールアドレス</dt>
+    <dd>{{ u.email }}</dd>
+    <dt>利用者区分</dt>
+    <dd>
+      @if (u.roleCode === RoleCode.ADMIN) {
+        <span class="badge badge-neutral">{{ u.roleName }}</span>
+      } @else {
+        <span class="badge badge-positive">{{ u.roleName }}</span>
+      }
+      @if (u.anonymizedAt) {
+        <span class="badge badge-neutral">退会済み</span>
+      }
+    </dd>
+  </dl>
+
+  <!-- 管理者権限の降格・退会（匿名化）ボタン。対象の区分・状態に応じてどちらか一方だけ表示する -->
+  @if (u.roleCode === RoleCode.ADMIN) {
+    <button type="button" (click)="demote()" [disabled]="demoting()">管理者権限を外す</button>
+  } @else if (!u.anonymizedAt) {
+    <button type="button" (click)="anonymize()" [disabled]="anonymizing()">退会させる</button>
+  }
+
+  <!-- 申込一覧テーブル -->
+  <h2>申込一覧</h2>
+  @if (applications().length === 0) {
+    <p>申込しているイベントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>状況</th>
+          <th>開催日時</th>
+          <th>申込日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (application of applications(); track application.id) {
+          <tr>
+            <td>{{ application.eventName }}</td>
+            <!-- 申込ステータスに応じてバッジを切り替える。キャンセル待ちの場合は、順番（waitlistRank）が
+                 わかっていれば「（n番目）」を追記する -->
+            <td>
+              @if (application.statusCode === StatusCode.ACCEPTED) {
+                <span class="badge badge-positive">{{ application.statusName }}</span>
+              } @else if (application.statusCode === StatusCode.WAITLISTED) {
+                <span class="badge badge-waiting">
+                  {{ application.statusName }} @if (application.waitlistRank) {（{{ application.waitlistRank }}番目）}
+                </span>
+              } @else {
+                <span class="badge badge-neutral">{{ application.statusName }}</span>
+              }
+            </td>
+            <td>{{ application.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+            <td>{{ application.appliedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <!-- お気に入り一覧テーブル -->
+  <h2>お気に入り一覧</h2>
+  @if (favorites().length === 0) {
+    <p>お気に入り登録しているイベントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>受付状況</th>
+          <th>開催日時</th>
+          <th>場所</th>
+          <th>登録日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (favorite of favorites(); track favorite.id) {
+          <tr>
+            <td>{{ favorite.name }}</td>
+            <td>
+              @if (favorite.open) {
+                <span class="badge badge-positive">受付中</span>
+              } @else {
+                <span class="badge badge-neutral">受付終了</span>
+              }
+            </td>
+            <td>{{ favorite.startAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+            <td>{{ favorite.place }}</td>
+            <td>{{ favorite.favoritedAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <!-- （機能追加）: コメント履歴。論理削除済みのコメントも含む -->
+  <h2>コメント履歴</h2>
+  @if (comments().length === 0) {
+    <p>投稿したコメントはありません。</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>イベント名</th>
+          <th>本文</th>
+          <th>投稿日時</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (comment of comments(); track comment.id) {
+          <!-- [class.deleted]で論理削除済みのコメント行にのみdeletedクラスを付け、控えめな見た目にする -->
+          <tr [class.deleted]="comment.deleted">
+            <td>{{ comment.eventName }}</td>
+            <td>{{ comment.body }}</td>
+            <td>{{ comment.createdAt | date: 'yyyy/MM/dd HH:mm' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

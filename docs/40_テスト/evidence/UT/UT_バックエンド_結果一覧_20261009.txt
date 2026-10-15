@@ -1,0 +1,129 @@
+単体テスト（バックエンド）実行結果
+============================================================
+実行日時      : 2026-10-09 16:37:06
+実行コマンド  : backend で mvnw test
+合計          : 111件（成功 111件、失敗・記録なし 0件）
+元の記録      : このファイルは、次の実行レポートからテストケースごとの結果を抜き出して一覧にしたものである。
+                backend_20261009/TEST-com.example.eventapp.service.ApplicationServiceTest.xml
+                backend_20261009/TEST-com.example.eventapp.service.EventCommentServiceTest.xml
+                backend_20261009/TEST-com.example.eventapp.service.EventServiceTest.xml
+                backend_20261009/TEST-com.example.eventapp.service.FavoriteServiceTest.xml
+                backend_20261009/TEST-com.example.eventapp.service.ReportServiceTest.xml
+                backend_20261009/TEST-com.example.eventapp.service.UserServiceTest.xml
+備考          : Issue #18（IT-AP030-E07）の修正後の実行。UT-APP-E15 はこの修正で追加したテストケースである。
+見方          : 「結果」がOKの行は、右のテストが実行レポート上で成功していることを示す。
+                テストIDは docs/40_テスト のテスト仕様書・44_テスト結果表.xlsx のIDと対応する。
+
+テストID          結果         時間  テスト（メソッド名）
+----------------------------------------------------------------------------------------------------
+UT-APP-E01     OK     0.007s  apply_異常系_イベントが存在しなければNotFoundException
+UT-APP-E02     OK     0.009s  apply_異常系_受付終了のイベントには申込できない
+UT-APP-E03     OK     0.009s  apply_異常系_二重申込はできない
+UT-APP-E04     OK     0.008s  apply_機能追加_キャンセル待ち中の二重申込もできない
+UT-APP-E05     OK     0.007s  apply_異常系_区分があるのに未指定なら区分を選択してくださいで拒否される
+UT-APP-E06     OK     0.007s  apply_異常系_存在しない区分を指定すると指定された区分が見つかりませんで拒否される
+UT-APP-E07     OK     0.009s  cancel_異常系_他人の申込は取消できない
+UT-APP-E08     OK      0.01s  cancel_異常系_開催日時を過ぎた申込は取消できない
+UT-APP-E09     OK     0.032s  cancel_異常系_キャンセル済の申込は取消できない
+UT-APP-E10     OK     0.011s  cancel_異常系_申込が存在しなければNotFoundException
+UT-APP-E11     OK     0.007s  listAttendees_異常系_イベントが存在しなければNotFoundException
+UT-APP-E12     OK     0.005s  checkIn_異常系_キャンセル待ちの申込はチェックインできない
+UT-APP-E13     OK     0.007s  checkIn_異常系_キャンセル済の申込はチェックインできない
+UT-APP-E14     OK     0.006s  checkIn_異常系_申込が存在しなければNotFoundException
+UT-APP-E15     OK     0.008s  apply_異常系_区分の無いイベントに区分を指定すると指定された区分が見つかりませんで拒否される
+UT-APP-N01     OK     0.008s  apply_正常系_定員に余裕があれば受付済で申込できる
+UT-APP-N02     OK     0.009s  apply_機能追加_定員に達していればキャンセル待ちで登録される
+UT-APP-N03     OK     0.015s  apply_正常系_キャンセル済の申込のみなら再申込できる
+UT-APP-N04     OK     0.009s  apply_機能追加_区分の定員に余裕があれば受付済で申込できる
+UT-APP-N05     OK     0.083s  apply_機能追加_区分の定員に達していればキャンセル待ちで登録される
+UT-APP-N06     OK     0.005s  apply_境界_現在時刻が申込締切ちょうどなら受付中と判定される
+UT-APP-N07     OK     0.009s  cancel_正常系_受付済かつ開催前なら取消できる
+UT-APP-N08     OK     0.009s  cancel_機能追加_受付済のキャンセルでキャンセル待ちが繰り上がる
+UT-APP-N09     OK     0.004s  cancel_機能追加_キャンセル待ちの申込も取消できる
+UT-APP-N10     OK     0.008s  cancel_機能追加_区分単位でキャンセル待ちが繰り上がる
+UT-APP-N11     OK     0.016s  myApplications_機能追加_区分単位でキャンセル待ちの順位が計算される
+UT-APP-N12     OK     0.006s  myApplications_正常系_受付済の申込はwaitlistRankがNULL
+UT-APP-N13     OK     0.149s  listAttendees_正常系_申込者一覧を返す
+UT-APP-N14     OK     0.014s  listAttendees_正常系_区分が無ければticketTypeNameはNULL
+UT-APP-N15     OK     0.841s  checkIn_正常系_受付済の申込はチェックインできる
+UT-APP-N16     OK     0.045s  checkIn_正常系_チェックイン済みに再実行すると日時が更新される
+UT-CMT-E01     OK     0.004s  list_異常系_イベントが存在しなければNotFoundException
+UT-CMT-E02     OK     0.004s  post_異常系_イベントが存在しなければNotFoundException
+UT-CMT-E03     OK     0.005s  post_異常系_返信先が存在しなければNotFoundException
+UT-CMT-E04     OK     0.006s  post_異常系_返信先が別イベントのコメントならNotFoundException
+UT-CMT-E05     OK     0.003s  delete_異常系_本人でも管理者でもなければ削除できない
+UT-CMT-E06     OK     0.003s  delete_異常系_コメントが存在しなければNotFoundException
+UT-CMT-N01     OK     0.005s  list_正常系_本人の投稿はmineがtrue
+UT-CMT-N02     OK     0.245s  list_正常系_他人の投稿はmineがfalse
+UT-CMT-N03     OK     0.006s  list_正常系_論理削除されたコメントは本文が固定文言になる
+UT-CMT-N04     OK     0.087s  list_正常系_返信のparentCommentIdが親コメントのIDになる
+UT-CMT-N05     OK     0.005s  post_正常系_保存されmineがtrueで返る
+UT-CMT-N06     OK     0.007s  post_正常系_返信先を指定すると返信として保存される
+UT-CMT-N07     OK     0.017s  post_正常系_論理削除済みのコメントにも返信できる
+UT-CMT-N08     OK     0.004s  delete_正常系_投稿者本人は削除できる
+UT-CMT-N09     OK     0.004s  delete_正常系_管理者は他人のコメントも削除できる
+UT-CMT-N10     OK     0.005s  delete_正常系_返信があるコメントは物理削除せず論理削除する
+UT-CMT-N11     OK     0.002s  countActive_正常系_リポジトリの件数を返す
+UT-CMT-N12     OK     0.003s  listByUser_正常系_イベント名を含めて返す
+UT-CMT-N13     OK     0.005s  listByUser_正常系_論理削除済みも本文が固定文言で含まれる
+UT-CMT-N14     OK     0.005s  listAllActive_正常系_イベント名と投稿者名を含めて返す
+UT-EVT-E01     OK     0.006s  delete_異常系_受付済の申込があれば削除できない
+UT-EVT-E02     OK     0.004s  delete_異常系_イベントが存在しなければNotFoundException
+UT-EVT-E03     OK     0.002s  restore_異常系_削除済みイベントが存在しなければNotFoundException
+UT-EVT-E04     OK     0.005s  create_異常系_capacityも区分も未指定なら登録できない
+UT-EVT-E05     OK     0.005s  update_異常系_capacity未指定かつ既存区分も無ければ更新できない
+UT-EVT-E06     OK     0.007s  update_異常系_capacity未指定で区分を空にすると更新できない
+UT-EVT-E07     OK     0.005s  update_異常系_区分に申込が残っていれば変更できない
+UT-EVT-E08     OK     0.013s  update_異常系_キャンセル済の申込が区分を参照していれば変更できない
+UT-EVT-E09     OK     0.004s  update_異常系_区分の無いイベントでも申込が残っていれば区分を追加できない
+UT-EVT-E10     OK     0.005s  update_異常系_区分名が重複していれば変更できない
+UT-EVT-N01     OK     0.004s  delete_正常系_申込が無ければ削除できる
+UT-EVT-N02     OK     0.006s  delete_正常系_キャンセル待ちとキャンセル済の申込のみなら削除できる
+UT-EVT-N03     OK     0.005s  listDeleted_正常系_削除済みイベントのみ返す
+UT-EVT-N04     OK     0.008s  listDeleted_正常系_複製に必要な項目を含む
+UT-EVT-N05     OK     0.176s  restore_正常系_削除済みイベントを復元できる
+UT-EVT-N06     OK     0.006s  create_正常系_区分を指定すると保存されcapacityが同期される
+UT-EVT-N07     OK     0.008s  create_正常系_capacity未指定でも区分の定員合計を使う
+UT-EVT-N08     OK     0.009s  update_正常系_区分未指定なら既存の区分は変更しない
+UT-EVT-N09     OK     0.005s  update_正常系_区分未指定でも既存区分があればcapacityを合計に保つ
+UT-EVT-N10     OK     0.009s  update_正常系_capacity未指定かつ区分未指定でも既存区分があれば維持される
+UT-EVT-N11     OK     0.004s  update_正常系_区分を全置換しcapacityが同期される
+UT-EVT-N12     OK     0.012s  list_正常系_openなら受付中かつ未削除のみを開催日時昇順で返す
+UT-FAV-E01     OK     0.003s  add_異常系_イベントが存在しなければNotFoundException
+UT-FAV-N01     OK     0.008s  add_正常系_未登録なら新規登録される
+UT-FAV-N02     OK     0.005s  add_機能_既に登録済みなら新規作成せず既存を返す
+UT-FAV-N03     OK     0.007s  remove_機能_未登録でもエラーにならない
+UT-FAV-N04     OK      0.01s  myFavorites_正常系_イベント情報と登録日時を含めて返す
+UT-FAV-N05     OK     0.005s  myFavorites_正常系_お気に入りが無ければ空配列
+UT-FAV-N06     OK     0.005s  countAll_正常系_リポジトリの件数を返す
+UT-RPT-N01     OK      0.01s  summarize_正常系_充足率は小数第2位までに丸められる
+UT-RPT-N02     OK      0.01s  summarize_正常系_accepted_descなら受付済数の多い順に並ぶ
+UT-RPT-N03     OK     0.006s  summarize_正常系_削除済みイベントは含まれない
+UT-RPT-N04     OK     0.008s  toCsv_正常系_先頭がBOMでヘッダ行が仕様どおり
+UT-RPT-N05     OK     0.013s  toCsv_正常系_すべてのステータスの申込が出力される
+UT-RPT-N06     OK     0.006s  toCsv_境界_カンマ改行ダブルクォートを含む値はダブルクォートで囲まれる
+UT-RPT-N07     OK     0.008s  toCsv_境界_数式として解釈されうる先頭文字にはシングルクォートが付与される
+UT-RPT-N08     OK     0.004s  toCsv_境界_先頭以外の記号にはシングルクォートが付与されない
+UT-USR-E01     OK     0.002s  register_異常系_登録済みのメールアドレスは登録できない
+UT-USR-E02     OK     0.002s  register_異常系_大文字小文字と前後空白だけ異なるメールアドレスは重複と判定される
+UT-USR-E03     OK     0.019s  registerAdmin_異常系_登録済みのメールアドレスは登録できない
+UT-USR-E04     OK     0.004s  login_異常系_未登録のメールアドレスはログインできない
+UT-USR-E05     OK     0.003s  demote_異常系_一般利用者は降格できない
+UT-USR-E06     OK     0.005s  demote_異常系_最後の管理者は降格できない
+UT-USR-E07     OK     0.004s  demote_異常系_利用者が存在しなければNotFoundException
+UT-USR-E08     OK     0.008s  anonymize_権限_一般利用者は他人を退会させられない
+UT-USR-E09     OK     0.003s  anonymize_異常系_管理者は退会できない
+UT-USR-E10     OK     0.005s  anonymize_異常系_退会済みの利用者は再度退会できない
+UT-USR-E11     OK     0.005s  anonymize_異常系_利用者が存在しなければNotFoundException
+UT-USR-E12     OK     0.008s  login_異常系_パスワードが一致しなければログインできない
+UT-USR-E13     OK     0.006s  login_異常系_退会済みの利用者はログインできない
+UT-USR-E14     OK      0.01s  changePassword_異常系_現在のパスワードが一致しなければ変更できない
+UT-USR-N01     OK     0.007s  register_正常系_未登録のメールアドレスなら一般利用者で登録される
+UT-USR-N02     OK     0.007s  registerAdmin_正常系_未登録のメールアドレスなら管理者で登録される
+UT-USR-N03     OK     0.011s  login_正常系_大文字混在と前後空白ありでも正規化して利用者を返す
+UT-USR-N04     OK     0.004s  demote_正常系_管理者が2人以上いれば降格できる
+UT-USR-N05     OK     0.005s  anonymize_正常系_本人は自分を退会できる
+UT-USR-N06     OK     0.008s  anonymize_正常系_管理者は一般利用者を退会させられる
+UT-USR-N07     OK     0.011s  changePassword_正常系_現在のパスワードが一致すれば変更できる
+UT-USR-N08     OK     0.014s  anonymize_正常系_退会するとパスワードが無効化される
+UT-USR-N09     OK     0.086s  seed_初期利用者のパスワードハッシュは初期パスワードと照合できる
